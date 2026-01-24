@@ -215,3 +215,25 @@ export const uploadFile = async (file: File): Promise<string> => {
     
   return publicUrl;
 }
+
+// === 新增：更新文章 ===
+export const updatePost = async (id: string, updates: Partial<KnowledgeItem>) => {
+  // 映射前端字段到数据库字段
+  const dbUpdates: any = {};
+  if (updates.title) dbUpdates.title = updates.title;
+  if (updates.content) dbUpdates.content = updates.content;
+  if (updates.tags) dbUpdates.tags = updates.tags;
+  if (updates.aiClues) dbUpdates.search_clues = updates.aiClues;
+  if (updates.attachments) dbUpdates.attachments = updates.attachments;
+  
+  // 总是更新时间
+  dbUpdates.updated_at = new Date().toISOString();
+
+  const { error } = await supabase
+    .from('knowledge_posts')
+    .update(dbUpdates)
+    .eq('id', id);
+
+  if (error) throw error;
+};
+
