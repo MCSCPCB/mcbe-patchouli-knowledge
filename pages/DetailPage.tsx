@@ -87,7 +87,7 @@ const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | nul
     <div className="max-w-4xl mx-auto px-4 py-8 pb-32">
        <div className="mb-6 flex items-start justify-between">
          <IconButton icon="arrow_back" onClick={() => onNavigate(Page.HOME)} />
-         {isAuthorOrAdmin && (
+         {canEdit && (
            <div className="flex gap-2">
              <IconButton icon="edit" title="Edit" />
              <IconButton icon="delete" title="Delete" onClick={() => setDeleteDialogOpen(true)} className="!bg-[#8B0000] !border-[#B22222]" />
