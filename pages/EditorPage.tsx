@@ -1,21 +1,23 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useRef } from 'react';
 import { AppContext } from '../App';
 import { Page, KnowledgeItem, PREDEFINED_TAGS, Attachment } from '../types';
 import { Button, IconButton, TextField, Select, Chip, RichMarkdownEditor } from '../components/M3Components';
-import { generateSearchClues, createPost, getRecentPosts } from '../services/knowledgeService'; // Import
 import { generateSearchClues, createPost, getRecentPosts, uploadFile } from '../services/knowledgeService';
-
 
 const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) => {
   const { setItems, currentUser } = useContext(AppContext);
-  
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [aiClues, setAiClues] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [isSaving, setIsSaving] = useState(false); // Added loading state
+  const [isSaving, setIsSaving] = useState(false);
+
+  // 隐藏的文件输入框引用
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  // [修改] 增加 'video' 类型到状态定义
+  const [uploadType, setUploadType] = useState<'image' | 'video' | 'file'>('file');
 
   const handleTagChange = (tag: string) => {
     if (!tags.includes(tag)) {
@@ -36,58 +38,15 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
     }
   };
 
-  const handleAddAttachment = () => {
-      const url = prompt("Enter attachment URL (file/link):");
-      if(url) {
-          const name = prompt("Enter attachment name:") || "Attachment";
-          setAttachments([...attachments, {
-              id: Date.now().toString(),
-              name,
-              type: 'link', // Simplification
-              url
-          }]);
-      }
-  };
-
-  const handleSubmit = async () => {
-    if (!title || !content || !currentUser) return;
-    setIsSaving(true);
-    
-    try {
-        await createPost({
-            title,
-            content,
-            tags,
-            aiClues,
-            attachments
-        });
-
-        // Refresh items (so user sees their new post if they are admin, or just refresh logic)
-        const posts = await getRecentPosts();
-        setItems(posts);
-
-        onNavigate(Page.HOME);
-    } catch (e) {
-        alert("Failed to save post: " + e);
-    } finally {
-        setIsSaving(false);
-    }
-  };
-
-  // [新增] 隐藏的文件输入框引用
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-  // [新增] 记录当前是要上传图片还是附件
-  const [uploadType, setUploadType] = useState<'image' | 'file'>('file');
-
-  // [修改] handleAddAttachment 改为触发文件选择
-  const handleTriggerUpload = (type: 'image' | 'file') => {
+  // [修改] 统一的上传触发函数，支持 image, video, file
+  const handleTriggerUpload = (type: 'image' | 'video' | 'file') => {
       setUploadType(type);
       if (fileInputRef.current) {
           fileInputRef.current.click();
       }
   };
 
-  // [新增] 真正的上传处理逻辑
+  // [修改] 真正的上传处理逻辑，增加视频处理
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
@@ -98,6 +57,9 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
           if (uploadType === 'image') {
               // 插入 Markdown 图片语法
               setContent(prev => prev + `\n![${file.name}](${url})\n`);
+          } else if (uploadType === 'video') {
+              // [新增] 插入 HTML 视频标签
+              setContent(prev => prev + `\n<video src="${url}" controls class="w-full border-2 border-[#1e1e1f] my-2"></video>\n`);
           } else {
               // 添加到附件列表
               setAttachments(prev => [...prev, {
@@ -113,6 +75,30 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
           // 清空 input 防止重复上传同一文件不触发 onChange
           if (fileInputRef.current) fileInputRef.current.value = '';
       }
+  };
+
+  const handleSubmit = async () => {
+    if (!title || !content || !currentUser) return;
+    setIsSaving(true);
+    
+    try {
+        await createPost({
+            title,
+            content,
+            tags,
+            aiClues,
+            attachments
+        });
+        // Refresh items
+        const posts = await getRecentPosts();
+        setItems(posts);
+
+        onNavigate(Page.HOME);
+    } catch (e) {
+        alert("Failed to save post: " + e);
+    } finally {
+        setIsSaving(false);
+    }
   };
 
   return (
@@ -153,12 +139,14 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
         </div>
 
         {/* Rich Text Editor */}
+        {/* [修改] 绑定了 onUploadVideo 并修复了 onUploadImage */}
         <RichMarkdownEditor 
           label="Content" 
           value={content} 
           onChange={setContent}
           onAddAttachment={() => handleTriggerUpload('file')}
           onUploadImage={() => handleTriggerUpload('image')}
+          onUploadVideo={() => handleTriggerUpload('video')}
         />
 
         {/* Attachment List Preview */}
@@ -209,6 +197,8 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
           </div>
         </div>
       </div>
+      
+      {/* Hidden File Input */}
       <input 
         type="file" 
         ref={fileInputRef} 
