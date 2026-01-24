@@ -3,6 +3,8 @@ import { AppContext } from '../App';
 import { Page, KnowledgeItem, PREDEFINED_TAGS, Attachment } from '../types';
 import { Button, IconButton, TextField, Select, Chip, RichMarkdownEditor } from '../components/M3Components';
 import { generateSearchClues, createPost, getRecentPosts } from '../services/knowledgeService'; // Import
+import { generateSearchClues, createPost, getRecentPosts, uploadFile } from '../services/knowledgeService';
+
 
 const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) => {
   const { setItems, currentUser } = useContext(AppContext);
