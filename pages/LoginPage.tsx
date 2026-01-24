@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-// 👇 请根据你项目的实际路径修改这个引用
-import { supabase } from '../service/supabaseClient'; 
+import { supabase } from '../services/supabaseClient'; 
 
 interface LoginProps {
   onLogin: () => void;
