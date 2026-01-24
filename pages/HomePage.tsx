@@ -1,18 +1,24 @@
 import React, { useContext, useState, useMemo } from 'react';
 import { AppContext } from '../App';
-import { Page } from '../types';
-import { FAB, Chip, Card, Avatar } from '../components/M3Components';
+import { Page, PREDEFINED_TAGS } from '../types';
+import { FAB, Chip, Card, Avatar, Select } from '../components/M3Components';
 
 const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ onNavigate }) => {
   const { items, currentUser } = useContext(AppContext);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchMode, setSearchMode] = useState<'keyword' | 'ai'>('keyword');
+  const [filterTag, setFilterTag] = useState<string>('All');
 
   const filteredItems = useMemo(() => {
     return items.filter(item => {
       if (item.status === 'rejected') return false;
       // Show pending only to author or admin
       if (item.status === 'pending' && currentUser?.role !== 'admin' && item.author.id !== currentUser?.id) return false;
+
+      // Tag Filter
+      if (filterTag !== 'All' && !item.tags.includes(filterTag)) {
+        return false;
+      }
 
       const lowerTerm = searchTerm.toLowerCase();
       
@@ -26,13 +32,13 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
                item.title.toLowerCase().includes(lowerTerm);
       }
     });
-  }, [items, searchTerm, searchMode, currentUser]);
+  }, [items, searchTerm, searchMode, filterTag, currentUser]);
 
   return (
     <div className="max-w-3xl mx-auto px-4 pb-24">
       
-      {/* Search Area */}
-      <div className="py-8 sticky top-16 bg-[#FDFDFD] z-30 transition-all">
+      {/* Search & Filter Area */}
+      <div className="py-6 sticky top-16 bg-[#FDFDFD] z-30 transition-all border-b border-transparent">
         <div className={`
           relative flex items-center w-full h-14 rounded-[28px] bg-[#F0F4F8] px-4 transition-all duration-300
           ${searchMode === 'ai' ? 'ring-2 ring-indigo-300 bg-indigo-50/50' : 'ring-0'}
@@ -47,24 +53,38 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
           {searchMode === 'ai' && <span className="material-symbols-rounded text-indigo-500 animate-pulse">auto_awesome</span>}
         </div>
 
-        {/* Search Mode Toggle */}
-        <div className="flex gap-2 mt-4 justify-center">
-           <Chip 
-             label="Keywords" 
-             selected={searchMode === 'keyword'} 
-             onClick={() => setSearchMode('keyword')}
-           />
-           <Chip 
-             label="AI Clues" 
-             icon="auto_awesome"
-             selected={searchMode === 'ai'} 
-             onClick={() => setSearchMode('ai')}
-           />
+        {/* Configuration Row: Search Mode & Tag Filters */}
+        <div className="mt-4 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+           {/* Mode Selection */}
+           <div className="flex gap-2 items-center">
+             <span className="text-xs font-bold text-slate-400 uppercase tracking-wide mr-2">Mode</span>
+             <Chip 
+               label="Keywords" 
+               selected={searchMode === 'keyword'} 
+               onClick={() => setSearchMode('keyword')}
+             />
+             <Chip 
+               label="AI Clues" 
+               icon="auto_awesome"
+               selected={searchMode === 'ai'} 
+               onClick={() => setSearchMode('ai')}
+             />
+           </div>
+
+           {/* Tag Filters (Dropdown) */}
+           <div className="w-full md:w-48">
+             <Select 
+               label="Filter by Tag"
+               options={['All', ...PREDEFINED_TAGS]}
+               value={filterTag}
+               onChange={(val) => setFilterTag(val)}
+             />
+           </div>
         </div>
       </div>
 
       {/* Content Stream */}
-      <div className="space-y-4">
+      <div className="space-y-4 pt-2">
         {filteredItems.length === 0 ? (
            <div className="text-center py-20 opacity-50">
              <span className="material-symbols-rounded text-[48px] mb-2 block">content_paste_off</span>

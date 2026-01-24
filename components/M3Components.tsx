@@ -116,6 +116,139 @@ export const TextField: React.FC<TextFieldProps> = ({ label, error, className = 
   );
 };
 
+// --- Select / Dropdown ---
+interface SelectProps {
+  label: string;
+  options: string[];
+  value: string | string[]; // Can be single string or array (for future multi-select, currently single logical)
+  onChange: (val: string) => void;
+  placeholder?: string;
+  className?: string;
+}
+
+export const Select: React.FC<SelectProps> = ({ label, options, value, onChange, placeholder, className = '' }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Close when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const displayValue = Array.isArray(value) 
+    ? (value.length > 0 ? value.join(', ') : '') 
+    : value;
+
+  return (
+    <div className={`relative ${className}`} ref={containerRef}>
+      <div 
+        className={`bg-slate-100 rounded-t-xl border-b border-slate-400 cursor-pointer hover:bg-slate-200/50 transition-colors
+          ${isOpen ? 'bg-slate-200 border-slate-700' : ''}`}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <label className={`absolute left-4 transition-all duration-200 pointer-events-none text-slate-500 ${(displayValue || isOpen) ? 'top-2 text-xs' : 'top-4 text-base'}`}>
+          {label}
+        </label>
+        <div className="w-full h-14 px-4 pt-6 pb-2 text-slate-900 flex items-center justify-between">
+           <span className="truncate">{displayValue || <span className="opacity-0">{placeholder || 'Select'}</span>}</span>
+           <span className={`material-symbols-rounded text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}>arrow_drop_down</span>
+        </div>
+      </div>
+
+      {isOpen && (
+        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-[#FDFDFD] rounded-xl shadow-xl py-2 max-h-60 overflow-y-auto border border-slate-100 animate-fade-in">
+           {options.map((opt) => (
+             <div 
+               key={opt}
+               onClick={() => { onChange(opt); setIsOpen(false); }}
+               className={`px-4 py-3 hover:bg-slate-100 cursor-pointer flex items-center justify-between
+                 ${(Array.isArray(value) ? value.includes(opt) : value === opt) ? 'bg-indigo-50 text-indigo-900 font-medium' : 'text-slate-700'}
+               `}
+             >
+               {opt}
+               {(Array.isArray(value) ? value.includes(opt) : value === opt) && <span className="material-symbols-rounded text-[18px]">check</span>}
+             </div>
+           ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- Rich Text Editor ---
+interface RichEditorProps {
+  label: string;
+  value: string;
+  onChange: (val: string) => void;
+  onAddAttachment: () => void;
+}
+
+export const RichMarkdownEditor: React.FC<RichEditorProps> = ({ label, value, onChange, onAddAttachment }) => {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const insertText = (prefix: string, suffix: string = '') => {
+    if (!textareaRef.current) return;
+    const start = textareaRef.current.selectionStart;
+    const end = textareaRef.current.selectionEnd;
+    const text = value.substring(start, end);
+    const newText = value.substring(0, start) + prefix + text + suffix + value.substring(end);
+    onChange(newText);
+    
+    // Defer focus restoration
+    setTimeout(() => {
+        if(textareaRef.current) {
+            textareaRef.current.focus();
+            textareaRef.current.setSelectionRange(start + prefix.length, end + prefix.length);
+        }
+    }, 0);
+  };
+
+  const handleMedia = (type: 'image' | 'video') => {
+    const url = prompt(`Enter ${type} URL:`);
+    if (!url) return;
+    if (type === 'image') insertText(`![Image](${url})`);
+    if (type === 'video') insertText(`<video controls src="${url}" class="w-full rounded-xl my-2"></video>\n`);
+  };
+
+  return (
+    <div className="relative bg-slate-50 border border-slate-300 rounded-xl focus-within:border-slate-700 focus-within:ring-1 focus-within:ring-slate-700 transition-all flex flex-col">
+       {/* Toolbar */}
+       <div className="flex items-center gap-1 p-2 border-b border-slate-200 bg-slate-100/50 rounded-t-xl overflow-x-auto no-scrollbar">
+          <IconButton icon="format_bold" className="w-8 h-8" onClick={() => insertText('**', '**')} title="Bold" />
+          <IconButton icon="format_italic" className="w-8 h-8" onClick={() => insertText('*', '*')} title="Italic" />
+          <IconButton icon="format_underlined" className="w-8 h-8" onClick={() => insertText('<u>', '</u>')} title="Underline" />
+          <IconButton icon="strikethrough_s" className="w-8 h-8" onClick={() => insertText('~~', '~~')} title="Strikethrough" />
+          <div className="w-[1px] h-6 bg-slate-300 mx-1"></div>
+          <IconButton icon="code" className="w-8 h-8" onClick={() => insertText('`', '`')} title="Inline Code" />
+          <IconButton icon="data_object" className="w-8 h-8" onClick={() => insertText('\n```\n', '\n```\n')} title="Code Block" />
+          <div className="w-[1px] h-6 bg-slate-300 mx-1"></div>
+          <IconButton icon="image" className="w-8 h-8" onClick={() => handleMedia('image')} title="Insert Image" />
+          <IconButton icon="movie" className="w-8 h-8" onClick={() => handleMedia('video')} title="Insert Video" />
+          <div className="flex-1"></div>
+          <div className="w-[1px] h-6 bg-slate-300 mx-1"></div>
+          <IconButton icon="attach_file" className="w-8 h-8 text-indigo-600 bg-indigo-50" onClick={onAddAttachment} title="Add Attachment (End of post)" />
+       </div>
+
+       <div className="relative flex-1">
+          <label className="absolute top-2 right-4 text-xs font-medium text-slate-400 uppercase tracking-wide pointer-events-none">{label}</label>
+          <textarea 
+            ref={textareaRef}
+            className="w-full bg-transparent outline-none text-slate-900 resize-none min-h-[300px] font-roboto p-4"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="Type your knowledge here..."
+          />
+       </div>
+    </div>
+  );
+};
+
 export const TextArea: React.FC<React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string }> = ({ label, className = '', value, ...props }) => (
    <div className={`relative bg-slate-50 border border-slate-300 rounded-xl focus-within:border-slate-700 focus-within:ring-1 focus-within:ring-slate-700 transition-all p-4 ${className}`}>
       <label className="block text-xs font-medium text-slate-500 mb-2 uppercase tracking-wide">{label}</label>

@@ -1,7 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { AppContext } from '../App';
-import { Page, KnowledgeItem } from '../types';
-import { Button, IconButton, TextField, TextArea, Chip } from '../components/M3Components';
+import { Page, KnowledgeItem, PREDEFINED_TAGS, Attachment } from '../types';
+import { Button, IconButton, TextField, Select, Chip, RichMarkdownEditor } from '../components/M3Components';
 import { generateSearchClues } from '../services/geminiService';
 
 const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) => {
@@ -12,12 +12,14 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
   const [tags, setTags] = useState<string[]>([]);
   const [aiClues, setAiClues] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [newTag, setNewTag] = useState('');
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
 
-  const handleAddTag = () => {
-    if (newTag && !tags.includes(newTag)) {
-      setTags([...tags, newTag]);
-      setNewTag('');
+  // We use Select logic here but adapt it to simple array toggle
+  const handleTagChange = (tag: string) => {
+    // For this UI, since the dropdown is single select in its basic form,
+    // we just add it to the list if not present.
+    if (!tags.includes(tag)) {
+        setTags([...tags, tag]);
     }
   };
 
@@ -34,6 +36,19 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
     }
   };
 
+  const handleAddAttachment = () => {
+      const url = prompt("Enter attachment URL (file/link):");
+      if(url) {
+          const name = prompt("Enter attachment name:") || "Attachment";
+          setAttachments([...attachments, {
+              id: Date.now().toString(),
+              name,
+              type: 'link', // Simplification
+              url
+          }]);
+      }
+  };
+
   const handleSubmit = () => {
     if (!title || !content || !currentUser) return;
     
@@ -45,7 +60,8 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
       aiClues,
       author: currentUser,
       status: 'pending', // Default to pending
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      attachments: attachments
     };
     
     setItems([newItem, ...items]);
@@ -69,32 +85,53 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
           placeholder="e.g., Advanced Potion Brewing"
         />
 
-        {/* Tag Input */}
-        <div>
-           <div className="flex gap-2 items-center mb-2 flex-wrap">
-             {tags.map(tag => (
-               <Chip key={tag} label={tag} onDelete={() => setTags(tags.filter(t => t !== tag))} />
-             ))}
-           </div>
-           <div className="flex gap-2">
-             <input 
-               className="flex-1 h-10 px-3 bg-slate-100 rounded-lg outline-none text-sm border-b border-transparent focus:border-slate-500"
-               placeholder="Add a tag..."
-               value={newTag}
-               onChange={(e) => setNewTag(e.target.value)}
-               onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
+        {/* Tag Selection via Dropdown + Chip Display */}
+        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+           <div className="mb-4">
+             <Select 
+                label="Add a Category Tag"
+                options={PREDEFINED_TAGS}
+                value=""
+                onChange={handleTagChange}
+                placeholder="Select a tag..."
              />
-             <IconButton icon="add" onClick={handleAddTag} className="w-10 h-10 bg-slate-200" />
+           </div>
+           
+           <div className="flex flex-wrap gap-2">
+             {tags.map(tag => (
+               <Chip key={tag} label={tag} onDelete={() => setTags(tags.filter(t => t !== tag))} selected />
+             ))}
+             {tags.length === 0 && <span className="text-sm text-slate-400 italic mt-1">No tags selected</span>}
            </div>
         </div>
 
-        <TextArea 
-          label="Content (Markdown)" 
+        {/* Rich Text Editor */}
+        <RichMarkdownEditor 
+          label="Content" 
           value={content} 
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="# Use headers for structure..."
-          rows={12}
+          onChange={setContent}
+          onAddAttachment={handleAddAttachment}
         />
+
+        {/* Attachment List Preview */}
+        {attachments.length > 0 && (
+            <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
+                <h4 className="text-xs font-bold uppercase text-slate-500 mb-3">Attachments ({attachments.length})</h4>
+                <div className="space-y-2">
+                    {attachments.map(att => (
+                        <div key={att.id} className="flex items-center gap-3 bg-white p-2 rounded-lg border border-slate-100 shadow-sm">
+                            <span className="material-symbols-rounded text-slate-400">attachment</span>
+                            <span className="text-sm font-medium text-slate-700 flex-1 truncate">{att.name}</span>
+                            <IconButton 
+                                icon="delete" 
+                                className="w-8 h-8 text-red-500 hover:bg-red-50" 
+                                onClick={() => setAttachments(attachments.filter(a => a.id !== att.id))} 
+                            />
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )}
 
         {/* AI Clue Generator Section */}
         <div className="p-6 rounded-[24px] bg-slate-50 border border-slate-200 relative overflow-hidden">

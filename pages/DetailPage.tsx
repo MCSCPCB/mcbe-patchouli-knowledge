@@ -45,12 +45,52 @@ const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | nul
              )}
           </div>
 
-          <div className="bg-slate-50 rounded-[20px] p-6 md:p-10 mb-8 border border-slate-100 shadow-sm min-h-[300px] whitespace-pre-wrap font-roboto text-slate-800 leading-relaxed">
-            {/* Simple Markdown Simulation */}
-            {item.content}
-          </div>
+          <div 
+             className="bg-slate-50 rounded-[20px] p-6 md:p-10 mb-8 border border-slate-100 shadow-sm min-h-[300px] whitespace-pre-wrap font-roboto text-slate-800 leading-relaxed"
+             dangerouslySetInnerHTML={{
+                 __html: item.content
+                     // Very basic markdown parsing simulation for display purposes
+                     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                     .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                     .replace(/~~(.*?)~~/g, '<del>$1</del>')
+                     .replace(/<u>(.*?)<\/u>/g, '<u>$1</u>')
+                     .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" class="rounded-xl my-4 max-w-full"/>')
+                     .replace(/`([^`]+)`/g, '<code class="bg-slate-200 px-1 rounded">$1</code>')
+                     .replace(/```([\s\S]*?)```/g, '<pre class="bg-slate-800 text-white p-4 rounded-xl my-4 overflow-x-auto"><code>$1</code></pre>')
+             }}
+          />
        </article>
        
+       {/* Attachments Section */}
+       {item.attachments && item.attachments.length > 0 && (
+           <div className="mb-8">
+               <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                   <span className="material-symbols-rounded">attachment</span>
+                   Attachments
+               </h3>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                   {item.attachments.map(att => (
+                       <a 
+                         key={att.id} 
+                         href={att.url} 
+                         target="_blank" 
+                         rel="noopener noreferrer"
+                         className="flex items-center gap-4 p-4 rounded-xl bg-white border border-slate-200 hover:border-indigo-300 hover:shadow-md transition-all group"
+                       >
+                           <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+                               <span className="material-symbols-rounded">description</span>
+                           </div>
+                           <div className="overflow-hidden">
+                               <div className="font-medium text-slate-900 truncate">{att.name}</div>
+                               <div className="text-xs text-slate-500 truncate">{att.url}</div>
+                           </div>
+                           <span className="material-symbols-rounded ml-auto text-slate-400">open_in_new</span>
+                       </a>
+                   ))}
+               </div>
+           </div>
+       )}
+
        {item.aiClues && (
          <div className="mt-8 p-4 bg-indigo-50 rounded-xl border border-indigo-100 text-indigo-900 text-sm">
            <span className="font-bold mr-2">✨ AI Clues:</span>
