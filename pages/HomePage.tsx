@@ -17,8 +17,7 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
       // If empty, we rely on the default 'items' loaded by App.tsx (which are getRecentPosts)
       // But we still need to filter locally if there's a tag selected.
       if (!searchTerm.trim()) {
-        // Ideally reload recent posts if needed, but App.tsx handles init.
-        // We just let the local filter below handle 'items'
+        getRecentPosts().then(setItems);
         return;
       }
 
