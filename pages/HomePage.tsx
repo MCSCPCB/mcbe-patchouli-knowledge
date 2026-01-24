@@ -1,148 +1,157 @@
-import React, { useContext, useState, useMemo } from 'react';
-import { AppContext } from '../App';
-import { Page, PREDEFINED_TAGS } from '../types';
-import { FAB, Chip, Card, Avatar, Select } from '../components/M3Components';
+import React, { useState, useEffect } from 'react';
+import { KnowledgePost } from '../types';
+import { searchKnowledge, getRecentPosts } from '../services/knowledgeService';
+import { M3Card } from '../components/M3Components';
 
-const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ onNavigate }) => {
-  const { items, currentUser } = useContext(AppContext);
-  const [searchTerm, setSearchTerm] = useState('');
+interface HomePageProps {
+  onPostClick: (post: KnowledgePost) => void;
+  onFabClick: () => void;
+}
+
+export default function HomePage({ onPostClick, onFabClick }: HomePageProps) {
+  const [searchQuery, setSearchQuery] = useState('');
   const [searchMode, setSearchMode] = useState<'keyword' | 'ai'>('keyword');
-  const [filterTag, setFilterTag] = useState<string>('All');
+  const [posts, setPosts] = useState<KnowledgePost[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const filteredItems = useMemo(() => {
-    return items.filter(item => {
-      if (item.status === 'rejected') return false;
-      // Show pending only to author or admin
-      if (item.status === 'pending' && currentUser?.role !== 'admin' && item.author.id !== currentUser?.id) return false;
+  // 初始加载最近的文章
+  useEffect(() => {
+    loadRecentPosts();
+  }, []);
 
-      // Tag Filter
-      if (filterTag !== 'All' && !item.tags.includes(filterTag)) {
-        return false;
-      }
+  const loadRecentPosts = async () => {
+    setIsLoading(true);
+    try {
+      const data = await getRecentPosts();
+      setPosts(data);
+    } catch (error) {
+      console.error('Failed to load posts:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-      const lowerTerm = searchTerm.toLowerCase();
-      
-      if (searchMode === 'keyword') {
-        return item.title.toLowerCase().includes(lowerTerm) || 
-               item.content.toLowerCase().includes(lowerTerm) ||
-               item.tags.some(t => t.toLowerCase().includes(lowerTerm));
-      } else {
-        // AI Clue search: Look specifically in the aiClues field
-        return item.aiClues?.toLowerCase().includes(lowerTerm) || 
-               item.title.toLowerCase().includes(lowerTerm);
-      }
-    });
-  }, [items, searchTerm, searchMode, filterTag, currentUser]);
+  const handleSearch = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!searchQuery.trim()) {
+      loadRecentPosts();
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // 调用真实 API
+      const results = await searchKnowledge(searchQuery, searchMode);
+      setPosts(results);
+    } catch (error) {
+      console.error('Search failed:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 pb-24">
-      
-      {/* Search & Filter Area */}
-      <div className="py-6 sticky top-16 bg-[#313233] z-30 border-b-2 border-[#1e1e1f]">
-        <div className={`
-          relative flex items-center w-full h-14 bg-[#1e1e1f] border-2 border-b-[#5b5b5c] border-r-[#5b5b5c] border-t-[#000] border-l-[#000] px-4
-          ${searchMode === 'ai' ? 'border-[#b465f5]' : ''}
-        `}>
-          <span className="material-symbols-rounded text-[#b0b0b0] mr-3">search</span>
+    <div className="flex flex-col gap-6 animate-fade-in">
+      {/* Search Area */}
+      <div className="flex flex-col gap-4 sticky top-0 pt-2 z-10">
+        <form 
+          onSubmit={handleSearch}
+          className={`
+            flex items-center px-4 h-14 rounded-[28px] bg-[#EEF1F4] transition-all duration-300
+            ${searchMode === 'ai' ? 'ring-2 ring-[#7CD3EA] shadow-md bg-[#F0F8FF]' : ''}
+          `}
+        >
+          <button type="button" onClick={() => handleSearch()} className="w-10 h-10 flex items-center justify-center text-[#40484C]">
+            <span className="material-symbols-rounded">search</span>
+          </button>
+          
           <input 
-            className="flex-1 bg-transparent outline-none text-white font-mc text-xl placeholder:text-[#58585a]"
-            placeholder={searchMode === 'ai' ? "Describe idea..." : "Search knowledge..."}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            type="text"
+            className="flex-1 bg-transparent border-none outline-none text-[#191C1E] placeholder-[#70787D] ml-2"
+            placeholder={searchMode === 'ai' ? "描述你的需求 (AI 正在辅助)..." : "搜索标题或标签..."}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
-          {searchMode === 'ai' && <span className="material-symbols-rounded text-[#b465f5] animate-pulse">auto_awesome</span>}
-        </div>
 
-        {/* Configuration Row: Search Mode & Tag Filters */}
-        <div className="mt-4 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-           {/* Mode Selection */}
-           <div className="flex gap-2 items-center">
-             <span className="text-xs font-bold text-[#b0b0b0] font-mc uppercase tracking-wide mr-2">Mode</span>
-             <Chip 
-               label="Keywords" 
-               selected={searchMode === 'keyword'} 
-               onClick={() => setSearchMode('keyword')}
-             />
-             <Chip 
-               label="AI Clues" 
-               icon="auto_awesome"
-               selected={searchMode === 'ai'} 
-               onClick={() => setSearchMode('ai')}
-             />
-           </div>
+          {searchMode === 'ai' && (
+             <span className="mr-2 text-[#00668B] text-sm font-medium flex items-center gap-1">
+               <span className="material-symbols-rounded text-base">auto_awesome</span>
+               AI
+             </span>
+          )}
+        </form>
 
-           {/* Tag Filters (Dropdown) */}
-           <div className="w-full md:w-48">
-             <Select 
-               label="Filter"
-               options={['All', ...PREDEFINED_TAGS]}
-               value={filterTag}
-               onChange={(val) => setFilterTag(val)}
-             />
-           </div>
+        {/* Mode Switcher */}
+        <div className="flex gap-2 px-2">
+           <button 
+             onClick={() => setSearchMode('keyword')}
+             className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+               searchMode === 'keyword' 
+               ? 'bg-[#CDE5FF] border-[#CDE5FF] text-[#001D32]' 
+               : 'bg-transparent border-[#70787D] text-[#40484C]'
+             }`}
+           >
+             关键词匹配
+           </button>
+           <button 
+             onClick={() => setSearchMode('ai')}
+             className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors flex items-center gap-1 ${
+               searchMode === 'ai' 
+               ? 'bg-[#D0F8FF] border-[#D0F8FF] text-[#001E2C]' 
+               : 'bg-transparent border-[#70787D] text-[#40484C]'
+             }`}
+           >
+             <span className="material-symbols-rounded text-sm">auto_awesome</span>
+             AI 智能线索
+           </button>
         </div>
       </div>
 
-      {/* Content Stream */}
-      <div className="space-y-4 pt-4">
-        {filteredItems.length === 0 ? (
-           <div className="text-center py-20 opacity-50">
-             <span className="material-symbols-rounded text-[48px] text-[#b0b0b0] mb-2 block">content_paste_off</span>
-             <p className="font-mc text-xl text-[#b0b0b0]">No knowledge found.</p>
-           </div>
+      {/* Results */}
+      <div className="flex flex-col gap-4 pb-20">
+        {isLoading ? (
+          <div className="text-center py-10 text-[#70787D]">加载中...</div>
+        ) : posts.length === 0 ? (
+          <div className="text-center py-10 text-[#70787D]">暂无相关内容</div>
         ) : (
-          filteredItems.map(item => (
-            <Card 
-              key={item.id} 
-              onClick={() => onNavigate(Page.DETAIL, item.id)}
-              className="group relative"
+          posts.map(post => (
+            <M3Card 
+              key={post.id} 
+              className="cursor-pointer hover:bg-[#EEF1F4] transition-colors"
+              onClick={() => onPostClick(post)}
             >
               <div className="flex justify-between items-start mb-2">
-                <h3 className="text-xl font-bold font-mc text-white tracking-wide">{item.title}</h3>
-                {item.status === 'pending' && (
-                  <span className="bg-[#FFA500] border-2 border-[#fff] text-[#313233] text-xs px-2 py-0 font-bold uppercase tracking-wider font-mc">
-                    Reviewing
-                  </span>
-                )}
+                 <h3 className="text-lg font-medium text-[#191C1E] line-clamp-1">{post.title}</h3>
+                 <span className={`text-xs px-2 py-0.5 rounded-full border ${
+                   post.type === 'script' ? 'border-green-200 bg-green-50 text-green-700' :
+                   post.type === 'block' ? 'border-blue-200 bg-blue-50 text-blue-700' :
+                   'border-purple-200 bg-purple-50 text-purple-700'
+                 }`}>
+                   {post.type}
+                 </span>
               </div>
-
-              <div className="flex gap-2 mb-3">
-                {item.tags.map(tag => (
-                  <span key={tag} className="text-xs font-mc text-[#b0b0b0] px-2 py-1 bg-[#1e1e1f] border border-[#5b5b5c]">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-
-              <p className="text-[#e0e0e0] text-sm line-clamp-3 mb-4 leading-relaxed font-mono">
-                {item.content.replace(/[#*`]/g, '')}
+              <p className="text-[#40484C] text-sm line-clamp-2 mb-3">
+                {post.content}
               </p>
-              
-              <div className="flex items-center gap-3 mt-auto pt-3 border-t-2 border-[#1e1e1f]">
-                <Avatar name={item.author.name} src={item.author.avatar} size="sm" />
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold font-mc text-[#b0b0b0]">{item.author.name}</span>
-                  <span className="text-[10px] text-[#707070] font-mc">{new Date(item.createdAt).toLocaleDateString()}</span>
-                </div>
-                {item.aiClues && (
-                  <div className="ml-auto text-[10px] text-[#b465f5] flex items-center gap-1 font-mc">
-                    <span className="material-symbols-rounded text-[14px]">auto_awesome</span>
-                    Enhanced
-                  </div>
-                )}
+              <div className="flex items-center justify-between text-xs text-[#70787D]">
+                 <div className="flex items-center gap-2">
+                    <img src={post.authorAvatar} alt="" className="w-5 h-5 rounded-full bg-gray-200"/>
+                    <span>{post.authorName}</span>
+                 </div>
+                 {/* 如果是 AI 搜出来的，可以显示匹配度，这里暂不显示 */}
               </div>
-            </Card>
+            </M3Card>
           ))
         )}
       </div>
 
-      <FAB 
-        icon="add" 
-        onClick={() => onNavigate(Page.CREATE)} 
-        label="New"
-      />
+      {/* FAB */}
+      <button 
+        onClick={onFabClick}
+        className="fixed bottom-6 right-6 w-14 h-14 bg-[#CCE5FF] text-[#001D32] rounded-[20px] shadow-lg flex items-center justify-center hover:shadow-xl hover:scale-105 active:scale-95 transition-all z-20"
+      >
+        <span className="material-symbols-rounded text-2xl">add</span>
+      </button>
     </div>
   );
-};
-
-export default HomePage;
+}
