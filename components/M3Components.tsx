@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-// Note: OreUI doesn't really use ripples, but we keep the file structure. 
-// We will replace the "Ripple" with a sound effect hook or visual press state in the button CSS.
+// --- Utils ---
+// 真正的涟漪效果在这个重构中用 CSS active 状态和 scale 模拟，保持轻量
 export const Ripple: React.FC = () => null; 
 
 // --- Buttons ---
@@ -13,23 +13,33 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export const Button: React.FC<ButtonProps> = ({ variant = 'filled', icon, label, className = '', fullWidth, ...props }) => {
-  // OreUI Style Buttons
-  const base = "relative h-10 px-4 font-mc text-xl uppercase tracking-wide flex items-center justify-center gap-2 transition-none border-2 active:bg-[#3a3b3c] focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-[#1e1e1f]";
+  // MD3 Base: Rounded-full (Capsule), Height 40px, Ripple hidden overflow
+  const base = "relative h-10 px-6 font-medium text-sm tracking-wide flex items-center justify-center gap-2 transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)] rounded-full active:scale-95 disabled:opacity-50 disabled:active:scale-100 overflow-hidden";
   
-  // Using box-shadows and borders to create the MC 3D effect
-  const oreStyle = "bg-[#48494a] text-[#e0e0e0] border-t-[#5b5b5c] border-l-[#5b5b5c] border-b-[#1e1e1f] border-r-[#1e1e1f] active:border-t-[#1e1e1f] active:border-l-[#1e1e1f] active:border-b-[#5b5b5c] active:border-r-[#5b5b5c]";
-  const greenStyle = "bg-[#3C8527] text-white border-t-[#52A535] border-l-[#52A535] border-b-[#1A3B12] border-r-[#1A3B12] active:bg-[#2E6B1E] active:border-t-[#1A3B12] active:border-l-[#1A3B12] active:border-b-[#52A535] active:border-r-[#52A535]";
-  const dangerStyle = "bg-[#8B0000] text-white border-t-[#B22222] border-l-[#B22222] border-b-[#500000] border-r-[#500000]";
+  // Color Mapping (Traditional Dark Theme)
+  // 青磁 (Seiji) as Primary
+  const filledStyle = "bg-[#7DA3A1] text-[#0D1F1E] shadow-sm hover:shadow-md hover:brightness-105 active:shadow-none";
+  const tonalStyle = "bg-[#2D3635] text-[#A5C9C7] hover:bg-[#364240]";
+  const outlinedStyle = "bg-transparent border border-[#8C918C] text-[#E0E2E0] hover:bg-[#E0E2E0]/10";
+  const textStyle = "bg-transparent text-[#7DA3A1] hover:bg-[#7DA3A1]/10 px-3";
+  const elevatedStyle = "bg-[#2B2B2B] text-[#E6E6E6] shadow-[0_4px_8px_rgba(0,0,0,0.3)] hover:shadow-[0_6px_12px_rgba(0,0,0,0.4)]";
+  
+  // Specific States
+  const dangerStyle = "bg-[#CF6679] text-[#37000B] hover:brightness-110"; // 茜色 (Akane) variation
+  const successStyle = "bg-[#8FBC8F] text-[#0A260A] hover:brightness-105"; // 柳染 (Yanagizome)
 
-  let variantClass = oreStyle;
-  if (variant === 'filled' && className.includes('bg-red')) variantClass = dangerStyle;
-  if (variant === 'success') variantClass = greenStyle;
-  if (variant === 'text') variantClass = "bg-transparent text-[#e0e0e0] hover:bg-[#48494a] border-transparent";
+  let variantClass = filledStyle;
+  if (variant === 'tonal') variantClass = tonalStyle;
+  if (variant === 'outlined') variantClass = outlinedStyle;
+  if (variant === 'text') variantClass = textStyle;
+  if (variant === 'elevated') variantClass = elevatedStyle;
+  if (variant === 'filled' && className.includes('bg-red')) variantClass = dangerStyle; // Backward compat hook
+  if (variant === 'success') variantClass = successStyle;
 
   return (
     <button className={`${base} ${variantClass} ${fullWidth ? 'w-full' : ''} ${className}`} {...props}>
-      {icon && <span className="material-symbols-rounded text-[20px]">{icon}</span>}
-      <span className="relative drop-shadow-md">{label}</span>
+      {icon && <span className="material-symbols-rounded text-[18px]">{icon}</span>}
+      <span className="relative z-10">{label}</span>
     </button>
   );
 };
@@ -37,27 +47,27 @@ export const Button: React.FC<ButtonProps> = ({ variant = 'filled', icon, label,
 export const IconButton: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { icon: string; active?: boolean }> = ({ icon, className = '', active, ...props }) => (
   <button 
     className={`
-      w-10 h-10 flex items-center justify-center border-2 
+      w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ease-out active:scale-90
       ${active 
-        ? 'bg-[#3C8527] border-t-[#1A3B12] border-l-[#1A3B12] border-b-[#52A535] border-r-[#52A535] text-white' 
-        : 'bg-[#48494a] border-t-[#5b5b5c] border-l-[#5b5b5c] border-b-[#1e1e1f] border-r-[#1e1e1f] text-[#b0b0b0] hover:text-white active:border-t-[#1e1e1f] active:border-l-[#1e1e1f] active:border-b-[#5b5b5c] active:border-r-[#5b5b5c]'
+        ? 'bg-[#2D3635] text-[#7DA3A1] shadow-inner' 
+        : 'text-[#C7C7CC] hover:bg-[#E6E6E6]/10 hover:text-white'
       }
       ${className}
     `}
     {...props}
   >
-    <span className="material-symbols-rounded">{icon}</span>
+    <span className="material-symbols-rounded text-[24px]">{icon}</span>
   </button>
 );
 
 export const FAB: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { icon: string; extended?: boolean; label?: string }> = ({ icon, extended, label, className = '', ...props }) => (
   <button 
-    className={`fixed bottom-6 right-6 z-50 bg-[#3C8527] text-white shadow-[4px_4px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#000] transition-all flex items-center justify-center gap-2 border-2 border-[#52A535]
-    ${extended ? 'h-14 px-5' : 'w-14 h-14'} ${className}`}
+    className={`fixed bottom-6 right-6 z-50 bg-[#B3C2B3] text-[#1A2C1D] shadow-[0_4px_20px_rgba(0,0,0,0.4)] hover:shadow-[0_8px_25px_rgba(0,0,0,0.5)] active:scale-95 transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)] flex items-center justify-center gap-3
+    ${extended ? 'h-14 px-6 rounded-[16px]' : 'w-14 h-14 rounded-[16px]'} ${className}`}
     {...props}
   >
-    <span className="material-symbols-rounded text-[28px]">{icon}</span>
-    {extended && <span className="font-mc text-lg">{label}</span>}
+    <span className="material-symbols-rounded text-[24px]">{icon}</span>
+    {extended && <span className="font-medium text-[16px] tracking-wide">{label}</span>}
   </button>
 );
 
@@ -68,18 +78,28 @@ interface TextFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const TextField: React.FC<TextFieldProps> = ({ label, error, className = '', value, ...props }) => {
+  const [focused, setFocused] = useState(false);
+  const hasValue = value && value.toString().length > 0;
+
   return (
-    <div className={`relative ${className}`}>
-      <label className="block text-[#b0b0b0] font-mc text-sm mb-1 uppercase tracking-wide">
+    <div className={`relative bg-[#2C2C2C] rounded-t-lg rounded-b-none border-b border-[#8C918C] hover:bg-[#343434] transition-colors ${className}`}>
+      <label 
+        className={`absolute left-4 transition-all duration-200 pointer-events-none text-[#C7C7CC]
+          ${(focused || hasValue) ? 'top-2 text-xs text-[#7DA3A1]' : 'top-4 text-base'}
+        `}
+      >
         {label}
       </label>
-      <div className={`bg-[#1e1e1f] border-2 ${error ? 'border-[#ff5555]' : 'border-[#5b5b5c] border-t-[#000] border-l-[#000] border-b-[#5b5b5c] border-r-[#5b5b5c]'} p-1`}>
-        <input
-          className="w-full h-10 px-2 bg-transparent outline-none text-white font-mono placeholder:text-[#58585a]"
-          value={value}
-          {...props}
-        />
-      </div>
+      <input
+        className="w-full h-14 pt-5 pb-1 px-4 bg-transparent outline-none text-[#E6E6E6] font-sans placeholder-transparent caret-[#7DA3A1]"
+        value={value}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        {...props}
+      />
+      {/* Active Indicator */}
+      <div className={`absolute bottom-0 left-0 right-0 h-[2px] bg-[#7DA3A1] transition-transform duration-300 origin-center ${focused ? 'scale-x-100' : 'scale-x-0'}`} />
+      {error && <div className="absolute right-3 top-4 text-[#CF6679] material-symbols-rounded text-xl">error</div>}
     </div>
   );
 };
@@ -112,36 +132,51 @@ export const Select: React.FC<SelectProps> = ({ label, options, value, onChange,
 
   return (
     <div className={`relative ${className}`} ref={containerRef}>
-      <label className="block text-[#b0b0b0] font-mc text-sm mb-1 uppercase tracking-wide">{label}</label>
       <div 
-        className={`bg-[#48494a] h-12 border-2 border-t-[#5b5b5c] border-l-[#5b5b5c] border-b-[#1e1e1f] border-r-[#1e1e1f] px-3 flex items-center justify-between cursor-pointer active:bg-[#3a3b3c]`}
+        className={`bg-[#2C2C2C] border border-[#444] rounded-lg h-12 px-4 flex items-center justify-between cursor-pointer hover:border-[#7DA3A1] transition-colors`}
         onClick={() => setIsOpen(!isOpen)}
       >
-         <span className="text-white font-mc text-lg truncate">{displayValue || <span className="text-gray-500">{placeholder || 'Select'}</span>}</span>
-         <span className="material-symbols-rounded text-white">expand_more</span>
+         <div className="flex flex-col justify-center">
+            {displayValue ? (
+                <>
+                    <span className="text-[10px] text-[#A0A0A0] leading-none mb-0.5">{label}</span>
+                    <span className="text-[#E6E6E6] text-sm truncate">{displayValue}</span>
+                </>
+            ) : (
+                <span className="text-[#A0A0A0] text-sm">{placeholder || label}</span>
+            )}
+         </div>
+         <span className={`material-symbols-rounded text-[#C7C7CC] transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>arrow_drop_down</span>
       </div>
 
-      {isOpen && (
-        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-[#1e1e1f] border-2 border-[#5b5b5c] max-h-60 overflow-y-auto shadow-xl">
-           {options.map((opt) => (
-             <div 
-               key={opt}
-               onClick={() => { onChange(opt); setIsOpen(false); }}
-               className={`px-4 py-2 hover:bg-[#3a3b3c] cursor-pointer flex items-center justify-between font-mc text-lg border-b border-[#313233] last:border-0
-                 ${(Array.isArray(value) ? value.includes(opt) : value === opt) ? 'text-[#52A535]' : 'text-[#e0e0e0]'}
-               `}
-             >
-               {opt}
-               {(Array.isArray(value) ? value.includes(opt) : value === opt) && <span className="material-symbols-rounded text-[18px]">check</span>}
-             </div>
-           ))}
-        </div>
-      )}
+      <div className={`
+          absolute top-full left-0 right-0 z-50 mt-1 bg-[#2C2C2C] rounded-xl overflow-hidden shadow-2xl origin-top transition-all duration-200
+          ${isOpen ? 'opacity-100 scale-y-100' : 'opacity-0 scale-y-0 pointer-events-none'}
+      `}>
+         <div className="max-h-60 overflow-y-auto py-2">
+            {options.map((opt) => {
+                const isSelected = Array.isArray(value) ? value.includes(opt) : value === opt;
+                return (
+                    <div 
+                    key={opt}
+                    onClick={() => { onChange(opt); setIsOpen(false); }}
+                    className={`px-4 py-3 cursor-pointer flex items-center justify-between text-sm hover:bg-[#7DA3A1]/10 transition-colors
+                        ${isSelected ? 'text-[#7DA3A1] bg-[#7DA3A1]/5 font-medium' : 'text-[#E6E6E6]'}
+                    `}
+                    >
+                    {opt}
+                    {isSelected && <span className="material-symbols-rounded text-[18px]">check</span>}
+                    </div>
+                );
+            })}
+         </div>
+      </div>
     </div>
   );
 };
 
 // --- Rich Text Editor ---
+// Simplified styling for M3
 interface RichEditorProps {
   label: string;
   value: string;
@@ -152,73 +187,68 @@ interface RichEditorProps {
 }
 
 export const RichMarkdownEditor: React.FC<RichEditorProps> = ({ label, value, onChange, onAddAttachment, onUploadImage, onUploadVideo }) => {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const insertText = (prefix: string, suffix: string = '') => {
-    if (!textareaRef.current) return;
-    const start = textareaRef.current.selectionStart;
-    const end = textareaRef.current.selectionEnd;
-    const text = value.substring(start, end);
-    const newText = value.substring(0, start) + prefix + text + suffix + value.substring(end);
-    onChange(newText);
-    setTimeout(() => {
-        if(textareaRef.current) {
-            textareaRef.current.focus();
-            textareaRef.current.setSelectionRange(start + prefix.length, end + prefix.length);
-        }
-    }, 0);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+    const insertText = (prefix: string, suffix: string = '') => {
+      if (!textareaRef.current) return;
+      const start = textareaRef.current.selectionStart;
+      const end = textareaRef.current.selectionEnd;
+      const text = value.substring(start, end);
+      const newText = value.substring(0, start) + prefix + text + suffix + value.substring(end);
+      onChange(newText);
+      setTimeout(() => {
+          if(textareaRef.current) {
+              textareaRef.current.focus();
+              textareaRef.current.setSelectionRange(start + prefix.length, end + prefix.length);
+          }
+      }, 0);
+    };
+  
+    const handleMedia = (type: 'image' | 'video') => {
+      const url = prompt(`Enter ${type} URL:`);
+      if (!url) return;
+      if (type === 'image') insertText(`![Image](${url})`);
+      if (type === 'video') insertText(`<video controls src="${url}" class="w-full rounded-xl my-2"></video>\n`);
+    };
+  
+    return (
+      <div className="flex flex-col group">
+         <label className="block text-[#A0A0A0] text-sm mb-2 ml-1">{label}</label>
+         <div className="bg-[#1E1E1E] rounded-2xl border border-[#444] overflow-hidden focus-within:border-[#7DA3A1] transition-colors flex flex-col">
+            {/* Toolbar */}
+            <div className="flex items-center gap-1 p-2 bg-[#2C2C2C] overflow-x-auto no-scrollbar border-b border-[#444]">
+               <IconButton icon="format_bold" className="!w-8 !h-8" onClick={() => insertText('**', '**')} title="Bold" />
+               <IconButton icon="format_italic" className="!w-8 !h-8" onClick={() => insertText('*', '*')} title="Italic" />
+               <div className="w-[1px] h-4 bg-[#555] mx-1"></div>
+               <IconButton icon="code" className="!w-8 !h-8" onClick={() => insertText('`', '`')} title="Inline Code" />
+               <IconButton icon="data_object" className="!w-8 !h-8" onClick={() => insertText('\n```\n', '\n```\n')} title="Code Block" />
+               <div className="w-[1px] h-4 bg-[#555] mx-1"></div>
+               <IconButton icon="image" className="!w-8 !h-8" onClick={() => onUploadImage ? onUploadImage() : handleMedia('image')} title="Insert Image" />
+               <IconButton icon="movie" className="!w-8 !h-8" onClick={() => onUploadVideo ? onUploadVideo() : handleMedia('video')} title="Insert Video" />
+               <div className="flex-1"></div>
+               <IconButton icon="attach_file" className="!w-8 !h-8 !text-[#7DA3A1]" onClick={onAddAttachment} title="Add Attachment" />
+            </div>
+  
+            <textarea 
+              ref={textareaRef}
+              className="w-full bg-[#1E1E1E] outline-none text-[#E6E6E6] resize-none min-h-[300px] font-mono p-4 text-sm leading-relaxed"
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder="Start typing your knowledge..."
+            />
+         </div>
+      </div>
+    );
   };
-
-  const handleMedia = (type: 'image' | 'video') => {
-    const url = prompt(`Enter ${type} URL:`);
-    if (!url) return;
-    if (type === 'image') insertText(`![Image](${url})`);
-    if (type === 'video') insertText(`<video controls src="${url}" class="w-full border-2 border-[#1e1e1f] my-2"></video>\n`);
-  };
-
-  return (
-    <div className="flex flex-col">
-       <label className="block text-[#b0b0b0] font-mc text-sm mb-1 uppercase tracking-wide">{label}</label>
-       <div className="bg-[#1e1e1f] border-2 border-t-[#000] border-l-[#000] border-b-[#5b5b5c] border-r-[#5b5b5c] flex flex-col">
-          {/* Toolbar */}
-          <div className="flex items-center gap-1 p-2 border-b-2 border-[#313233] bg-[#313233] overflow-x-auto no-scrollbar">
-             <IconButton icon="format_bold" className="w-8 h-8 scale-90" onClick={() => insertText('**', '**')} title="Bold" />
-             <IconButton icon="format_italic" className="w-8 h-8 scale-90" onClick={() => insertText('*', '*')} title="Italic" />
-             <IconButton icon="format_underlined" className="w-8 h-8 scale-90" onClick={() => insertText('<u>', '</u>')} title="Underline" />
-             <IconButton icon="strikethrough_s" className="w-8 h-8 scale-90" onClick={() => insertText('~~', '~~')} title="Strikethrough" />
-             <div className="w-[2px] h-6 bg-[#5b5b5c] mx-1"></div>
-             <IconButton icon="code" className="w-8 h-8 scale-90" onClick={() => insertText('`', '`')} title="Inline Code" />
-             <IconButton icon="data_object" className="w-8 h-8 scale-90" onClick={() => insertText('\n```\n', '\n```\n')} title="Code Block" />
-             <div className="w-[2px] h-6 bg-[#5b5b5c] mx-1"></div>
-             <IconButton icon="image" className="w-8 h-8 scale-90" onClick={() => onUploadImage ? onUploadImage() : handleMedia('image')} title="Insert Image" />
-             <IconButton icon="movie" className="w-8 h-8 scale-90" onClick={() => onUploadVideo ? onUploadVideo() : handleMedia('video')} title="Insert Video" />
-             <div className="flex-1"></div>
-             <div className="w-[2px] h-6 bg-[#5b5b5c] mx-1"></div>
-             <IconButton icon="attach_file" className="w-8 h-8 scale-90 !text-[#52A535]" onClick={onAddAttachment} title="Add Attachment" />
-          </div>
-
-          <textarea 
-            ref={textareaRef}
-            className="w-full bg-[#1e1e1f] outline-none text-[#e0e0e0] resize-none min-h-[300px] font-mono p-4"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder="Write knowledge..."
-          />
-       </div>
-    </div>
-  );
-};
 
 export const TextArea: React.FC<React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string }> = ({ label, className = '', value, ...props }) => (
-   <div className={`flex flex-col ${className}`}>
-      <label className="block text-[#b0b0b0] font-mc text-sm mb-1 uppercase tracking-wide">{label}</label>
-      <div className="bg-[#1e1e1f] border-2 border-t-[#000] border-l-[#000] border-b-[#5b5b5c] border-r-[#5b5b5c] p-2">
-        <textarea 
-          className="w-full bg-transparent outline-none text-white font-mono resize-none"
-          value={value}
-          {...props}
-        />
-      </div>
+   <div className={`relative bg-[#2C2C2C] rounded-t-lg border-b border-[#8C918C] ${className}`}>
+     <label className="block text-[#A0A0A0] text-xs pt-2 px-4">{label}</label>
+     <textarea 
+       className="w-full bg-transparent outline-none text-[#E6E6E6] font-sans px-4 pb-2 pt-1 resize-none h-24"
+       value={value}
+       {...props}
+     />
    </div>
 );
 
@@ -227,20 +257,20 @@ export const Chip: React.FC<{ label: string; selected?: boolean; onClick?: () =>
   <div 
     onClick={onClick}
     className={`
-      relative inline-flex items-center gap-2 h-8 px-3 font-mc text-lg cursor-pointer select-none border-2
+      inline-flex items-center gap-2 h-8 px-4 rounded-lg text-sm font-medium cursor-pointer transition-all duration-300 select-none
       ${selected 
-        ? 'bg-[#3C8527] border-t-[#52A535] border-l-[#52A535] border-b-[#1A3B12] border-r-[#1A3B12] text-white' 
-        : 'bg-[#48494a] border-t-[#5b5b5c] border-l-[#5b5b5c] border-b-[#1e1e1f] border-r-[#1e1e1f] text-[#b0b0b0] hover:text-white'
+        ? 'bg-[#B3C2B3] text-[#0F1D13] shadow-sm' 
+        : 'bg-[#2C2C2C] border border-[#444] text-[#C7C7CC] hover:bg-[#383838]'
       }
     `}
   >
-    {selected && <span className="material-symbols-rounded text-[18px]">check</span>}
-    {!selected && icon && <span className="material-symbols-rounded text-[18px]">{icon}</span>}
-    <span className="translate-y-[1px]">{label}</span>
+    {selected && <span className="material-symbols-rounded text-[16px]">check</span>}
+    {!selected && icon && <span className="material-symbols-rounded text-[16px]">{icon}</span>}
+    <span>{label}</span>
     {onDelete && (
       <span 
         onClick={(e) => { e.stopPropagation(); onDelete(); }} 
-        className="material-symbols-rounded text-[16px] ml-1 hover:text-red-400"
+        className="material-symbols-rounded text-[16px] ml-1 opacity-50 hover:opacity-100"
       >
         close
       </span>
@@ -251,10 +281,12 @@ export const Chip: React.FC<{ label: string; selected?: boolean; onClick?: () =>
 // --- Switch ---
 export const Switch: React.FC<{ checked: boolean; onChange: (checked: boolean) => void; label?: string }> = ({ checked, onChange, label }) => (
   <div className="flex items-center gap-4 cursor-pointer" onClick={() => onChange(!checked)}>
-    <div className={`w-[50px] h-[26px] border-2 border-[#1e1e1f] relative transition-colors ${checked ? 'bg-[#313233]' : 'bg-[#313233]'}`}>
-      <div className={`absolute top-[-2px] bottom-[-2px] w-6 bg-[#b0b0b0] border-2 border-white transition-all ${checked ? 'right-[-2px] bg-[#3C8527] border-[#52A535]' : 'left-[-2px]'}`}></div>
+    <div className={`w-[52px] h-[32px] rounded-full border-2 border-transparent relative transition-colors duration-300 ${checked ? 'bg-[#7DA3A1]' : 'bg-[#3E3E3E] border-[#8C918C]'}`}>
+      <div className={`absolute top-1/2 -translate-y-1/2 w-6 h-6 rounded-full shadow-md transition-all duration-300 
+          ${checked ? 'left-[24px] bg-[#0A1817] w-6 h-6' : 'left-[4px] bg-[#8C918C] w-4 h-4'}
+      `}></div>
     </div>
-    {label && <span className="text-xl font-mc text-white">{label}</span>}
+    {label && <span className="text-base text-[#E6E6E6]">{label}</span>}
   </div>
 );
 
@@ -263,20 +295,18 @@ export const Dialog: React.FC<{ open: boolean; title: string; children: React.Re
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/70 backdrop-grayscale" onClick={onClose} />
-      <div className="relative bg-[#313233] border-4 border-[#1e1e1f] shadow-[8px_8px_0_0_#000] w-full max-w-md p-0 flex flex-col">
-        {/* Header */}
-        <div className="bg-[#48494a] px-4 py-2 border-b-2 border-[#1e1e1f] flex justify-between items-center">
-            <h4 className="text-xl font-mc text-[#e0e0e0]">{title}</h4>
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={onClose} />
+      <div className="relative bg-[#2B2B2B] rounded-[28px] w-full max-w-sm p-6 flex flex-col shadow-2xl animate-[fadeIn_0.2s_ease-out]">
+        <div className="mb-4">
+            <span className="material-symbols-rounded text-[#7DA3A1] mb-4 text-3xl">info</span>
+            <h4 className="text-2xl text-[#E6E6E6]">{title}</h4>
         </div>
         
-        {/* Content */}
-        <div className="p-6 text-[#b0b0b0]">
+        <div className="text-[#C7C7CC] text-base leading-relaxed mb-8">
           {children}
         </div>
 
-        {/* Actions */}
-        <div className="p-4 border-t-2 border-[#1e1e1f] bg-[#2b2b2b] flex justify-end gap-2">
+        <div className="flex justify-end gap-2">
           {actions}
         </div>
       </div>
@@ -286,22 +316,27 @@ export const Dialog: React.FC<{ open: boolean; title: string; children: React.Re
 
 // --- Avatar ---
 export const Avatar: React.FC<{ src?: string; name: string; size?: 'sm' | 'md' | 'lg'; onClick?: () => void }> = ({ src, name, size = 'md', onClick }) => {
-  const sizes = { sm: 'w-8 h-8 text-xs', md: 'w-10 h-10 text-sm', lg: 'w-16 h-16 text-base' };
+  const sizes = { sm: 'w-8 h-8 text-xs', md: 'w-10 h-10 text-sm', lg: 'w-16 h-16 text-xl' };
   return (
-    <div onClick={onClick} className={`${sizes[size]} border-2 border-white bg-[#5b5b5c] text-white flex items-center justify-center font-bold overflow-hidden cursor-pointer hover:brightness-110`}>
-      {src ? <img src={src} alt={name} className="w-full h-full object-cover rendering-pixelated" style={{imageRendering: 'pixelated'}} /> : name.charAt(0)}
+    <div onClick={onClick} className={`${sizes[size]} rounded-full bg-[#3E3E3E] text-[#E6E6E6] flex items-center justify-center font-bold overflow-hidden cursor-pointer hover:opacity-80 transition-opacity`}>
+      {src ? <img src={src} alt={name} className="w-full h-full object-cover" /> : name.charAt(0)}
     </div>
   );
 };
 
 // --- Card ---
-export const Card: React.FC<{ children: React.ReactNode; variant?: 'elevated' | 'filled' | 'outlined'; onClick?: () => void; className?: string }> = ({ children, variant, onClick, className = '' }) => {
-  // All cards look like panels in OreUI
+export const Card: React.FC<{ children: React.ReactNode; variant?: 'elevated' | 'filled' | 'outlined'; onClick?: () => void; className?: string }> = ({ children, variant = 'filled', onClick, className = '' }) => {
+  // MD3 Card styles: No borders, tonal colors
+  const base = "rounded-[24px] p-5 transition-all duration-300 ease-out overflow-hidden relative";
+  const filled = "bg-[#252529] hover:bg-[#2F2F34] hover:shadow-lg"; // Sumi-iro light variant
+  const outlined = "bg-transparent border border-[#444] hover:bg-[#2C2C2C]";
+  
   return (
     <div 
         onClick={onClick} 
-        className={`bg-[#313233] border-2 border-t-[#5b5b5c] border-l-[#5b5b5c] border-b-[#1e1e1f] border-r-[#1e1e1f] p-4 cursor-pointer hover:bg-[#3a3b3c] transition-colors ${className}`}
+        className={`${base} ${variant === 'outlined' ? outlined : filled} ${onClick ? 'cursor-pointer' : ''} ${className}`}
     >
+      {/* State Layer overlay (simulated with CSS hover on parent) */}
       {children}
     </div>
   );
