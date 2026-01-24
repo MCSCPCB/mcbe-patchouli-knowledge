@@ -208,6 +208,12 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
           </div>
         </div>
       </div>
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        className="hidden" 
+        onChange={handleFileChange} 
+      />
     </div>
   );
 };
