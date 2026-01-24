@@ -156,3 +156,75 @@ function mapDBToPost(row: DBPost): KnowledgePost {
   };
 }
 
+// === 管理员功能 (Admin Only) ===
+
+/**
+ * 获取所有待审核的投稿
+ */
+export const getPendingPosts = async (): Promise<KnowledgePost[]> => {
+  const { data, error } = await supabase
+    .from('knowledge_posts')
+    .select(`*, profiles ( github_id, avatar_url )`)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return (data as DBPost[]).map(mapDBToPost);
+};
+
+/**
+ * 审核通过投稿
+ */
+export const approvePost = async (postId: string) => {
+  const { error } = await supabase
+    .from('knowledge_posts')
+    .update({ status: 'reviewed' })
+    .eq('id', postId);
+
+  if (error) throw error;
+};
+
+/**
+ * 删除投稿 (拒绝审核或管理员删帖)
+ */
+export const deletePost = async (postId: string) => {
+  const { error } = await supabase
+    .from('knowledge_posts')
+    .delete()
+    .eq('id', postId);
+
+  if (error) throw error;
+};
+
+/**
+ * 获取用户列表
+ */
+export const getAllUsers = async (): Promise<User[]> => {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+
+  return (data || []).map((p: any) => ({
+    id: p.id,
+    name: p.github_id,
+    avatar: p.avatar_url,
+    role: p.role,
+    isBanned: p.is_banned
+  }));
+};
+
+/**
+ * 封禁/解封用户
+ */
+export const toggleUserBan = async (userId: string, isBanned: boolean) => {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ is_banned: isBanned })
+    .eq('id', userId);
+
+  if (error) throw error;
+};
+
