@@ -1,11 +1,12 @@
-import React, { useState, useContext, useRef } from 'react';
+import React, { useState, useContext, useRef, useEffect } from 'react';
 import { AppContext } from '../App';
 import { Page, KnowledgeItem, PREDEFINED_TAGS, Attachment } from '../types';
 import { Button, IconButton, TextField, Select, Chip, RichMarkdownEditor } from '../components/M3Components';
 import { generateSearchClues, createPost, updatePost, getRecentPosts, uploadFile } from '../services/knowledgeService';
 
 const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) => {
-  const { setItems, currentUser, refreshData } = useContext(AppContext);
+  const { items, setItems, currentUser, selectedItemId, refreshData } = useContext(AppContext); // 添加 items 和 selectedItemId
+  
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [tags, setTags] = useState<string[]>([]);
@@ -13,6 +14,20 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
   const [isGenerating, setIsGenerating] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+
+  // [新增] 编辑模式初始化：如果 selectedItemId 存在，回填数据
+  useEffect(() => {
+    if (selectedItemId) {
+      const existingItem = items.find(i => i.id === selectedItemId);
+      if (existingItem) {
+        setTitle(existingItem.title);
+        setContent(existingItem.content);
+        setTags(existingItem.tags);
+        setAiClues(existingItem.aiClues || '');
+        setAttachments(existingItem.attachments || []);
+      }
+    }
+  }, [selectedItemId, items]);
 
   // 隐藏的文件输入框引用
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -82,13 +97,26 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
     setIsSaving(true);
     
     try {
-        await createPost({
-            title,
-            content,
-            tags,
-            aiClues,
-            attachments
-        });
+        if (selectedItemId) {
+            // [新增] 编辑模式：调用 Update
+            await updatePost(selectedItemId, {
+                title,
+                content,
+                tags,
+                aiClues,
+                attachments
+            });
+        } else {
+            // [修改] 新建模式：调用 Create
+            await createPost({
+                title,
+                content,
+                tags,
+                aiClues,
+                attachments
+            });
+        }
+
         // Refresh items
         const posts = await getRecentPosts();
         setItems(posts);
@@ -96,7 +124,7 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
 
         onNavigate(Page.HOME);
     } catch (e) {
-        alert("Failed to save post: " + e);
+        alert("Failed to save: " + e);
     } finally {
         setIsSaving(false);
     }
@@ -107,7 +135,10 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
       {/* Header Actions */}
       <div className="flex items-center justify-between mb-6 bg-[#313233] p-2 border-b-2 border-[#1e1e1f] sticky top-16 z-20">
         <IconButton icon="arrow_back" onClick={() => onNavigate(Page.HOME)} />
-        <h2 className="text-xl font-bold font-mc text-white uppercase">New Entry</h2>
+        {/* [修改] 动态标题 */}
+        <h2 className="text-xl font-bold font-mc text-white uppercase">
+            {selectedItemId ? 'Edit Entry' : 'New Entry'}
+        </h2>
         <Button label={isSaving ? "Saving..." : "Save"} onClick={handleSubmit} variant="success" disabled={!title || !content || isSaving} />
       </div>
 
