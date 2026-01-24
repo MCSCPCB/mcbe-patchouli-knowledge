@@ -5,7 +5,7 @@ import { IconButton, Switch, Avatar, Chip } from '../components/M3Components';
 import { getPendingPosts, approvePost, rejectPost, toggleUserBan, getAllUsers } from '../services/knowledgeService'; // Import
 
 const AdminPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) => {
-  const { items, setItems, users, setUsers } = useContext(AppContext);
+  const { items, setItems, users, setUsers, refreshData } = useContext(AppContext);
   const [activeTab, setActiveTab] = useState<'audit' | 'users'>('audit');
   
   // Local state for pending items (since global 'items' usually stores published ones)
@@ -25,6 +25,7 @@ const AdminPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) 
         await approvePost(id);
         // Remove from local pending list
         setPendingItems(prev => prev.filter(i => i.id !== id));
+        refreshData();
     } catch (e) {
         alert("Action failed");
     }
