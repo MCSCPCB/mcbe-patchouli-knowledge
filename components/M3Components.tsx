@@ -1,89 +1,63 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-// --- Utility: Ripple Effect ---
-export const Ripple: React.FC = () => {
-  const [ripples, setRipples] = useState<{ x: number; y: number; id: number }[]>([]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setRipples([]), 1000);
-    return () => clearTimeout(timer);
-  }, [ripples]);
-
-  const addRipple = (e: React.MouseEvent) => {
-    const container = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - container.left;
-    const y = e.clientY - container.top;
-    setRipples([...ripples, { x, y, id: Date.now() }]);
-  };
-
-  return (
-    <div className="absolute inset-0 overflow-hidden rounded-inherit pointer-events-none" onMouseDown={addRipple}>
-      {ripples.map((ripple) => (
-        <span
-          key={ripple.id}
-          className="absolute bg-current opacity-10 rounded-full animate-ping"
-          style={{
-            left: ripple.x,
-            top: ripple.y,
-            width: 20,
-            height: 20,
-            transform: 'translate(-50%, -50%) scale(15)',
-            transition: 'transform 0.5s, opacity 1s',
-            animationDuration: '600ms'
-          }}
-        />
-      ))}
-    </div>
-  );
-};
+// Note: OreUI doesn't really use ripples, but we keep the file structure. 
+// We will replace the "Ripple" with a sound effect hook or visual press state in the button CSS.
+export const Ripple: React.FC = () => null; 
 
 // --- Buttons ---
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'filled' | 'outlined' | 'text' | 'tonal' | 'elevated';
+  variant?: 'filled' | 'outlined' | 'text' | 'tonal' | 'elevated' | 'success';
   icon?: string;
   label: string;
   fullWidth?: boolean;
 }
 
 export const Button: React.FC<ButtonProps> = ({ variant = 'filled', icon, label, className = '', fullWidth, ...props }) => {
-  const base = "relative overflow-hidden h-10 px-6 rounded-full font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2 active:scale-[0.98]";
+  // OreUI Style Buttons
+  const base = "relative h-10 px-4 font-mc text-xl uppercase tracking-wide flex items-center justify-center gap-2 transition-none border-2 active:bg-[#3a3b3c] focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-[#1e1e1f]";
   
-  const variants = {
-    filled: "bg-slate-700 text-white hover:bg-slate-800 hover:shadow-md",
-    elevated: "bg-slate-50 text-slate-700 shadow-sm hover:bg-slate-100 hover:shadow-md",
-    tonal: "bg-slate-200 text-slate-900 hover:bg-slate-300",
-    outlined: "border border-slate-300 text-slate-700 hover:bg-slate-50",
-    text: "bg-transparent text-slate-700 hover:bg-slate-100",
-  };
+  // Using box-shadows and borders to create the MC 3D effect
+  const oreStyle = "bg-[#48494a] text-[#e0e0e0] border-t-[#5b5b5c] border-l-[#5b5b5c] border-b-[#1e1e1f] border-r-[#1e1e1f] active:border-t-[#1e1e1f] active:border-l-[#1e1e1f] active:border-b-[#5b5b5c] active:border-r-[#5b5b5c]";
+  const greenStyle = "bg-[#3C8527] text-white border-t-[#52A535] border-l-[#52A535] border-b-[#1A3B12] border-r-[#1A3B12] active:bg-[#2E6B1E] active:border-t-[#1A3B12] active:border-l-[#1A3B12] active:border-b-[#52A535] active:border-r-[#52A535]";
+  const dangerStyle = "bg-[#8B0000] text-white border-t-[#B22222] border-l-[#B22222] border-b-[#500000] border-r-[#500000]";
+
+  let variantClass = oreStyle;
+  if (variant === 'filled' && className.includes('bg-red')) variantClass = dangerStyle;
+  if (variant === 'success') variantClass = greenStyle;
+  if (variant === 'text') variantClass = "bg-transparent text-[#e0e0e0] hover:bg-[#48494a] border-transparent";
 
   return (
-    <button className={`${base} ${variants[variant]} ${fullWidth ? 'w-full' : ''} ${className}`} {...props}>
-      {icon && <span className="material-symbols-rounded text-[18px]">{icon}</span>}
-      <span className="z-10 relative">{label}</span>
-      <Ripple />
+    <button className={`${base} ${variantClass} ${fullWidth ? 'w-full' : ''} ${className}`} {...props}>
+      {icon && <span className="material-symbols-rounded text-[20px]">{icon}</span>}
+      <span className="relative drop-shadow-md">{label}</span>
     </button>
   );
 };
 
 export const IconButton: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { icon: string; active?: boolean }> = ({ icon, className = '', active, ...props }) => (
   <button 
-    className={`relative overflow-hidden w-10 h-10 rounded-full flex items-center justify-center transition-colors ${active ? 'bg-slate-200 text-slate-900' : 'text-slate-600 hover:bg-slate-100'} ${className}`}
+    className={`
+      w-10 h-10 flex items-center justify-center border-2 
+      ${active 
+        ? 'bg-[#3C8527] border-t-[#1A3B12] border-l-[#1A3B12] border-b-[#52A535] border-r-[#52A535] text-white' 
+        : 'bg-[#48494a] border-t-[#5b5b5c] border-l-[#5b5b5c] border-b-[#1e1e1f] border-r-[#1e1e1f] text-[#b0b0b0] hover:text-white active:border-t-[#1e1e1f] active:border-l-[#1e1e1f] active:border-b-[#5b5b5c] active:border-r-[#5b5b5c]'
+      }
+      ${className}
+    `}
     {...props}
   >
-    <span className={`material-symbols-rounded ${active ? 'filled' : ''}`}>{icon}</span>
-    <Ripple />
+    <span className="material-symbols-rounded">{icon}</span>
   </button>
 );
 
 export const FAB: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { icon: string; extended?: boolean; label?: string }> = ({ icon, extended, label, className = '', ...props }) => (
   <button 
-    className={`fixed bottom-6 right-6 z-50 bg-slate-200 text-slate-900 shadow-lg hover:shadow-xl hover:bg-slate-300 transition-all duration-300 flex items-center justify-center gap-2
-    ${extended ? 'h-14 px-5 rounded-[20px]' : 'w-14 h-14 rounded-[20px]'} ${className}`}
+    className={`fixed bottom-6 right-6 z-50 bg-[#3C8527] text-white shadow-[4px_4px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#000] transition-all flex items-center justify-center gap-2 border-2 border-[#52A535]
+    ${extended ? 'h-14 px-5' : 'w-14 h-14'} ${className}`}
     {...props}
   >
-    <span className="material-symbols-rounded text-[24px]">{icon}</span>
-    {extended && <span className="font-medium text-[14px]">{label}</span>}
-    <Ripple />
+    <span className="material-symbols-rounded text-[28px]">{icon}</span>
+    {extended && <span className="font-mc text-lg">{label}</span>}
   </button>
 );
 
@@ -94,24 +68,18 @@ interface TextFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const TextField: React.FC<TextFieldProps> = ({ label, error, className = '', value, ...props }) => {
-  const [focused, setFocused] = useState(false);
-  const hasValue = value && String(value).length > 0;
-
   return (
-    <div className={`relative bg-slate-100 rounded-t-xl border-b transition-colors ${error ? 'border-red-500 bg-red-50' : (focused ? 'border-slate-700' : 'border-slate-400')} ${className}`}>
-      <label 
-        className={`absolute left-4 transition-all duration-200 pointer-events-none text-slate-500
-        ${(focused || hasValue) ? 'top-2 text-xs' : 'top-4 text-base'}`}
-      >
+    <div className={`relative ${className}`}>
+      <label className="block text-[#b0b0b0] font-mc text-sm mb-1 uppercase tracking-wide">
         {label}
       </label>
-      <input
-        className="w-full h-14 px-4 pt-5 pb-2 bg-transparent outline-none text-slate-900 caret-slate-700"
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        value={value}
-        {...props}
-      />
+      <div className={`bg-[#1e1e1f] border-2 ${error ? 'border-[#ff5555]' : 'border-[#5b5b5c] border-t-[#000] border-l-[#000] border-b-[#5b5b5c] border-r-[#5b5b5c]'} p-1`}>
+        <input
+          className="w-full h-10 px-2 bg-transparent outline-none text-white font-mono placeholder:text-[#58585a]"
+          value={value}
+          {...props}
+        />
+      </div>
     </div>
   );
 };
@@ -120,7 +88,7 @@ export const TextField: React.FC<TextFieldProps> = ({ label, error, className = 
 interface SelectProps {
   label: string;
   options: string[];
-  value: string | string[]; // Can be single string or array (for future multi-select, currently single logical)
+  value: string | string[];
   onChange: (val: string) => void;
   placeholder?: string;
   className?: string;
@@ -130,7 +98,6 @@ export const Select: React.FC<SelectProps> = ({ label, options, value, onChange,
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Close when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
@@ -141,34 +108,27 @@ export const Select: React.FC<SelectProps> = ({ label, options, value, onChange,
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const displayValue = Array.isArray(value) 
-    ? (value.length > 0 ? value.join(', ') : '') 
-    : value;
+  const displayValue = Array.isArray(value) ? (value.length > 0 ? value.join(', ') : '') : value;
 
   return (
     <div className={`relative ${className}`} ref={containerRef}>
+      <label className="block text-[#b0b0b0] font-mc text-sm mb-1 uppercase tracking-wide">{label}</label>
       <div 
-        className={`bg-slate-100 rounded-t-xl border-b border-slate-400 cursor-pointer hover:bg-slate-200/50 transition-colors
-          ${isOpen ? 'bg-slate-200 border-slate-700' : ''}`}
+        className={`bg-[#48494a] h-12 border-2 border-t-[#5b5b5c] border-l-[#5b5b5c] border-b-[#1e1e1f] border-r-[#1e1e1f] px-3 flex items-center justify-between cursor-pointer active:bg-[#3a3b3c]`}
         onClick={() => setIsOpen(!isOpen)}
       >
-        <label className={`absolute left-4 transition-all duration-200 pointer-events-none text-slate-500 ${(displayValue || isOpen) ? 'top-2 text-xs' : 'top-4 text-base'}`}>
-          {label}
-        </label>
-        <div className="w-full h-14 px-4 pt-6 pb-2 text-slate-900 flex items-center justify-between">
-           <span className="truncate">{displayValue || <span className="opacity-0">{placeholder || 'Select'}</span>}</span>
-           <span className={`material-symbols-rounded text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}>arrow_drop_down</span>
-        </div>
+         <span className="text-white font-mc text-lg truncate">{displayValue || <span className="text-gray-500">{placeholder || 'Select'}</span>}</span>
+         <span className="material-symbols-rounded text-white">expand_more</span>
       </div>
 
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-[#FDFDFD] rounded-xl shadow-xl py-2 max-h-60 overflow-y-auto border border-slate-100 animate-fade-in">
+        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-[#1e1e1f] border-2 border-[#5b5b5c] max-h-60 overflow-y-auto shadow-xl">
            {options.map((opt) => (
              <div 
                key={opt}
                onClick={() => { onChange(opt); setIsOpen(false); }}
-               className={`px-4 py-3 hover:bg-slate-100 cursor-pointer flex items-center justify-between
-                 ${(Array.isArray(value) ? value.includes(opt) : value === opt) ? 'bg-indigo-50 text-indigo-900 font-medium' : 'text-slate-700'}
+               className={`px-4 py-2 hover:bg-[#3a3b3c] cursor-pointer flex items-center justify-between font-mc text-lg border-b border-[#313233] last:border-0
+                 ${(Array.isArray(value) ? value.includes(opt) : value === opt) ? 'text-[#52A535]' : 'text-[#e0e0e0]'}
                `}
              >
                {opt}
@@ -199,8 +159,6 @@ export const RichMarkdownEditor: React.FC<RichEditorProps> = ({ label, value, on
     const text = value.substring(start, end);
     const newText = value.substring(0, start) + prefix + text + suffix + value.substring(end);
     onChange(newText);
-    
-    // Defer focus restoration
     setTimeout(() => {
         if(textareaRef.current) {
             textareaRef.current.focus();
@@ -213,36 +171,36 @@ export const RichMarkdownEditor: React.FC<RichEditorProps> = ({ label, value, on
     const url = prompt(`Enter ${type} URL:`);
     if (!url) return;
     if (type === 'image') insertText(`![Image](${url})`);
-    if (type === 'video') insertText(`<video controls src="${url}" class="w-full rounded-xl my-2"></video>\n`);
+    if (type === 'video') insertText(`<video controls src="${url}" class="w-full border-2 border-[#1e1e1f] my-2"></video>\n`);
   };
 
   return (
-    <div className="relative bg-slate-50 border border-slate-300 rounded-xl focus-within:border-slate-700 focus-within:ring-1 focus-within:ring-slate-700 transition-all flex flex-col">
-       {/* Toolbar */}
-       <div className="flex items-center gap-1 p-2 border-b border-slate-200 bg-slate-100/50 rounded-t-xl overflow-x-auto no-scrollbar">
-          <IconButton icon="format_bold" className="w-8 h-8" onClick={() => insertText('**', '**')} title="Bold" />
-          <IconButton icon="format_italic" className="w-8 h-8" onClick={() => insertText('*', '*')} title="Italic" />
-          <IconButton icon="format_underlined" className="w-8 h-8" onClick={() => insertText('<u>', '</u>')} title="Underline" />
-          <IconButton icon="strikethrough_s" className="w-8 h-8" onClick={() => insertText('~~', '~~')} title="Strikethrough" />
-          <div className="w-[1px] h-6 bg-slate-300 mx-1"></div>
-          <IconButton icon="code" className="w-8 h-8" onClick={() => insertText('`', '`')} title="Inline Code" />
-          <IconButton icon="data_object" className="w-8 h-8" onClick={() => insertText('\n```\n', '\n```\n')} title="Code Block" />
-          <div className="w-[1px] h-6 bg-slate-300 mx-1"></div>
-          <IconButton icon="image" className="w-8 h-8" onClick={() => handleMedia('image')} title="Insert Image" />
-          <IconButton icon="movie" className="w-8 h-8" onClick={() => handleMedia('video')} title="Insert Video" />
-          <div className="flex-1"></div>
-          <div className="w-[1px] h-6 bg-slate-300 mx-1"></div>
-          <IconButton icon="attach_file" className="w-8 h-8 text-indigo-600 bg-indigo-50" onClick={onAddAttachment} title="Add Attachment (End of post)" />
-       </div>
+    <div className="flex flex-col">
+       <label className="block text-[#b0b0b0] font-mc text-sm mb-1 uppercase tracking-wide">{label}</label>
+       <div className="bg-[#1e1e1f] border-2 border-t-[#000] border-l-[#000] border-b-[#5b5b5c] border-r-[#5b5b5c] flex flex-col">
+          {/* Toolbar */}
+          <div className="flex items-center gap-1 p-2 border-b-2 border-[#313233] bg-[#313233] overflow-x-auto no-scrollbar">
+             <IconButton icon="format_bold" className="w-8 h-8 scale-90" onClick={() => insertText('**', '**')} title="Bold" />
+             <IconButton icon="format_italic" className="w-8 h-8 scale-90" onClick={() => insertText('*', '*')} title="Italic" />
+             <IconButton icon="format_underlined" className="w-8 h-8 scale-90" onClick={() => insertText('<u>', '</u>')} title="Underline" />
+             <IconButton icon="strikethrough_s" className="w-8 h-8 scale-90" onClick={() => insertText('~~', '~~')} title="Strikethrough" />
+             <div className="w-[2px] h-6 bg-[#5b5b5c] mx-1"></div>
+             <IconButton icon="code" className="w-8 h-8 scale-90" onClick={() => insertText('`', '`')} title="Inline Code" />
+             <IconButton icon="data_object" className="w-8 h-8 scale-90" onClick={() => insertText('\n```\n', '\n```\n')} title="Code Block" />
+             <div className="w-[2px] h-6 bg-[#5b5b5c] mx-1"></div>
+             <IconButton icon="image" className="w-8 h-8 scale-90" onClick={() => handleMedia('image')} title="Insert Image" />
+             <IconButton icon="movie" className="w-8 h-8 scale-90" onClick={() => handleMedia('video')} title="Insert Video" />
+             <div className="flex-1"></div>
+             <div className="w-[2px] h-6 bg-[#5b5b5c] mx-1"></div>
+             <IconButton icon="attach_file" className="w-8 h-8 scale-90 !text-[#52A535]" onClick={onAddAttachment} title="Add Attachment" />
+          </div>
 
-       <div className="relative flex-1">
-          <label className="absolute top-2 right-4 text-xs font-medium text-slate-400 uppercase tracking-wide pointer-events-none">{label}</label>
           <textarea 
             ref={textareaRef}
-            className="w-full bg-transparent outline-none text-slate-900 resize-none min-h-[300px] font-roboto p-4"
+            className="w-full bg-[#1e1e1f] outline-none text-[#e0e0e0] resize-none min-h-[300px] font-mono p-4"
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            placeholder="Type your knowledge here..."
+            placeholder="Write knowledge..."
           />
        </div>
     </div>
@@ -250,13 +208,15 @@ export const RichMarkdownEditor: React.FC<RichEditorProps> = ({ label, value, on
 };
 
 export const TextArea: React.FC<React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string }> = ({ label, className = '', value, ...props }) => (
-   <div className={`relative bg-slate-50 border border-slate-300 rounded-xl focus-within:border-slate-700 focus-within:ring-1 focus-within:ring-slate-700 transition-all p-4 ${className}`}>
-      <label className="block text-xs font-medium text-slate-500 mb-2 uppercase tracking-wide">{label}</label>
-      <textarea 
-        className="w-full bg-transparent outline-none text-slate-900 resize-none min-h-[120px] font-roboto"
-        value={value}
-        {...props}
-      />
+   <div className={`flex flex-col ${className}`}>
+      <label className="block text-[#b0b0b0] font-mc text-sm mb-1 uppercase tracking-wide">{label}</label>
+      <div className="bg-[#1e1e1f] border-2 border-t-[#000] border-l-[#000] border-b-[#5b5b5c] border-r-[#5b5b5c] p-2">
+        <textarea 
+          className="w-full bg-transparent outline-none text-white font-mono resize-none"
+          value={value}
+          {...props}
+        />
+      </div>
    </div>
 );
 
@@ -265,20 +225,20 @@ export const Chip: React.FC<{ label: string; selected?: boolean; onClick?: () =>
   <div 
     onClick={onClick}
     className={`
-      relative inline-flex items-center gap-2 h-8 px-3 rounded-lg border text-sm font-medium cursor-pointer transition-all select-none
+      relative inline-flex items-center gap-2 h-8 px-3 font-mc text-lg cursor-pointer select-none border-2
       ${selected 
-        ? 'bg-slate-200 border-transparent text-slate-900' 
-        : 'bg-transparent border-slate-300 text-slate-600 hover:bg-slate-50'
+        ? 'bg-[#3C8527] border-t-[#52A535] border-l-[#52A535] border-b-[#1A3B12] border-r-[#1A3B12] text-white' 
+        : 'bg-[#48494a] border-t-[#5b5b5c] border-l-[#5b5b5c] border-b-[#1e1e1f] border-r-[#1e1e1f] text-[#b0b0b0] hover:text-white'
       }
     `}
   >
     {selected && <span className="material-symbols-rounded text-[18px]">check</span>}
     {!selected && icon && <span className="material-symbols-rounded text-[18px]">{icon}</span>}
-    <span>{label}</span>
+    <span className="translate-y-[1px]">{label}</span>
     {onDelete && (
       <span 
         onClick={(e) => { e.stopPropagation(); onDelete(); }} 
-        className="material-symbols-rounded text-[16px] ml-1 hover:text-red-500"
+        className="material-symbols-rounded text-[16px] ml-1 hover:text-red-400"
       >
         close
       </span>
@@ -289,12 +249,10 @@ export const Chip: React.FC<{ label: string; selected?: boolean; onClick?: () =>
 // --- Switch ---
 export const Switch: React.FC<{ checked: boolean; onChange: (checked: boolean) => void; label?: string }> = ({ checked, onChange, label }) => (
   <div className="flex items-center gap-4 cursor-pointer" onClick={() => onChange(!checked)}>
-    <div className={`w-[52px] h-[32px] rounded-full p-[2px] transition-colors ${checked ? 'bg-slate-700' : 'bg-slate-300 border-2 border-slate-400'}`}>
-      <div className={`w-7 h-7 bg-white rounded-full shadow-md transition-transform transform ${checked ? 'translate-x-[20px]' : 'translate-x-0'}`}>
-         {checked && <div className="hidden">Icon</div>} 
-      </div>
+    <div className={`w-[50px] h-[26px] border-2 border-[#1e1e1f] relative transition-colors ${checked ? 'bg-[#313233]' : 'bg-[#313233]'}`}>
+      <div className={`absolute top-[-2px] bottom-[-2px] w-6 bg-[#b0b0b0] border-2 border-white transition-all ${checked ? 'right-[-2px] bg-[#3C8527] border-[#52A535]' : 'left-[-2px]'}`}></div>
     </div>
-    {label && <span className="text-base text-slate-900">{label}</span>}
+    {label && <span className="text-xl font-mc text-white">{label}</span>}
   </div>
 );
 
@@ -303,13 +261,20 @@ export const Dialog: React.FC<{ open: boolean; title: string; children: React.Re
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onClick={onClose} />
-      <div className="relative bg-[#F8F9FA] rounded-[28px] w-full max-w-sm md:max-w-md p-6 shadow-xl transform scale-100 transition-transform">
-        <h4 className="text-2xl text-slate-900 mb-4 font-normal">{title}</h4>
-        <div className="text-slate-600 mb-8 leading-relaxed">
+      <div className="absolute inset-0 bg-black/70 backdrop-grayscale" onClick={onClose} />
+      <div className="relative bg-[#313233] border-4 border-[#1e1e1f] shadow-[8px_8px_0_0_#000] w-full max-w-md p-0 flex flex-col">
+        {/* Header */}
+        <div className="bg-[#48494a] px-4 py-2 border-b-2 border-[#1e1e1f] flex justify-between items-center">
+            <h4 className="text-xl font-mc text-[#e0e0e0]">{title}</h4>
+        </div>
+        
+        {/* Content */}
+        <div className="p-6 text-[#b0b0b0]">
           {children}
         </div>
-        <div className="flex justify-end gap-2">
+
+        {/* Actions */}
+        <div className="p-4 border-t-2 border-[#1e1e1f] bg-[#2b2b2b] flex justify-end gap-2">
           {actions}
         </div>
       </div>
@@ -319,23 +284,22 @@ export const Dialog: React.FC<{ open: boolean; title: string; children: React.Re
 
 // --- Avatar ---
 export const Avatar: React.FC<{ src?: string; name: string; size?: 'sm' | 'md' | 'lg'; onClick?: () => void }> = ({ src, name, size = 'md', onClick }) => {
-  const sizes = { sm: 'w-8 h-8 text-xs', md: 'w-10 h-10 text-sm', lg: 'w-14 h-14 text-base' };
+  const sizes = { sm: 'w-8 h-8 text-xs', md: 'w-10 h-10 text-sm', lg: 'w-16 h-16 text-base' };
   return (
-    <div onClick={onClick} className={`${sizes[size]} rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold overflow-hidden cursor-pointer hover:opacity-90`}>
-      {src ? <img src={src} alt={name} className="w-full h-full object-cover" /> : name.charAt(0)}
+    <div onClick={onClick} className={`${sizes[size]} border-2 border-white bg-[#5b5b5c] text-white flex items-center justify-center font-bold overflow-hidden cursor-pointer hover:brightness-110`}>
+      {src ? <img src={src} alt={name} className="w-full h-full object-cover rendering-pixelated" style={{imageRendering: 'pixelated'}} /> : name.charAt(0)}
     </div>
   );
 };
 
 // --- Card ---
-export const Card: React.FC<{ children: React.ReactNode; variant?: 'elevated' | 'filled' | 'outlined'; onClick?: () => void; className?: string }> = ({ children, variant = 'elevated', onClick, className = '' }) => {
-  const variants = {
-    elevated: "bg-[#FDFDFD] shadow-sm hover:shadow-md",
-    filled: "bg-[#F0F4F8] hover:bg-[#E8EEF3]",
-    outlined: "bg-transparent border border-slate-200 hover:bg-slate-50"
-  };
+export const Card: React.FC<{ children: React.ReactNode; variant?: 'elevated' | 'filled' | 'outlined'; onClick?: () => void; className?: string }> = ({ children, variant, onClick, className = '' }) => {
+  // All cards look like panels in OreUI
   return (
-    <div onClick={onClick} className={`rounded-[20px] p-4 transition-all duration-200 cursor-pointer ${variants[variant]} ${className}`}>
+    <div 
+        onClick={onClick} 
+        className={`bg-[#313233] border-2 border-t-[#5b5b5c] border-l-[#5b5b5c] border-b-[#1e1e1f] border-r-[#1e1e1f] p-4 cursor-pointer hover:bg-[#3a3b3c] transition-colors ${className}`}
+    >
       {children}
     </div>
   );

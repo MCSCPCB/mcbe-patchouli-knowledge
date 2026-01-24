@@ -14,10 +14,7 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
   const [isGenerating, setIsGenerating] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
 
-  // We use Select logic here but adapt it to simple array toggle
   const handleTagChange = (tag: string) => {
-    // For this UI, since the dropdown is single select in its basic form,
-    // we just add it to the list if not present.
     if (!tags.includes(tag)) {
         setTags([...tags, tag]);
     }
@@ -69,12 +66,12 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 pb-24 animate-fade-in-up">
+    <div className="max-w-4xl mx-auto px-4 py-6 pb-24">
       {/* Header Actions */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 bg-[#313233] p-2 border-b-2 border-[#1e1e1f] sticky top-16 z-20">
         <IconButton icon="arrow_back" onClick={() => onNavigate(Page.HOME)} />
-        <h2 className="text-xl font-bold">New Knowledge</h2>
-        <Button label="Submit" onClick={handleSubmit} variant="filled" disabled={!title || !content} />
+        <h2 className="text-xl font-bold font-mc text-white uppercase">New Entry</h2>
+        <Button label="Save" onClick={handleSubmit} variant="success" disabled={!title || !content} />
       </div>
 
       <div className="space-y-6">
@@ -82,18 +79,18 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
           label="Title" 
           value={title} 
           onChange={(e) => setTitle(e.target.value)} 
-          placeholder="e.g., Advanced Potion Brewing"
+          placeholder="e.g., Diamond Mining Logic"
         />
 
-        {/* Tag Selection via Dropdown + Chip Display */}
-        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+        {/* Tag Selection */}
+        <div className="bg-[#313233] p-4 border-2 border-t-[#5b5b5c] border-l-[#5b5b5c] border-b-[#1e1e1f] border-r-[#1e1e1f]">
            <div className="mb-4">
              <Select 
-                label="Add a Category Tag"
+                label="Category Tag"
                 options={PREDEFINED_TAGS}
                 value=""
                 onChange={handleTagChange}
-                placeholder="Select a tag..."
+                placeholder="Add Tag..."
              />
            </div>
            
@@ -101,7 +98,7 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
              {tags.map(tag => (
                <Chip key={tag} label={tag} onDelete={() => setTags(tags.filter(t => t !== tag))} selected />
              ))}
-             {tags.length === 0 && <span className="text-sm text-slate-400 italic mt-1">No tags selected</span>}
+             {tags.length === 0 && <span className="text-sm font-mc text-[#707070]">No tags selected</span>}
            </div>
         </div>
 
@@ -115,16 +112,16 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
 
         {/* Attachment List Preview */}
         {attachments.length > 0 && (
-            <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
-                <h4 className="text-xs font-bold uppercase text-slate-500 mb-3">Attachments ({attachments.length})</h4>
+            <div className="bg-[#1e1e1f] border-2 border-[#5b5b5c] p-4">
+                <h4 className="text-xs font-bold font-mc uppercase text-[#b0b0b0] mb-3">Attachments ({attachments.length})</h4>
                 <div className="space-y-2">
                     {attachments.map(att => (
-                        <div key={att.id} className="flex items-center gap-3 bg-white p-2 rounded-lg border border-slate-100 shadow-sm">
-                            <span className="material-symbols-rounded text-slate-400">attachment</span>
-                            <span className="text-sm font-medium text-slate-700 flex-1 truncate">{att.name}</span>
+                        <div key={att.id} className="flex items-center gap-3 bg-[#313233] p-2 border border-[#000]">
+                            <span className="material-symbols-rounded text-[#b0b0b0]">attachment</span>
+                            <span className="text-sm font-mono text-white flex-1 truncate">{att.name}</span>
                             <IconButton 
                                 icon="delete" 
-                                className="w-8 h-8 text-red-500 hover:bg-red-50" 
+                                className="w-8 h-8 !bg-[#8B0000] !border-[#B22222]" 
                                 onClick={() => setAttachments(attachments.filter(a => a.id !== att.id))} 
                             />
                         </div>
@@ -134,15 +131,15 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
         )}
 
         {/* AI Clue Generator Section */}
-        <div className="p-6 rounded-[24px] bg-slate-50 border border-slate-200 relative overflow-hidden">
+        <div className="p-4 bg-[#2b2b2b] border-2 border-[#b465f5]">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2 text-indigo-700">
+            <div className="flex items-center gap-2 text-[#b465f5]">
                <span className="material-symbols-rounded">auto_awesome</span>
-               <h3 className="font-bold text-sm uppercase tracking-wide">AI Search Clues</h3>
+               <h3 className="font-bold font-mc text-sm uppercase tracking-wide">AI Keywords</h3>
             </div>
             <Button 
               variant="tonal" 
-              label={isGenerating ? "Thinking..." : "Generate"} 
+              label={isGenerating ? "..." : "Generate"} 
               icon={!isGenerating ? "refresh" : undefined}
               onClick={handleGenerateClues}
               disabled={isGenerating || !content}
@@ -150,25 +147,15 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
             />
           </div>
           
-          {isGenerating ? (
-            <div className="animate-pulse space-y-2">
-              <div className="h-4 bg-slate-200 rounded w-3/4"></div>
-              <div className="h-4 bg-slate-200 rounded w-1/2"></div>
-            </div>
-          ) : (
-            <div>
-               <p className="text-slate-500 text-xs mb-2">
-                 AI generated keywords help others find this article even if they don't know the exact title. Edit as needed.
-               </p>
+          <div className="bg-[#1e1e1f] border-2 border-t-[#000] border-l-[#000] border-b-[#5b5b5c] border-r-[#5b5b5c] p-2">
                <textarea
-                 className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm text-slate-800 outline-none focus:border-indigo-500 transition-colors"
+                 className="w-full bg-transparent outline-none text-[#e0e0e0] font-mono text-sm"
                  rows={3}
                  value={aiClues}
                  onChange={(e) => setAiClues(e.target.value)}
                  placeholder="Clues will appear here..."
                />
-            </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

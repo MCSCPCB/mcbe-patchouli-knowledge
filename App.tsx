@@ -121,13 +121,15 @@ const App: React.FC = () => {
 
   return (
     <AppContext.Provider value={{ currentUser, setCurrentUser, items, setItems, users, setUsers, currentPage, setCurrentPage, selectedItemId, setSelectedItemId }}>
-      <div className="min-h-screen bg-[#FDFDFD] text-[#1A1C1E] font-roboto selection:bg-slate-200">
+      <div className="min-h-screen bg-[#313233] text-[#E0E0E0] font-sans selection:bg-[#3C8527] selection:text-white">
         {/* Header (Top App Bar) - Visible everywhere except Login */}
         {currentPage !== Page.LOGIN && (
-          <header className="fixed top-0 left-0 right-0 h-16 bg-[#FDFDFD]/80 backdrop-blur-md z-40 px-4 flex items-center justify-between border-b border-slate-100/50">
+          <header className="fixed top-0 left-0 right-0 h-16 bg-[#313233] z-40 px-4 flex items-center justify-between border-b-4 border-[#1e1e1f] shadow-lg">
              <div className="flex items-center gap-2 cursor-pointer" onClick={() => goTo(Page.HOME)}>
-               <span className="material-symbols-rounded text-slate-700">library_books</span>
-               <span className="font-bold text-lg tracking-tight">Patchouli</span>
+               <div className="w-10 h-10 bg-[#3C8527] border-2 border-white flex items-center justify-center">
+                   <span className="material-symbols-rounded text-white">menu_book</span>
+               </div>
+               <span className="font-mc text-2xl tracking-wide text-white drop-shadow-md">Patchouli</span>
              </div>
              
              {currentUser && (
@@ -143,10 +145,10 @@ const App: React.FC = () => {
                  <div className="relative group">
                    <Avatar name={currentUser.name} src={currentUser.avatar} onClick={() => {}} />
                    {/* Dropdown Menu */}
-                   <div className="absolute right-0 top-12 w-48 bg-[#F0F4F8] rounded-2xl shadow-xl p-2 hidden group-hover:block transition-all opacity-0 group-hover:opacity-100 transform origin-top-right">
-                     <div className="px-4 py-2 text-xs text-slate-500 font-bold uppercase">Account</div>
-                     <button onClick={() => goTo(Page.HOME)} className="w-full text-left px-4 py-3 hover:bg-slate-200 rounded-xl text-sm mb-1">My Knowledge</button>
-                     <button onClick={handleLogout} className="w-full text-left px-4 py-3 hover:bg-red-100 text-red-700 rounded-xl text-sm">Logout</button>
+                   <div className="absolute right-0 top-14 w-48 bg-[#313233] border-2 border-white p-1 hidden group-hover:block z-50 shadow-[4px_4px_0_0_#000]">
+                     <div className="px-4 py-2 text-xs text-[#b0b0b0] font-mc uppercase">Account</div>
+                     <button onClick={() => goTo(Page.HOME)} className="w-full text-left px-4 py-3 hover:bg-[#48494a] text-sm mb-1 font-mc text-white">My Knowledge</button>
+                     <button onClick={handleLogout} className="w-full text-left px-4 py-3 hover:bg-[#8B0000] hover:text-white text-[#ff5555] text-sm font-mc">Logout</button>
                    </div>
                  </div>
                </div>
@@ -155,7 +157,7 @@ const App: React.FC = () => {
         )}
         
         {/* Main Content Area */}
-        <main className={`${currentPage !== Page.LOGIN ? 'pt-16' : ''}`}>
+        <main className={`${currentPage !== Page.LOGIN ? 'pt-20' : ''}`}>
           {renderPage()}
         </main>
       </div>

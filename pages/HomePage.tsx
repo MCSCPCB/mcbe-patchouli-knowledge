@@ -38,26 +38,26 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
     <div className="max-w-3xl mx-auto px-4 pb-24">
       
       {/* Search & Filter Area */}
-      <div className="py-6 sticky top-16 bg-[#FDFDFD] z-30 transition-all border-b border-transparent">
+      <div className="py-6 sticky top-16 bg-[#313233] z-30 border-b-2 border-[#1e1e1f]">
         <div className={`
-          relative flex items-center w-full h-14 rounded-[28px] bg-[#F0F4F8] px-4 transition-all duration-300
-          ${searchMode === 'ai' ? 'ring-2 ring-indigo-300 bg-indigo-50/50' : 'ring-0'}
+          relative flex items-center w-full h-14 bg-[#1e1e1f] border-2 border-b-[#5b5b5c] border-r-[#5b5b5c] border-t-[#000] border-l-[#000] px-4
+          ${searchMode === 'ai' ? 'border-[#b465f5]' : ''}
         `}>
-          <span className="material-symbols-rounded text-slate-500 mr-3">search</span>
+          <span className="material-symbols-rounded text-[#b0b0b0] mr-3">search</span>
           <input 
-            className="flex-1 bg-transparent outline-none text-slate-900 text-lg placeholder:text-slate-400"
-            placeholder={searchMode === 'ai' ? "Describe what you're looking for..." : "Search knowledge..."}
+            className="flex-1 bg-transparent outline-none text-white font-mc text-xl placeholder:text-[#58585a]"
+            placeholder={searchMode === 'ai' ? "Describe idea..." : "Search knowledge..."}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          {searchMode === 'ai' && <span className="material-symbols-rounded text-indigo-500 animate-pulse">auto_awesome</span>}
+          {searchMode === 'ai' && <span className="material-symbols-rounded text-[#b465f5] animate-pulse">auto_awesome</span>}
         </div>
 
         {/* Configuration Row: Search Mode & Tag Filters */}
         <div className="mt-4 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
            {/* Mode Selection */}
            <div className="flex gap-2 items-center">
-             <span className="text-xs font-bold text-slate-400 uppercase tracking-wide mr-2">Mode</span>
+             <span className="text-xs font-bold text-[#b0b0b0] font-mc uppercase tracking-wide mr-2">Mode</span>
              <Chip 
                label="Keywords" 
                selected={searchMode === 'keyword'} 
@@ -74,7 +74,7 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
            {/* Tag Filters (Dropdown) */}
            <div className="w-full md:w-48">
              <Select 
-               label="Filter by Tag"
+               label="Filter"
                options={['All', ...PREDEFINED_TAGS]}
                value={filterTag}
                onChange={(val) => setFilterTag(val)}
@@ -84,24 +84,23 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
       </div>
 
       {/* Content Stream */}
-      <div className="space-y-4 pt-2">
+      <div className="space-y-4 pt-4">
         {filteredItems.length === 0 ? (
            <div className="text-center py-20 opacity-50">
-             <span className="material-symbols-rounded text-[48px] mb-2 block">content_paste_off</span>
-             <p>No knowledge found.</p>
+             <span className="material-symbols-rounded text-[48px] text-[#b0b0b0] mb-2 block">content_paste_off</span>
+             <p className="font-mc text-xl text-[#b0b0b0]">No knowledge found.</p>
            </div>
         ) : (
           filteredItems.map(item => (
             <Card 
               key={item.id} 
-              variant="elevated" 
               onClick={() => onNavigate(Page.DETAIL, item.id)}
-              className="group relative overflow-hidden"
+              className="group relative"
             >
               <div className="flex justify-between items-start mb-2">
-                <h3 className="text-xl font-bold text-slate-900">{item.title}</h3>
+                <h3 className="text-xl font-bold font-mc text-white tracking-wide">{item.title}</h3>
                 {item.status === 'pending' && (
-                  <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full font-bold uppercase tracking-wider">
+                  <span className="bg-[#FFA500] border-2 border-[#fff] text-[#313233] text-xs px-2 py-0 font-bold uppercase tracking-wider font-mc">
                     Reviewing
                   </span>
                 )}
@@ -109,25 +108,25 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
 
               <div className="flex gap-2 mb-3">
                 {item.tags.map(tag => (
-                  <span key={tag} className="text-xs font-medium px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-600">
+                  <span key={tag} className="text-xs font-mc text-[#b0b0b0] px-2 py-1 bg-[#1e1e1f] border border-[#5b5b5c]">
                     {tag}
                   </span>
                 ))}
               </div>
 
-              <p className="text-slate-600 text-sm line-clamp-3 mb-4 leading-relaxed">
+              <p className="text-[#e0e0e0] text-sm line-clamp-3 mb-4 leading-relaxed font-mono">
                 {item.content.replace(/[#*`]/g, '')}
               </p>
               
-              <div className="flex items-center gap-3 mt-auto pt-3 border-t border-slate-100">
+              <div className="flex items-center gap-3 mt-auto pt-3 border-t-2 border-[#1e1e1f]">
                 <Avatar name={item.author.name} src={item.author.avatar} size="sm" />
                 <div className="flex flex-col">
-                  <span className="text-xs font-bold text-slate-700">{item.author.name}</span>
-                  <span className="text-[10px] text-slate-400">{new Date(item.createdAt).toLocaleDateString()}</span>
+                  <span className="text-xs font-bold font-mc text-[#b0b0b0]">{item.author.name}</span>
+                  <span className="text-[10px] text-[#707070] font-mc">{new Date(item.createdAt).toLocaleDateString()}</span>
                 </div>
                 {item.aiClues && (
-                  <div className="ml-auto text-[10px] text-indigo-400 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="material-symbols-rounded text-[12px]">auto_awesome</span>
+                  <div className="ml-auto text-[10px] text-[#b465f5] flex items-center gap-1 font-mc">
+                    <span className="material-symbols-rounded text-[14px]">auto_awesome</span>
                     Enhanced
                   </div>
                 )}

@@ -19,44 +19,89 @@ const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | nul
 
   const isAuthorOrAdmin = currentUser?.id === item.author.id || currentUser?.role === 'admin';
 
+  // Simple Markdown Parser with Code Block Protection
+  const parseMarkdown = (text: string) => {
+    const codeBlocks: string[] = [];
+    const inlineCodes: string[] = [];
+
+    const escapeHtml = (unsafe: string) => {
+        return unsafe
+             .replace(/&/g, "&amp;")
+             .replace(/</g, "&lt;")
+             .replace(/>/g, "&gt;")
+             .replace(/"/g, "&quot;")
+             .replace(/'/g, "&#039;");
+    };
+
+    // 1. Extract and hide Code Blocks (```...```)
+    let processed = text.replace(/```([\s\S]*?)```/g, (match, code) => {
+        codeBlocks.push(escapeHtml(code)); // Escape code content
+        return `___CODE_BLOCK_${codeBlocks.length - 1}___`;
+    });
+
+    // 2. Extract and hide Inline Code (`...`)
+    processed = processed.replace(/`([^`]+)`/g, (match, code) => {
+        inlineCodes.push(escapeHtml(code)); // Escape code content
+        return `___INLINE_CODE_${inlineCodes.length - 1}___`;
+    });
+
+    // 3. Process Standard Markdown (Images, Bold, Italic, Strike, Underline)
+    processed = processed
+        .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" class="border-2 border-[#1e1e1f] my-4 max-w-full"/>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white">$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em class="text-[#b0b0b0]">$1</em>')
+        .replace(/~~(.*?)~~/g, '<del>$1</del>')
+        .replace(/<u>(.*?)<\/u>/g, '<u class="decoration-2">$1</u>');
+
+    // 4. Restore Inline Code
+    processed = processed.replace(/___INLINE_CODE_(\d+)___/g, (match, index) => {
+        return `<code class="bg-[#1e1e1f] text-[#3C8527] px-1 border border-[#5b5b5c] font-mono">${inlineCodes[parseInt(index)]}</code>`;
+    });
+
+    // 5. Restore Code Blocks
+    processed = processed.replace(/___CODE_BLOCK_(\d+)___/g, (match, index) => {
+        return `<pre class="bg-[#151515] border-2 border-[#5b5b5c] p-4 my-4 overflow-x-auto text-[#3C8527]"><code class="font-mono">${codeBlocks[parseInt(index)]}</code></pre>`;
+    });
+
+    // 6. Handle Paragraphs/Newlines (Simple)
+    // Wrap text not in tags with <p>? Or just replace \n\n with <br/><br/>
+    // For this simple view, we used whitespace-pre-wrap in CSS, so newlines are handled by CSS. 
+    // However, if we stripped out blocks, we might want to ensure the placeholders are respected.
+    // The previous implementation didn't do complex paragraph parsing, so we leave it as is.
+    
+    return processed;
+  };
+
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8 pb-32">
+    <div className="max-w-4xl mx-auto px-4 py-8 pb-32">
        <div className="mb-6 flex items-start justify-between">
          <IconButton icon="arrow_back" onClick={() => onNavigate(Page.HOME)} />
          {isAuthorOrAdmin && (
            <div className="flex gap-2">
              <IconButton icon="edit" title="Edit" />
-             <IconButton icon="delete" title="Delete" onClick={() => setDeleteDialogOpen(true)} className="text-red-600 hover:bg-red-50" />
+             <IconButton icon="delete" title="Delete" onClick={() => setDeleteDialogOpen(true)} className="!bg-[#8B0000] !border-[#B22222]" />
            </div>
          )}
        </div>
 
-       <article className="prose prose-slate prose-lg max-w-none">
-          <h1 className="text-4xl font-bold text-slate-900 mb-4">{item.title}</h1>
+       <article className="prose prose-invert prose-lg max-w-none">
+          <h1 className="text-4xl font-bold font-mc text-white mb-4 border-b-4 border-[#1e1e1f] pb-2">{item.title}</h1>
           
-          <div className="flex items-center gap-3 mb-8 not-prose border-b border-slate-100 pb-6">
+          <div className="flex items-center gap-3 mb-8 not-prose border-b-2 border-[#1e1e1f] pb-6">
              <Avatar name={item.author.name} src={item.author.avatar} />
              <div>
-               <div className="font-bold text-slate-900">{item.author.name}</div>
-               <div className="text-slate-500 text-sm">Published on {new Date(item.createdAt).toLocaleDateString()}</div>
+               <div className="font-bold font-mc text-white">{item.author.name}</div>
+               <div className="text-[#b0b0b0] font-mono text-sm">Published {new Date(item.createdAt).toLocaleDateString()}</div>
              </div>
              {item.status === 'pending' && (
-                <span className="ml-auto bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold uppercase">Pending Review</span>
+                <span className="ml-auto bg-[#FFA500] text-black px-3 py-1 font-mc text-xs font-bold uppercase border-2 border-white">Pending</span>
              )}
           </div>
 
           <div 
-             className="bg-slate-50 rounded-[20px] p-6 md:p-10 mb-8 border border-slate-100 shadow-sm min-h-[300px] whitespace-pre-wrap font-roboto text-slate-800 leading-relaxed"
+             className="bg-[#2b2b2b] border-2 border-[#1e1e1f] p-6 md:p-10 mb-8 font-mono text-[#e0e0e0] leading-relaxed shadow-[inset_0_0_20px_rgba(0,0,0,0.5)] whitespace-pre-wrap"
              dangerouslySetInnerHTML={{
-                 __html: item.content
-                     // Very basic markdown parsing simulation for display purposes
-                     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                     .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                     .replace(/~~(.*?)~~/g, '<del>$1</del>')
-                     .replace(/<u>(.*?)<\/u>/g, '<u>$1</u>')
-                     .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" class="rounded-xl my-4 max-w-full"/>')
-                     .replace(/`([^`]+)`/g, '<code class="bg-slate-200 px-1 rounded">$1</code>')
-                     .replace(/```([\s\S]*?)```/g, '<pre class="bg-slate-800 text-white p-4 rounded-xl my-4 overflow-x-auto"><code>$1</code></pre>')
+                 __html: parseMarkdown(item.content)
              }}
           />
        </article>
@@ -64,7 +109,7 @@ const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | nul
        {/* Attachments Section */}
        {item.attachments && item.attachments.length > 0 && (
            <div className="mb-8">
-               <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+               <h3 className="text-lg font-bold font-mc text-white mb-4 flex items-center gap-2">
                    <span className="material-symbols-rounded">attachment</span>
                    Attachments
                </h3>
@@ -75,16 +120,16 @@ const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | nul
                          href={att.url} 
                          target="_blank" 
                          rel="noopener noreferrer"
-                         className="flex items-center gap-4 p-4 rounded-xl bg-white border border-slate-200 hover:border-indigo-300 hover:shadow-md transition-all group"
+                         className="flex items-center gap-4 p-4 bg-[#313233] border-2 border-b-[#1e1e1f] border-r-[#1e1e1f] border-t-[#5b5b5c] border-l-[#5b5b5c] hover:bg-[#3a3b3c] active:border-t-[#1e1e1f]"
                        >
-                           <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
-                               <span className="material-symbols-rounded">description</span>
+                           <div className="w-10 h-10 bg-[#1e1e1f] flex items-center justify-center border border-[#5b5b5c]">
+                               <span className="material-symbols-rounded text-[#b0b0b0]">description</span>
                            </div>
                            <div className="overflow-hidden">
-                               <div className="font-medium text-slate-900 truncate">{att.name}</div>
-                               <div className="text-xs text-slate-500 truncate">{att.url}</div>
+                               <div className="font-medium font-mc text-white truncate">{att.name}</div>
+                               <div className="text-xs font-mono text-[#b0b0b0] truncate">{att.url}</div>
                            </div>
-                           <span className="material-symbols-rounded ml-auto text-slate-400">open_in_new</span>
+                           <span className="material-symbols-rounded ml-auto text-[#b0b0b0]">open_in_new</span>
                        </a>
                    ))}
                </div>
@@ -92,24 +137,24 @@ const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | nul
        )}
 
        {item.aiClues && (
-         <div className="mt-8 p-4 bg-indigo-50 rounded-xl border border-indigo-100 text-indigo-900 text-sm">
-           <span className="font-bold mr-2">✨ AI Clues:</span>
+         <div className="mt-8 p-4 bg-[#2b2b2b] border-2 border-[#b465f5] text-[#b465f5] text-sm font-mc shadow-[4px_4px_0_0_#000]">
+           <span className="font-bold mr-2 text-white">AI Clues:</span>
            {item.aiClues}
          </div>
        )}
 
        <Dialog 
          open={deleteDialogOpen} 
-         title="Delete Knowledge?" 
+         title="Confirm Deletion" 
          onClose={() => setDeleteDialogOpen(false)}
          actions={
            <>
              <Button variant="text" label="Cancel" onClick={() => setDeleteDialogOpen(false)} />
-             <Button variant="filled" label="Delete" onClick={handleDelete} className="bg-red-600 hover:bg-red-700" />
+             <Button variant="filled" label="Delete" onClick={handleDelete} className="!bg-[#8B0000] !border-[#B22222]" />
            </>
          }
        >
-         Are you sure you want to delete <strong>{item.title}</strong>? This action cannot be undone.
+         Are you sure you want to delete <strong className="text-white">{item.title}</strong>? <br/> This action cannot be undone.
        </Dialog>
     </div>
   );
