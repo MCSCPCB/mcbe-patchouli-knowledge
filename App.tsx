@@ -57,7 +57,7 @@ const App: React.FC = () => {
 
   // Navigation Logic
   const goTo = (page: Page, itemId?: string) => {
-    if (itemId) setSelectedItemId(itemId);
+    setSelectedItemId(itemId || null);
     setCurrentPage(page);
     window.scrollTo(0, 0);
   };
