@@ -1,0 +1,7 @@
+{
+  "name": "mcbe-patchouli-knowledge",  // 和仓库同名
+  "compatibility_date": "2026-01-24",
+  "assets": {
+    "directory": "./dist"
+  }
+}
