@@ -1,24 +1,55 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { AppContext } from '../App';
-import { Page } from '../types';
+import { Page, KnowledgeItem } from '../types';
 import { IconButton, Switch, Avatar, Chip } from '../components/M3Components';
+import { getPendingPosts, approvePost, rejectPost, toggleUserBan, getAllUsers } from '../services/knowledgeService'; // Import
 
 const AdminPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) => {
   const { items, setItems, users, setUsers } = useContext(AppContext);
   const [activeTab, setActiveTab] = useState<'audit' | 'users'>('audit');
+  
+  // Local state for pending items (since global 'items' usually stores published ones)
+  const [pendingItems, setPendingItems] = useState<KnowledgeItem[]>([]); 
 
-  const pendingItems = items.filter(i => i.status === 'pending');
+  // Load data based on tab
+  useEffect(() => {
+    if (activeTab === 'audit') {
+        getPendingPosts().then(setPendingItems);
+    } else {
+        getAllUsers().then(setUsers);
+    }
+  }, [activeTab, setUsers]);
 
-  const handleApprove = (id: string) => {
-    setItems(items.map(i => i.id === id ? { ...i, status: 'published' } : i));
+  const handleApprove = async (id: string) => {
+    try {
+        await approvePost(id);
+        // Remove from local pending list
+        setPendingItems(prev => prev.filter(i => i.id !== id));
+    } catch (e) {
+        alert("Action failed");
+    }
   };
 
-  const handleReject = (id: string) => {
-    setItems(items.map(i => i.id === id ? { ...i, status: 'rejected' } : i));
+  const handleReject = async (id: string) => {
+    try {
+        await rejectPost(id);
+        setPendingItems(prev => prev.filter(i => i.id !== id));
+    } catch (e) {
+        alert("Action failed");
+    }
   };
 
-  const toggleBan = (userId: string) => {
-    setUsers(users.map(u => u.id === userId ? { ...u, banned: !u.banned } : u));
+  const toggleBan = async (userId: string) => {
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+    
+    try {
+        await toggleUserBan(userId, !user.banned);
+        // Update local state
+        setUsers(users.map(u => u.id === userId ? { ...u, banned: !u.banned } : u));
+    } catch (e) {
+        alert("Action failed");
+    }
   };
 
   return (
