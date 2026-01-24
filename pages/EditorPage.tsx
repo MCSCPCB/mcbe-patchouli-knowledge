@@ -2,10 +2,10 @@ import React, { useState, useContext } from 'react';
 import { AppContext } from '../App';
 import { Page, KnowledgeItem, PREDEFINED_TAGS, Attachment } from '../types';
 import { Button, IconButton, TextField, Select, Chip, RichMarkdownEditor } from '../components/M3Components';
-import { generateSearchClues } from '../services/knowledgeService';
+import { generateSearchClues, createPost, getRecentPosts } from '../services/knowledgeService'; // Import
 
 const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) => {
-  const { items, setItems, currentUser } = useContext(AppContext);
+  const { setItems, currentUser } = useContext(AppContext);
   
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -13,6 +13,7 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
   const [aiClues, setAiClues] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [isSaving, setIsSaving] = useState(false); // Added loading state
 
   const handleTagChange = (tag: string) => {
     if (!tags.includes(tag)) {
@@ -46,23 +47,29 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
       }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!title || !content || !currentUser) return;
+    setIsSaving(true);
     
-    const newItem: KnowledgeItem = {
-      id: Date.now().toString(),
-      title,
-      content,
-      tags,
-      aiClues,
-      author: currentUser,
-      status: 'pending', // Default to pending
-      createdAt: new Date().toISOString(),
-      attachments: attachments
-    };
-    
-    setItems([newItem, ...items]);
-    onNavigate(Page.HOME);
+    try {
+        await createPost({
+            title,
+            content,
+            tags,
+            aiClues,
+            attachments
+        });
+
+        // Refresh items (so user sees their new post if they are admin, or just refresh logic)
+        const posts = await getRecentPosts();
+        setItems(posts);
+
+        onNavigate(Page.HOME);
+    } catch (e) {
+        alert("Failed to save post: " + e);
+    } finally {
+        setIsSaving(false);
+    }
   };
 
   return (
@@ -71,7 +78,7 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
       <div className="flex items-center justify-between mb-6 bg-[#313233] p-2 border-b-2 border-[#1e1e1f] sticky top-16 z-20">
         <IconButton icon="arrow_back" onClick={() => onNavigate(Page.HOME)} />
         <h2 className="text-xl font-bold font-mc text-white uppercase">New Entry</h2>
-        <Button label="Save" onClick={handleSubmit} variant="success" disabled={!title || !content} />
+        <Button label={isSaving ? "Saving..." : "Save"} onClick={handleSubmit} variant="success" disabled={!title || !content || isSaving} />
       </div>
 
       <div className="space-y-6">
