@@ -5,7 +5,7 @@ import { IconButton, Dialog, Button, Avatar } from '../components/M3Components';
 import { deletePost, getRecentPosts } from '../services/knowledgeService'; // Import
 
 const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | null }> = ({ onNavigate, itemId }) => {
-  const { items, setItems, currentUser } = useContext(AppContext);
+  const { items, setItems, currentUser, refreshData } = useContext(AppContext);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const item = items.find(i => i.id === itemId);
@@ -18,6 +18,7 @@ const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | nul
         // Refresh local items
         const posts = await getRecentPosts();
         setItems(posts);
+        await refreshData();
         
         setDeleteDialogOpen(false);
         onNavigate(Page.HOME);
