@@ -2,6 +2,7 @@ import React, { useContext, useState } from 'react';
 import { AppContext } from '../App';
 import { Page } from '../types';
 import { IconButton, Dialog, Button, Avatar } from '../components/M3Components';
+import { deletePost, getRecentPosts } from '../services/knowledgeService'; // Import
 
 const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | null }> = ({ onNavigate, itemId }) => {
   const { items, setItems, currentUser } = useContext(AppContext);
@@ -11,10 +12,18 @@ const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | nul
 
   if (!item) return <div>Item not found</div>;
 
-  const handleDelete = () => {
-    setItems(items.filter(i => i.id !== item.id));
-    setDeleteDialogOpen(false);
-    onNavigate(Page.HOME);
+  const handleDelete = async () => {
+    try {
+        await deletePost(item.id);
+        // Refresh local items
+        const posts = await getRecentPosts();
+        setItems(posts);
+        
+        setDeleteDialogOpen(false);
+        onNavigate(Page.HOME);
+    } catch (e) {
+        alert("Delete failed");
+    }
   };
 
   const isAuthorOrAdmin = currentUser?.id === item.author.id || currentUser?.role === 'admin';
