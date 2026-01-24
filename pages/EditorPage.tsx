@@ -1,165 +1,208 @@
-import React, { useState, useContext } from 'react';
-import { AppContext } from '../App';
-import { Page, KnowledgeItem, PREDEFINED_TAGS, Attachment } from '../types';
-import { Button, IconButton, TextField, Select, Chip, RichMarkdownEditor } from '../components/M3Components';
-import { generateSearchClues } from '../services/geminiService';
+import React, { useState } from 'react';
+import { User, KnowledgeType, Attachment } from '../types';
+import { generateSearchClues, createPost, uploadFile } from '../services/knowledgeService';
 
-const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) => {
-  const { items, setItems, currentUser } = useContext(AppContext);
-  
+interface EditorPageProps {
+  currentUser: User;
+  onCancel: () => void;
+  onSuccess: () => void;
+}
+
+export default function EditorPage({ currentUser, onCancel, onSuccess }: EditorPageProps) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [tags, setTags] = useState<string[]>([]);
-  const [aiClues, setAiClues] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [type, setType] = useState<KnowledgeType>('script');
+  const [searchClues, setSearchClues] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  
+  // Loading states
+  const [isGeneratingClues, setIsGeneratingClues] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
-  const handleTagChange = (tag: string) => {
-    if (!tags.includes(tag)) {
-        setTags([...tags, tag]);
-    }
-  };
-
+  // 1. 生成 AI 线索
   const handleGenerateClues = async () => {
     if (!content) return;
-    setIsGenerating(true);
+    setIsGeneratingClues(true);
     try {
       const clues = await generateSearchClues(content);
-      setAiClues(clues);
-    } catch (e) {
-      alert("AI Service Unavailable");
+      setSearchClues(clues);
+    } catch (error) {
+      alert('AI 生成失败，请稍后重试');
     } finally {
-      setIsGenerating(false);
+      setIsGeneratingClues(false);
     }
   };
 
-  const handleAddAttachment = () => {
-      const url = prompt("Enter attachment URL (file/link):");
-      if(url) {
-          const name = prompt("Enter attachment name:") || "Attachment";
-          setAttachments([...attachments, {
-              id: Date.now().toString(),
-              name,
-              type: 'link', // Simplification
-              url
-          }]);
+  // 2. 上传文件
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setIsUploading(true);
+      try {
+        const url = await uploadFile(file);
+        setAttachments(prev => [...prev, {
+          id: Date.now().toString(),
+          name: file.name,
+          url: url,
+          type: file.name.split('.').pop() || 'file'
+        }]);
+      } catch (error) {
+        console.error(error);
+        alert('文件上传失败');
+      } finally {
+        setIsUploading(false);
       }
+    }
   };
 
-  const handleSubmit = () => {
-    if (!title || !content || !currentUser) return;
+  // 3. 提交表单
+  const handleSubmit = async () => {
+    if (!title || !content || !searchClues) {
+      alert('请填写标题、内容并生成检索线索');
+      return;
+    }
     
-    const newItem: KnowledgeItem = {
-      id: Date.now().toString(),
-      title,
-      content,
-      tags,
-      aiClues,
-      author: currentUser,
-      status: 'pending', // Default to pending
-      createdAt: new Date().toISOString(),
-      attachments: attachments
-    };
-    
-    setItems([newItem, ...items]);
-    onNavigate(Page.HOME);
+    setIsSubmitting(true);
+    try {
+      await createPost({
+        title,
+        content,
+        type,
+        attachments,
+        searchClues
+      });
+      alert('投稿成功！请等待管理员审核。');
+      onSuccess();
+    } catch (error) {
+      console.error(error);
+      alert('提交失败: ' + (error as Error).message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 pb-24">
-      {/* Header Actions */}
-      <div className="flex items-center justify-between mb-6 bg-[#313233] p-2 border-b-2 border-[#1e1e1f] sticky top-16 z-20">
-        <IconButton icon="arrow_back" onClick={() => onNavigate(Page.HOME)} />
-        <h2 className="text-xl font-bold font-mc text-white uppercase">New Entry</h2>
-        <Button label="Save" onClick={handleSubmit} variant="success" disabled={!title || !content} />
+    <div className="flex flex-col gap-6 animate-fade-in-up pb-20">
+      <div className="flex items-center gap-4 mb-2">
+        <button onClick={onCancel} className="p-2 -ml-2 rounded-full hover:bg-black/5">
+           <span className="material-symbols-rounded">arrow_back</span>
+        </button>
+        <h2 className="text-2xl font-normal text-[#191C1E]">新建知识</h2>
       </div>
 
-      <div className="space-y-6">
-        <TextField 
-          label="Title" 
-          value={title} 
-          onChange={(e) => setTitle(e.target.value)} 
-          placeholder="e.g., Diamond Mining Logic"
-        />
+      {/* Title */}
+      <div className="flex flex-col gap-1">
+         <label className="text-xs text-[#40484C] font-medium ml-1">标题</label>
+         <input 
+           className="w-full bg-[#EEF1F4] rounded-t-[4px] border-b border-[#70787D] px-4 py-3 outline-none focus:border-[#00668B] focus:bg-[#E6E8EB] transition-colors text-lg"
+           placeholder="输入知识标题"
+           value={title}
+           onChange={(e) => setTitle(e.target.value)}
+         />
+      </div>
 
-        {/* Tag Selection */}
-        <div className="bg-[#313233] p-4 border-2 border-t-[#5b5b5c] border-l-[#5b5b5c] border-b-[#1e1e1f] border-r-[#1e1e1f]">
-           <div className="mb-4">
-             <Select 
-                label="Category Tag"
-                options={PREDEFINED_TAGS}
-                value=""
-                onChange={handleTagChange}
-                placeholder="Add Tag..."
-             />
-           </div>
-           
-           <div className="flex flex-wrap gap-2">
-             {tags.map(tag => (
-               <Chip key={tag} label={tag} onDelete={() => setTags(tags.filter(t => t !== tag))} selected />
-             ))}
-             {tags.length === 0 && <span className="text-sm font-mc text-[#707070]">No tags selected</span>}
-           </div>
+      {/* Type Chips */}
+      <div className="flex flex-col gap-2">
+        <label className="text-xs text-[#40484C] font-medium ml-1">类型标签</label>
+        <div className="flex gap-2">
+          {(['script', 'block', 'entity'] as KnowledgeType[]).map(t => (
+            <button
+              key={t}
+              onClick={() => setType(t)}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                 type === t 
+                 ? 'bg-[#001D32] text-white border-[#001D32]' 
+                 : 'border-[#70787D] text-[#40484C]'
+              }`}
+            >
+              {t}
+            </button>
+          ))}
         </div>
+      </div>
 
-        {/* Rich Text Editor */}
-        <RichMarkdownEditor 
-          label="Content" 
-          value={content} 
-          onChange={setContent}
-          onAddAttachment={handleAddAttachment}
-        />
+      {/* Content */}
+      <div className="flex flex-col gap-1">
+         <label className="text-xs text-[#40484C] font-medium ml-1">详细内容 (Markdown)</label>
+         <textarea 
+           className="w-full h-64 bg-[#EEF1F4] rounded-[12px] border border-transparent px-4 py-3 outline-none focus:border-[#00668B] transition-colors resize-none font-mono text-sm leading-relaxed"
+           placeholder="在此输入正文..."
+           value={content}
+           onChange={(e) => setContent(e.target.value)}
+         />
+      </div>
 
-        {/* Attachment List Preview */}
-        {attachments.length > 0 && (
-            <div className="bg-[#1e1e1f] border-2 border-[#5b5b5c] p-4">
-                <h4 className="text-xs font-bold font-mc uppercase text-[#b0b0b0] mb-3">Attachments ({attachments.length})</h4>
-                <div className="space-y-2">
-                    {attachments.map(att => (
-                        <div key={att.id} className="flex items-center gap-3 bg-[#313233] p-2 border border-[#000]">
-                            <span className="material-symbols-rounded text-[#b0b0b0]">attachment</span>
-                            <span className="text-sm font-mono text-white flex-1 truncate">{att.name}</span>
-                            <IconButton 
-                                icon="delete" 
-                                className="w-8 h-8 !bg-[#8B0000] !border-[#B22222]" 
-                                onClick={() => setAttachments(attachments.filter(a => a.id !== att.id))} 
-                            />
-                        </div>
-                    ))}
-                </div>
-            </div>
-        )}
+      {/* Attachments */}
+      <div className="flex flex-col gap-2">
+        <div className="flex justify-between items-center ml-1">
+           <label className="text-xs text-[#40484C] font-medium">附件</label>
+           {isUploading && <span className="text-xs text-[#00668B]">上传中...</span>}
+        </div>
+        <div className="flex flex-wrap gap-2">
+           {attachments.map(att => (
+             <div key={att.id} className="flex items-center gap-2 bg-[#E1E2E4] pl-3 pr-1 py-1 rounded-lg text-sm">
+                <span className="truncate max-w-[150px]">{att.name}</span>
+                <button 
+                  onClick={() => setAttachments(attachments.filter(a => a.id !== att.id))}
+                  className="p-1 rounded-full hover:bg-black/10"
+                >
+                  <span className="material-symbols-rounded text-base">close</span>
+                </button>
+             </div>
+           ))}
+           <label className="flex items-center gap-1 px-3 py-1.5 border border-[#70787D] rounded-lg text-sm font-medium text-[#40484C] cursor-pointer hover:bg-black/5">
+              <span className="material-symbols-rounded text-base">upload_file</span>
+              添加文件
+              <input type="file" className="hidden" onChange={handleFileUpload} />
+           </label>
+        </div>
+      </div>
 
-        {/* AI Clue Generator Section */}
-        <div className="p-4 bg-[#2b2b2b] border-2 border-[#b465f5]">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2 text-[#b465f5]">
-               <span className="material-symbols-rounded">auto_awesome</span>
-               <h3 className="font-bold font-mc text-sm uppercase tracking-wide">AI Keywords</h3>
-            </div>
-            <Button 
-              variant="tonal" 
-              label={isGenerating ? "..." : "Generate"} 
-              icon={!isGenerating ? "refresh" : undefined}
+      {/* AI Clue Generator */}
+      <div className="p-4 rounded-[16px] bg-[#D0F8FF]/30 border border-[#D0F8FF] flex flex-col gap-3">
+         <div className="flex justify-between items-center">
+            <h3 className="text-sm font-medium text-[#001E2C] flex items-center gap-1">
+               <span className="material-symbols-rounded text-base text-[#00668B]">auto_awesome</span>
+               检索线索 (AI)
+            </h3>
+            <button 
               onClick={handleGenerateClues}
-              disabled={isGenerating || !content}
-              className="h-8 text-xs px-4"
-            />
-          </div>
-          
-          <div className="bg-[#1e1e1f] border-2 border-t-[#000] border-l-[#000] border-b-[#5b5b5c] border-r-[#5b5b5c] p-2">
-               <textarea
-                 className="w-full bg-transparent outline-none text-[#e0e0e0] font-mono text-sm"
-                 rows={3}
-                 value={aiClues}
-                 onChange={(e) => setAiClues(e.target.value)}
-                 placeholder="Clues will appear here..."
-               />
-          </div>
-        </div>
+              disabled={!content || isGeneratingClues}
+              className="text-xs font-bold text-[#00668B] px-3 py-1 rounded-full hover:bg-[#D0F8FF] transition-colors disabled:opacity-50"
+            >
+              {isGeneratingClues ? '生成中...' : '✨ 生成/刷新'}
+            </button>
+         </div>
+         
+         <p className="text-xs text-[#40484C]">
+           AI 将分析正文内容生成以下线索，用于增强搜索匹配度。你可以手动修改。
+         </p>
+         
+         <textarea 
+           className="w-full h-24 bg-[#FDFDFD] rounded-[8px] border border-[#70787D]/30 p-3 text-sm outline-none focus:border-[#00668B]"
+           value={searchClues}
+           onChange={(e) => setSearchClues(e.target.value)}
+           placeholder="点击上方按钮自动生成..."
+         />
+      </div>
+
+      {/* Submit */}
+      <div className="flex gap-4 mt-4">
+         <button 
+           onClick={onCancel}
+           className="flex-1 h-12 rounded-full border border-[#70787D] text-[#001D32] font-medium hover:bg-black/5"
+         >
+           取消
+         </button>
+         <button 
+           onClick={handleSubmit}
+           disabled={isSubmitting}
+           className="flex-1 h-12 rounded-full bg-[#00668B] text-white font-medium shadow-md hover:shadow-lg active:scale-95 transition-all disabled:opacity-70"
+         >
+           {isSubmitting ? '提交中...' : '提交审核'}
+         </button>
       </div>
     </div>
   );
-};
-
-export default EditorPage;
+}
