@@ -26,7 +26,9 @@ const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | nul
     }
   };
 
-  const isAuthorOrAdmin = currentUser?.id === item.author.id || currentUser?.role === 'admin';
+  
+  const canEdit = (currentUser?.role === 'admin') || 
+                (currentUser?.id === item.author.id && item.status === 'pending');
 
   // Simple Markdown Parser with Code Block Protection
   const parseMarkdown = (text: string) => {
