@@ -1,168 +1,149 @@
 import React, { useState, useEffect } from 'react';
-import { User, KnowledgeItem, Page, Variant } from './types';
-import { Button, IconButton, Avatar, Dialog } from './components/M3Components';
-
-// Pages
-import LoginPage from './pages/LoginPage';
+import { M3Theme, M3NavigationRail, M3IconButton, M3Avatar } from './components/M3Components';
 import HomePage from './pages/HomePage';
+import LoginPage from './pages/LoginPage';
 import EditorPage from './pages/EditorPage';
 import DetailPage from './pages/DetailPage';
 import AdminPage from './pages/AdminPage';
+import { User, KnowledgePost } from './types';
+import { supabase } from './services/supabaseClient'; // 确保你已经创建了这个文件
 
-// --- Global Context for simplicity in this demo ---
-export const AppContext = React.createContext<{
-  currentUser: User | null;
-  setCurrentUser: (u: User | null) => void;
-  items: KnowledgeItem[];
-  setItems: (i: KnowledgeItem[]) => void;
-  users: User[];
-  setUsers: (u: User[]) => void;
-  currentPage: Page;
-  setCurrentPage: (p: Page) => void;
-  selectedItemId: string | null;
-  setSelectedItemId: (id: string | null) => void;
-}>({
-  currentUser: null,
-  setCurrentUser: () => {},
-  items: [],
-  setItems: () => {},
-  users: [],
-  setUsers: () => {},
-  currentPage: Page.LOGIN,
-  setCurrentPage: () => {},
-  selectedItemId: null,
-  setSelectedItemId: () => {},
-});
-
-// --- Mock Data Initialization ---
-const MOCK_USERS: User[] = [
-  { id: '1', name: 'Patchouli', avatar: 'https://picsum.photos/200', role: 'admin' },
-  { id: '2', name: 'Marisa', avatar: 'https://picsum.photos/201', role: 'user' },
-  { id: '3', name: 'Alice', avatar: 'https://picsum.photos/202', role: 'user', banned: true },
-];
-
-const MOCK_ITEMS: KnowledgeItem[] = [
-  {
-    id: '101',
-    title: 'Grimoire Maintenance Protocols',
-    content: '# Protocols\n\nAlways keep the library dry.\n\n## Humidity Control\nUse magic stones to absorb moisture.',
-    tags: ['Script', 'Entity'],
-    status: 'published',
-    author: MOCK_USERS[0],
-    createdAt: '2023-10-24T10:00:00Z',
-    aiClues: 'Book preservation, Library magic, Environment control'
-  },
-  {
-    id: '102',
-    title: 'Advanced Spell Casting',
-    content: 'Focus on your breathing.',
-    tags: ['Block'],
-    status: 'pending',
-    author: MOCK_USERS[1],
-    createdAt: '2023-10-25T14:30:00Z',
-    aiClues: 'Magic technique, Breathing exercise'
-  }
-];
-
-const App: React.FC = () => {
+export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [items, setItems] = useState<KnowledgeItem[]>(MOCK_ITEMS);
-  const [users, setUsers] = useState<User[]>(MOCK_USERS);
-  const [currentPage, setCurrentPage] = useState<Page>(Page.LOGIN);
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [currentRoute, setCurrentRoute] = useState<'home' | 'login' | 'editor' | 'detail' | 'admin'>('home');
+  const [selectedPost, setSelectedPost] = useState<KnowledgePost | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Navigation Logic
-  const goTo = (page: Page, itemId?: string) => {
-    if (itemId) setSelectedItemId(itemId);
-    setCurrentPage(page);
-    window.scrollTo(0, 0);
-  };
-
-  // Check Auth on Init
+  // 初始化：监听 Supabase 登录状态
   useEffect(() => {
-    // Simulate session check
-    const storedUser = localStorage.getItem('patchouli_user');
-    if (storedUser) {
-      setCurrentUser(JSON.parse(storedUser));
-      setCurrentPage(Page.HOME);
-    }
+    // 1. 获取当前会话
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      handleSession(session);
+    });
+
+    // 2. 监听登录/登出变化
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      handleSession(session);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const handleLogin = () => {
-    // Simulate OAuth Login - Pick generic admin
-    const user = MOCK_USERS[0];
-    localStorage.setItem('patchouli_user', JSON.stringify(user));
-    setCurrentUser(user);
-    goTo(Page.HOME);
-  };
+  // 处理会话数据，映射为我们的 User 类型
+  const handleSession = async (session: any) => {
+    if (!session?.user) {
+      setCurrentUser(null);
+      // 如果不在登录页，踢回首页或保留现状（根据需求，这里允许未登录访问首页）
+    } else {
+      // 查询 profiles 表获取角色信息
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
 
-  const handleLogout = () => {
-    localStorage.removeItem('patchouli_user');
-    setCurrentUser(null);
-    goTo(Page.LOGIN);
-  };
-
-  const renderPage = () => {
-    switch (currentPage) {
-      case Page.LOGIN:
-        return <LoginPage onLogin={handleLogin} />;
-      case Page.HOME:
-        return <HomePage onNavigate={goTo} />;
-      case Page.CREATE:
-        return <EditorPage onNavigate={goTo} />;
-      case Page.DETAIL:
-        return <DetailPage onNavigate={goTo} itemId={selectedItemId} />;
-      case Page.ADMIN:
-        return <AdminPage onNavigate={goTo} />;
-      default:
-        return <HomePage onNavigate={goTo} />;
+      if (profile) {
+        setCurrentUser({
+          id: session.user.id,
+          name: profile.github_id || session.user.user_metadata.user_name,
+          avatar: profile.avatar_url || session.user.user_metadata.avatar_url,
+          role: profile.role,
+          isBanned: profile.is_banned
+        });
+      }
     }
+    setIsLoading(false);
   };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setCurrentRoute('login');
+  };
+
+  const navigateTo = (page: 'home' | 'login' | 'editor' | 'detail' | 'admin', post?: KnowledgePost) => {
+    setCurrentRoute(page);
+    if (post) setSelectedPost(post);
+  };
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen bg-[#FDFDFD]">Loading...</div>;
+  }
 
   return (
-    <AppContext.Provider value={{ currentUser, setCurrentUser, items, setItems, users, setUsers, currentPage, setCurrentPage, selectedItemId, setSelectedItemId }}>
-      <div className="min-h-screen bg-[#313233] text-[#E0E0E0] font-sans selection:bg-[#3C8527] selection:text-white">
-        {/* Header (Top App Bar) - Visible everywhere except Login */}
-        {currentPage !== Page.LOGIN && (
-          <header className="fixed top-0 left-0 right-0 h-16 bg-[#313233] z-40 px-4 flex items-center justify-between border-b-4 border-[#1e1e1f] shadow-lg">
-             <div className="flex items-center gap-2 cursor-pointer" onClick={() => goTo(Page.HOME)}>
-               <div className="w-10 h-10 bg-[#3C8527] border-2 border-white flex items-center justify-center">
-                   <span className="material-symbols-rounded text-white">menu_book</span>
-               </div>
-               <span className="font-mc text-2xl tracking-wide text-white drop-shadow-md">Patchouli</span>
-             </div>
-             
-             {currentUser && (
-               <div className="flex items-center gap-2">
-                 {currentUser.role === 'admin' && (
-                    <IconButton 
-                      icon="admin_panel_settings" 
-                      onClick={() => goTo(Page.ADMIN)} 
-                      active={currentPage === Page.ADMIN}
-                      title="Admin Panel"
-                    />
-                 )}
-                 <div className="relative group">
-                   <Avatar name={currentUser.name} src={currentUser.avatar} onClick={() => {}} />
-                   {/* Dropdown Menu */}
-                   <div className="absolute right-0 top-14 w-48 bg-[#313233] border-2 border-white p-1 hidden group-hover:block z-50 shadow-[4px_4px_0_0_#000]">
-                     <div className="px-4 py-2 text-xs text-[#b0b0b0] font-mc uppercase">Account</div>
-                     <button onClick={() => goTo(Page.HOME)} className="w-full text-left px-4 py-3 hover:bg-[#48494a] text-sm mb-1 font-mc text-white">My Knowledge</button>
-                     <button onClick={handleLogout} className="w-full text-left px-4 py-3 hover:bg-[#8B0000] hover:text-white text-[#ff5555] text-sm font-mc">Logout</button>
-                   </div>
-                 </div>
-               </div>
-             )}
-          </header>
-        )}
-        
-        {/* Main Content Area */}
-        <main className={`${currentPage !== Page.LOGIN ? 'pt-20' : ''}`}>
-          {renderPage()}
-        </main>
-      </div>
-    </AppContext.Provider>
-  );
-};
+    <div className="flex h-screen w-full bg-[#FDFDFD] text-[#191C1E] font-sans overflow-hidden">
+      {/* Navigation Rail (Desktop) or Drawer Trigger (Mobile) */}
+      {currentUser && (
+        <M3NavigationRail 
+          className="hidden md:flex z-20"
+          actions={[
+            { icon: 'home', label: '首页', active: currentRoute === 'home', onClick: () => navigateTo('home') },
+            // 只有管理员能看到 admin 入口
+            ...(currentUser.role === 'admin' ? [{ icon: 'admin_panel_settings', label: '管理', active: currentRoute === 'admin', onClick: () => navigateTo('admin') }] : []),
+            { icon: 'add_circle', label: '投稿', active: currentRoute === 'editor', onClick: () => navigateTo('editor') },
+            { icon: 'logout', label: '登出', onClick: handleLogout }
+          ]}
+        >
+          <div className="mb-4">
+             <M3Avatar src={currentUser.avatar} alt={currentUser.name} size="md" />
+          </div>
+        </M3NavigationRail>
+      )}
 
-export default App;
+      {/* Main Content Area */}
+      <main className="flex-1 h-full overflow-y-auto relative scroll-smooth">
+        
+        {/* Top Bar for Mobile / General */}
+        <header className="sticky top-0 z-10 bg-[#FDFDFD]/90 backdrop-blur-md px-4 py-3 flex items-center justify-between border-b border-[#E1E2E4]">
+           <div className="flex items-center gap-3" onClick={() => navigateTo('home')}>
+              <div className="w-8 h-8 rounded-full bg-[#DCE3E9] flex items-center justify-center">
+                 <span className="material-symbols-rounded text-[#40484C]">api</span>
+              </div>
+              <h1 className="text-xl font-medium text-[#191C1E]">Ark Knowledge</h1>
+           </div>
+           
+           {!currentUser && currentRoute !== 'login' && (
+             <button 
+               onClick={() => navigateTo('login')}
+               className="px-4 py-2 bg-[#00668B] text-white rounded-full text-sm font-medium hover:shadow-md transition-all"
+             >
+               登录
+             </button>
+           )}
+        </header>
+
+        <div className="max-w-5xl mx-auto p-4 md:p-6 pb-24">
+          {currentRoute === 'login' && (
+            <LoginPage onLoginSuccess={() => navigateTo('home')} />
+          )}
+
+          {currentRoute === 'home' && (
+            <HomePage 
+              onPostClick={(post) => navigateTo('detail', post)} 
+              onFabClick={() => currentUser ? navigateTo('editor') : navigateTo('login')}
+            />
+          )}
+
+          {currentRoute === 'editor' && currentUser && (
+             <EditorPage 
+               currentUser={currentUser} 
+               onCancel={() => navigateTo('home')} 
+               onSuccess={() => navigateTo('home')}
+             />
+          )}
+
+          {currentRoute === 'detail' && selectedPost && (
+            <DetailPage 
+              post={selectedPost} 
+              currentUser={currentUser}
+              onBack={() => navigateTo('home')}
+            />
+          )}
+
+          {currentRoute === 'admin' && currentUser?.role === 'admin' && (
+             <AdminPage currentUser={currentUser} />
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}
