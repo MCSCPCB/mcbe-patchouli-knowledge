@@ -1,19 +1,20 @@
 import axios from 'axios';
 import { supabase } from './supabaseClient';
-import type { KnowledgePost, KnowledgeType, UserProfile } from '../types';
+import { KnowledgeItem, User, Attachment } from '../types';
 
 /**
- * 数据库行数据接口 (内部使用，对应 Supabase 表结构)
+ * 数据库行结构 (Internal DB Representation)
+ * 这里必须严格对应 init.sql 的表结构
  */
 interface DBPost {
   id: string;
   author_id: string;
   title: string;
   content: string;
-  type: KnowledgeType;
+  tags: string[];      // 修正: 对应 init.sql 的 tags
   attachments: any;
-  search_clues: string;
-  status: 'pending' | 'reviewed';
+  search_clues: string; // 对应 init.sql 的 search_clues
+  status: 'pending' | 'published' | 'rejected'; // 修正: 对应新的枚举
   created_at: string;
   profiles?: {
     github_id: string;
@@ -23,61 +24,48 @@ interface DBPost {
 
 // === AI 功能 ===
 
-/**
- * 调用后端 API 生成检索线索
- */
 export const generateSearchClues = async (content: string): Promise<string> => {
   try {
     const response = await axios.post('/api/generate_clues', { content });
     return response.data.clues;
   } catch (error) {
     console.error('Failed to generate clues:', error);
-    return ''; // 如果失败，返回空字符串让用户手动填
+    return '';
   }
 };
 
-/**
- * 智能检索 (核心功能)
- * 1. AI 分析意图 -> SQL 搜索串
- * 2. 数据库全文检索
- * 3. 结果降级处理
- */
-export const searchKnowledge = async (query: string, mode: 'keyword' | 'ai' = 'keyword'): Promise<KnowledgePost[]> => {
+// === 核心检索功能 ===
+
+export const searchKnowledge = async (query: string, mode: 'keyword' | 'ai' = 'keyword'): Promise<KnowledgeItem[]> => {
   let searchTerms = query;
 
-  // 1. 如果是 AI 模式，先去后端分析意图
   if (mode === 'ai') {
     try {
       const { data } = await axios.post('/api/search_intent', { query });
       if (data.searchStr) {
         searchTerms = data.searchStr;
-        console.log(`[AI Search] Converted "${query}" to "${searchTerms}"`);
       }
     } catch (e) {
       console.warn('AI intent analysis failed, falling back to keyword search');
     }
   }
 
-  // 2. 执行数据库检索
+  // 1. 全文检索 (针对 search_clues)
   let { data, error } = await supabase
     .from('knowledge_posts')
-    .select(`
-      *,
-      profiles ( github_id, avatar_url )
-    `)
-    .eq('status', 'reviewed') // 只能搜到已审核的
+    .select(`*, profiles ( github_id, avatar_url )`)
+    .eq('status', 'published') // 修正: 只查询已发布的
     .textSearch('search_clues', searchTerms, {
       type: 'websearch',
       config: 'english'
     });
 
-  // 3. 降级策略：如果 AI/高级搜索没结果，尝试简单的标题模糊匹配
+  // 2. 降级策略: 标题模糊匹配
   if (!data || data.length === 0) {
-    console.log('[Search] No results found, falling back to title ILIKE');
     const fallback = await supabase
       .from('knowledge_posts')
       .select(`*, profiles ( github_id, avatar_url )`)
-      .eq('status', 'reviewed')
+      .eq('status', 'published')
       .ilike('title', `%${query}%`);
     
     data = fallback.data;
@@ -85,83 +73,46 @@ export const searchKnowledge = async (query: string, mode: 'keyword' | 'ai' = 'k
   }
 
   if (error) throw error;
-  return (data as DBPost[] || []).map(mapDBToPost);
+  return (data as DBPost[] || []).map(mapDBToItem);
 };
 
-// === 常规 CRUD 功能 ===
+// === CRUD 功能 ===
 
-export const getRecentPosts = async (): Promise<KnowledgePost[]> => {
+export const getRecentPosts = async (): Promise<KnowledgeItem[]> => {
   const { data, error } = await supabase
     .from('knowledge_posts')
     .select(`*, profiles ( github_id, avatar_url )`)
-    .eq('status', 'reviewed')
+    .eq('status', 'published') // 修正: 只看 published
     .order('created_at', { ascending: false })
     .limit(20);
 
   if (error) throw error;
-  return (data as DBPost[]).map(mapDBToPost);
+  return (data as DBPost[]).map(mapDBToItem);
 };
 
 export const createPost = async (
-  post: Omit<KnowledgePost, 'id' | 'authorId' | 'authorName' | 'authorAvatar' | 'status' | 'createdAt'>
+  item: Omit<KnowledgeItem, 'id' | 'author' | 'status' | 'createdAt'>
 ) => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
+  // 修正: 插入时映射字段
   const { error } = await supabase.from('knowledge_posts').insert({
     author_id: user.id,
-    title: post.title,
-    content: post.content,
-    type: post.type,
-    attachments: post.attachments,
-    search_clues: post.searchClues,
-    status: 'pending' // 默认待审核
+    title: item.title,
+    content: item.content,
+    tags: item.tags, // 修正: 存入 tags
+    attachments: item.attachments,
+    search_clues: item.aiClues, // 修正: aiClues -> search_clues
+    status: 'pending'
   });
 
   if (error) throw error;
 };
 
-export const uploadFile = async (file: File): Promise<string> => {
-  const fileName = `${Date.now()}_${file.name}`;
-  const { data, error } = await supabase.storage
-    .from('kb-assets') // 确保你在 Supabase 创建了这个 bucket
-    .upload(fileName, file);
+// === 管理员功能 ===
 
-  if (error) throw error;
-  
-  // 获取公开链接
-  const { data: { publicUrl } } = supabase.storage
-    .from('kb-assets')
-    .getPublicUrl(fileName);
-    
-  return publicUrl;
-};
-
-// === 工具函数 ===
-
-// 将数据库下划线字段映射回前端驼峰字段
-function mapDBToPost(row: DBPost): KnowledgePost {
-  return {
-    id: row.id,
-    title: row.title,
-    content: row.content,
-    type: row.type,
-    searchClues: row.search_clues,
-    attachments: row.attachments || [],
-    authorId: row.author_id,
-    authorName: row.profiles?.github_id || 'Unknown',
-    authorAvatar: row.profiles?.avatar_url || '',
-    status: row.status,
-    createdAt: row.created_at
-  };
-}
-
-// === 管理员功能 (Admin Only) ===
-
-/**
- * 获取所有待审核的投稿
- */
-export const getPendingPosts = async (): Promise<KnowledgePost[]> => {
+export const getPendingPosts = async (): Promise<KnowledgeItem[]> => {
   const { data, error } = await supabase
     .from('knowledge_posts')
     .select(`*, profiles ( github_id, avatar_url )`)
@@ -169,24 +120,27 @@ export const getPendingPosts = async (): Promise<KnowledgePost[]> => {
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return (data as DBPost[]).map(mapDBToPost);
+  return (data as DBPost[]).map(mapDBToItem);
 };
 
-/**
- * 审核通过投稿
- */
 export const approvePost = async (postId: string) => {
   const { error } = await supabase
     .from('knowledge_posts')
-    .update({ status: 'reviewed' })
+    .update({ status: 'published' }) // 修正: 使用 published
     .eq('id', postId);
 
   if (error) throw error;
 };
 
-/**
- * 删除投稿 (拒绝审核或管理员删帖)
- */
+export const rejectPost = async (postId: string) => {
+  const { error } = await supabase
+    .from('knowledge_posts')
+    .update({ status: 'rejected' }) // 修正: 使用 rejected 而不是 delete
+    .eq('id', postId);
+
+  if (error) throw error;
+};
+
 export const deletePost = async (postId: string) => {
   const { error } = await supabase
     .from('knowledge_posts')
@@ -196,9 +150,8 @@ export const deletePost = async (postId: string) => {
   if (error) throw error;
 };
 
-/**
- * 获取用户列表
- */
+// === 用户管理 ===
+
 export const getAllUsers = async (): Promise<User[]> => {
   const { data, error } = await supabase
     .from('profiles')
@@ -209,16 +162,13 @@ export const getAllUsers = async (): Promise<User[]> => {
 
   return (data || []).map((p: any) => ({
     id: p.id,
-    name: p.github_id,
-    avatar: p.avatar_url,
+    name: p.github_id || 'Unknown',
+    avatar: p.avatar_url || '',
     role: p.role,
-    isBanned: p.is_banned
+    banned: p.is_banned // 修正: is_banned -> banned
   }));
 };
 
-/**
- * 封禁/解封用户
- */
 export const toggleUserBan = async (userId: string, isBanned: boolean) => {
   const { error } = await supabase
     .from('profiles')
@@ -228,3 +178,23 @@ export const toggleUserBan = async (userId: string, isBanned: boolean) => {
   if (error) throw error;
 };
 
+// === Data Mapper (转换器) ===
+// 将数据库的下划线命名转换为前端的驼峰命名
+function mapDBToItem(row: DBPost): KnowledgeItem {
+  return {
+    id: row.id,
+    title: row.title,
+    content: row.content,
+    tags: row.tags || [], // 修正: 映射 tags
+    aiClues: row.search_clues, // 修正: search_clues -> aiClues
+    attachments: row.attachments || [],
+    status: row.status,
+    createdAt: row.created_at,
+    author: {
+      id: row.author_id,
+      name: row.profiles?.github_id || 'Unknown',
+      avatar: row.profiles?.avatar_url || '',
+      role: 'user' // 这里简化处理，列表页通常不需要知道作者是不是 admin
+    }
+  };
+}

@@ -1,171 +1,164 @@
-import React, { useState, useEffect, createContext } from 'react';
+import React, { useState, useEffect } from 'react';
+import { User, KnowledgeItem, Page, Variant } from './types';
+import { Button, IconButton, Avatar, Dialog } from './components/M3Components';
+
+// Pages
+import LoginPage from './pages/LoginPage';
 import HomePage from './pages/HomePage';
 import EditorPage from './pages/EditorPage';
 import DetailPage from './pages/DetailPage';
-import LoginPage from './pages/LoginPage';
 import AdminPage from './pages/AdminPage';
-import { Page, User, Item, KnowledgePost } from './types';
-import { supabase } from './services/supabaseClient';
-import { getRecentPosts } from './services/knowledgeService';
 
-// App Context State Definition
-interface AppState {
+// --- Global Context for simplicity in this demo ---
+export const AppContext = React.createContext<{
   currentUser: User | null;
-  setCurrentUser: (user: User | null) => void;
-  items: Item[];
-  setItems: (items: Item[]) => void;
-  navigateTo: (page: Page, itemId?: string) => void;
-}
-
-export const AppContext = createContext<AppState>({
+  setCurrentUser: (u: User | null) => void;
+  items: KnowledgeItem[];
+  setItems: (i: KnowledgeItem[]) => void;
+  users: User[];
+  setUsers: (u: User[]) => void;
+  currentPage: Page;
+  setCurrentPage: (p: Page) => void;
+  selectedItemId: string | null;
+  setSelectedItemId: (id: string | null) => void;
+}>({
   currentUser: null,
   setCurrentUser: () => {},
   items: [],
   setItems: () => {},
-  navigateTo: () => {},
+  users: [],
+  setUsers: () => {},
+  currentPage: Page.LOGIN,
+  setCurrentPage: () => {},
+  selectedItemId: null,
+  setSelectedItemId: () => {},
 });
 
+// --- Mock Data Initialization ---
+const MOCK_USERS: User[] = [
+  { id: '1', name: 'Patchouli', avatar: 'https://picsum.photos/200', role: 'admin' },
+  { id: '2', name: 'Marisa', avatar: 'https://picsum.photos/201', role: 'user' },
+  { id: '3', name: 'Alice', avatar: 'https://picsum.photos/202', role: 'user', banned: true },
+];
+
+const MOCK_ITEMS: KnowledgeItem[] = [
+  {
+    id: '101',
+    title: 'Grimoire Maintenance Protocols',
+    content: '# Protocols\n\nAlways keep the library dry.\n\n## Humidity Control\nUse magic stones to absorb moisture.',
+    tags: ['Script', 'Entity'],
+    status: 'published',
+    author: MOCK_USERS[0],
+    createdAt: '2023-10-24T10:00:00Z',
+    aiClues: 'Book preservation, Library magic, Environment control'
+  },
+  {
+    id: '102',
+    title: 'Advanced Spell Casting',
+    content: 'Focus on your breathing.',
+    tags: ['Block'],
+    status: 'pending',
+    author: MOCK_USERS[1],
+    createdAt: '2023-10-25T14:30:00Z',
+    aiClues: 'Magic technique, Breathing exercise'
+  }
+];
+
 const App: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState<Page>(Page.HOME);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [items, setItems] = useState<KnowledgeItem[]>(MOCK_ITEMS);
+  const [users, setUsers] = useState<User[]>(MOCK_USERS);
+  const [currentPage, setCurrentPage] = useState<Page>(Page.LOGIN);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-  const [items, setItems] = useState<Item[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
-  // 1. 初始化：监听 Supabase 登录状态并获取数据
+  // Navigation Logic
+  const goTo = (page: Page, itemId?: string) => {
+    if (itemId) setSelectedItemId(itemId);
+    setCurrentPage(page);
+    window.scrollTo(0, 0);
+  };
+
+  // Check Auth on Init
   useEffect(() => {
-    // 检查 Session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      handleSession(session);
-    });
-
-    // 监听变化
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      handleSession(session);
-    });
-
-    // 加载初始数据
-    loadKnowledgeData();
-
-    return () => subscription.unsubscribe();
+    // Simulate session check
+    const storedUser = localStorage.getItem('patchouli_user');
+    if (storedUser) {
+      setCurrentUser(JSON.parse(storedUser));
+      setCurrentPage(Page.HOME);
+    }
   }, []);
 
-  const handleSession = async (session: any) => {
-    if (session?.user) {
-      // 获取用户扩展信息 (角色等)
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
-
-      if (profile) {
-        setCurrentUser({
-          id: session.user.id,
-          name: profile.github_id || 'User',
-          avatar: profile.avatar_url || '',
-          role: profile.role,
-          isBanned: profile.is_banned
-        });
-      }
-    } else {
-      setCurrentUser(null);
-    }
-    setIsLoading(false);
+  const handleLogin = () => {
+    // Simulate OAuth Login - Pick generic admin
+    const user = MOCK_USERS[0];
+    localStorage.setItem('patchouli_user', JSON.stringify(user));
+    setCurrentUser(user);
+    goTo(Page.HOME);
   };
 
-  // 2. 从后端加载数据并转换格式
-  const loadKnowledgeData = async () => {
-    try {
-      const posts = await getRecentPosts();
-      // 数据转换: KnowledgePost (Flat) -> Item (Nested)
-      const formattedItems: Item[] = posts.map((p: KnowledgePost) => ({
-        id: p.id,
-        title: p.title,
-        content: p.content,
-        type: p.type,
-        attachments: p.attachments,
-        aiClues: p.searchClues,
-        status: p.status,
-        createdAt: p.createdAt,
-        author: {
-          id: p.authorId,
-          name: p.authorName,
-          avatar: p.authorAvatar,
-          role: 'user' // 列表页暂时不需要具体role，默认为user即可
-        }
-      }));
-      setItems(formattedItems);
-    } catch (error) {
-      console.error('Failed to load posts', error);
-    }
+  const handleLogout = () => {
+    localStorage.removeItem('patchouli_user');
+    setCurrentUser(null);
+    goTo(Page.LOGIN);
   };
 
-  const navigateTo = (page: Page, itemId?: string) => {
-    setCurrentPage(page);
-    if (itemId) setSelectedItemId(itemId);
-    // 每次回到首页时刷新数据
-    if (page === Page.HOME) {
-      loadKnowledgeData();
+  const renderPage = () => {
+    switch (currentPage) {
+      case Page.LOGIN:
+        return <LoginPage onLogin={handleLogin} />;
+      case Page.HOME:
+        return <HomePage onNavigate={goTo} />;
+      case Page.CREATE:
+        return <EditorPage onNavigate={goTo} />;
+      case Page.DETAIL:
+        return <DetailPage onNavigate={goTo} itemId={selectedItemId} />;
+      case Page.ADMIN:
+        return <AdminPage onNavigate={goTo} />;
+      default:
+        return <HomePage onNavigate={goTo} />;
     }
   };
-
-  if (isLoading) {
-    return <div className="min-h-screen bg-[#1e1e1f] flex items-center justify-center text-white font-mc">Loading...</div>;
-  }
 
   return (
-    <AppContext.Provider value={{ currentUser, setCurrentUser, items, setItems, navigateTo }}>
-      <div className="min-h-screen bg-[#1e1e1f] font-sans selection:bg-[#3C8527] selection:text-white">
-        {/* Navigation Bar */}
-        <nav className="border-b-4 border-[#151515] bg-[#2b2b2b] p-4 sticky top-0 z-50 shadow-lg">
-          <div className="max-w-6xl mx-auto flex items-center justify-between">
-            <div 
-              className="flex items-center gap-3 cursor-pointer group" 
-              onClick={() => navigateTo(Page.HOME)}
-            >
-              <div className="w-10 h-10 bg-[#3C8527] border-2 border-[#fff] shadow-[inset_-4px_-4px_0_rgba(0,0,0,0.5)] group-hover:bg-[#4CAF50] transition-colors flex items-center justify-center">
-                 <span className="material-symbols-rounded text-white">book_2</span>
-              </div>
-              <span className="text-xl font-bold text-white tracking-wider font-mc drop-shadow-md">PATCHOULI</span>
-            </div>
-
-            <div className="flex items-center gap-4">
-              {currentUser ? (
-                <>
-                  <div className="hidden md:flex flex-col items-end mr-2">
-                    <span className="text-white font-bold font-mc text-sm">{currentUser.name}</span>
-                    <span className="text-[#b0b0b0] text-xs font-mono">LV.{currentUser.role === 'admin' ? 'OP' : '1'}</span>
-                  </div>
-                  <img src={currentUser.avatar} alt="Avatar" className="w-10 h-10 border-2 border-white bg-[#1e1e1f]" />
-                  {currentUser.role === 'admin' && (
-                     <button onClick={() => navigateTo(Page.ADMIN)} className="p-2 text-[#b0b0b0] hover:text-white">
-                        <span className="material-symbols-rounded">admin_panel_settings</span>
-                     </button>
-                  )}
-                  <button onClick={() => supabase.auth.signOut()} className="p-2 text-[#b0b0b0] hover:text-white" title="Logout">
-                    <span className="material-symbols-rounded">logout</span>
-                  </button>
-                </>
-              ) : (
-                <button 
-                  onClick={() => navigateTo(Page.LOGIN)}
-                  className="px-4 py-2 bg-[#1e1e1f] border-2 border-[#5b5b5c] text-white font-mc text-sm hover:bg-[#3C8527] hover:border-white transition-all"
-                >
-                  LOGIN
-                </button>
-              )}
-            </div>
-          </div>
-        </nav>
-
-        {/* Main Content */}
-        <main className="max-w-6xl mx-auto p-4 md:p-6">
-          {currentPage === Page.LOGIN && <LoginPage onLoginSuccess={() => navigateTo(Page.HOME)} />}
-          {currentPage === Page.HOME && <HomePage onNavigate={navigateTo} />}
-          {currentPage === Page.EDITOR && <EditorPage onNavigate={navigateTo} />}
-          {currentPage === Page.DETAIL && <DetailPage onNavigate={navigateTo} itemId={selectedItemId} />}
-          {currentPage === Page.ADMIN && <AdminPage onNavigate={navigateTo} />}
+    <AppContext.Provider value={{ currentUser, setCurrentUser, items, setItems, users, setUsers, currentPage, setCurrentPage, selectedItemId, setSelectedItemId }}>
+      <div className="min-h-screen bg-[#313233] text-[#E0E0E0] font-sans selection:bg-[#3C8527] selection:text-white">
+        {/* Header (Top App Bar) - Visible everywhere except Login */}
+        {currentPage !== Page.LOGIN && (
+          <header className="fixed top-0 left-0 right-0 h-16 bg-[#313233] z-40 px-4 flex items-center justify-between border-b-4 border-[#1e1e1f] shadow-lg">
+             <div className="flex items-center gap-2 cursor-pointer" onClick={() => goTo(Page.HOME)}>
+               <div className="w-10 h-10 bg-[#3C8527] border-2 border-white flex items-center justify-center">
+                   <span className="material-symbols-rounded text-white">menu_book</span>
+               </div>
+               <span className="font-mc text-2xl tracking-wide text-white drop-shadow-md">Patchouli</span>
+             </div>
+             
+             {currentUser && (
+               <div className="flex items-center gap-2">
+                 {currentUser.role === 'admin' && (
+                    <IconButton 
+                      icon="admin_panel_settings" 
+                      onClick={() => goTo(Page.ADMIN)} 
+                      active={currentPage === Page.ADMIN}
+                      title="Admin Panel"
+                    />
+                 )}
+                 <div className="relative group">
+                   <Avatar name={currentUser.name} src={currentUser.avatar} onClick={() => {}} />
+                   {/* Dropdown Menu */}
+                   <div className="absolute right-0 top-14 w-48 bg-[#313233] border-2 border-white p-1 hidden group-hover:block z-50 shadow-[4px_4px_0_0_#000]">
+                     <div className="px-4 py-2 text-xs text-[#b0b0b0] font-mc uppercase">Account</div>
+                     <button onClick={() => goTo(Page.HOME)} className="w-full text-left px-4 py-3 hover:bg-[#48494a] text-sm mb-1 font-mc text-white">My Knowledge</button>
+                     <button onClick={handleLogout} className="w-full text-left px-4 py-3 hover:bg-[#8B0000] hover:text-white text-[#ff5555] text-sm font-mc">Logout</button>
+                   </div>
+                 </div>
+               </div>
+             )}
+          </header>
+        )}
+        
+        {/* Main Content Area */}
+        <main className={`${currentPage !== Page.LOGIN ? 'pt-20' : ''}`}>
+          {renderPage()}
         </main>
       </div>
     </AppContext.Provider>

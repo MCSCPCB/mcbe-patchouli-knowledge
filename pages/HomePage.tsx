@@ -1,168 +1,146 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useMemo } from 'react';
 import { AppContext } from '../App';
-import { Page, ItemType, Item, KnowledgePost } from '../types';
-import { IconButton } from '../components/M3Components';
-import { searchKnowledge } from '../services/knowledgeService';
+import { Page, PREDEFINED_TAGS } from '../types';
+import { FAB, Chip, Card, Avatar, Select } from '../components/M3Components';
 
 const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ onNavigate }) => {
-  const { items, setItems, currentUser } = useContext(AppContext);
-  const [filterType, setFilterType] = useState<ItemType | 'all'>('all');
-  const [searchText, setSearchText] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
+  const { items, currentUser } = useContext(AppContext);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchMode, setSearchMode] = useState<'keyword' | 'ai'>('keyword');
+  const [filterTag, setFilterTag] = useState<string>('All');
 
-  // 执行搜索 (AI + 关键词)
-  const handleSearch = async () => {
-    if (!searchText.trim()) {
-      // 如果搜索为空，通常应该重置为“最近文章”，这里我们在App.tsx已经加载了最近文章
-      // 可以在这里触发一次重新加载，或者简单不做处理
-      return;
-    }
+  const filteredItems = useMemo(() => {
+    return items.filter(item => {
+      if (item.status === 'rejected') return false;
+      // Show pending only to author or admin
+      if (item.status === 'pending' && currentUser?.role !== 'admin' && item.author.id !== currentUser?.id) return false;
 
-    setIsSearching(true);
-    try {
-      // 默认开启 AI 模式 ('ai')
-      const results = await searchKnowledge(searchText, 'ai');
+      // Tag Filter
+      if (filterTag !== 'All' && !item.tags.includes(filterTag)) {
+        return false;
+      }
+
+      const lowerTerm = searchTerm.toLowerCase();
       
-      // 转换数据格式
-      const formattedResults: Item[] = results.map((p: KnowledgePost) => ({
-        id: p.id,
-        title: p.title,
-        content: p.content,
-        type: p.type,
-        attachments: p.attachments,
-        aiClues: p.searchClues,
-        status: p.status,
-        createdAt: p.createdAt,
-        author: {
-          id: p.authorId,
-          name: p.authorName,
-          avatar: p.authorAvatar,
-          role: 'user'
-        }
-      }));
-      setItems(formattedResults);
-    } catch (error) {
-      console.error(error);
-      alert('Search failed');
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  // 本地过滤 (类型筛选)
-  const filteredItems = items.filter(item => {
-    if (filterType !== 'all' && item.type !== filterType) return false;
-    return true;
-  });
+      if (searchMode === 'keyword') {
+        return item.title.toLowerCase().includes(lowerTerm) || 
+               item.content.toLowerCase().includes(lowerTerm) ||
+               item.tags.some(t => t.toLowerCase().includes(lowerTerm));
+      } else {
+        // AI Clue search: Look specifically in the aiClues field
+        return item.aiClues?.toLowerCase().includes(lowerTerm) || 
+               item.title.toLowerCase().includes(lowerTerm);
+      }
+    });
+  }, [items, searchTerm, searchMode, filterTag, currentUser]);
 
   return (
-    <div className="flex flex-col gap-8 pb-20">
-      {/* Search & Filter Header */}
-      <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
-         <div className="relative flex-1 group">
-            <input 
-              type="text" 
-              placeholder="Search knowledge... (AI Powered)" 
-              className="w-full bg-[#1e1e1f] border-2 border-[#5b5b5c] text-white px-4 py-3 font-mono outline-none focus:border-[#3C8527] focus:bg-[#000] transition-colors placeholder-[#5b5b5c]"
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            />
-            <button 
-              onClick={handleSearch}
-              className="absolute right-2 top-2 p-1 text-[#b0b0b0] hover:text-white"
-            >
-              {isSearching ? (
-                 <span className="material-symbols-rounded animate-spin">sync</span>
-              ) : (
-                 <span className="material-symbols-rounded">search</span>
-              )}
-            </button>
-         </div>
+    <div className="max-w-3xl mx-auto px-4 pb-24">
+      
+      {/* Search & Filter Area */}
+      <div className="py-6 sticky top-16 bg-[#313233] z-30 border-b-2 border-[#1e1e1f]">
+        <div className={`
+          relative flex items-center w-full h-14 bg-[#1e1e1f] border-2 border-b-[#5b5b5c] border-r-[#5b5b5c] border-t-[#000] border-l-[#000] px-4
+          ${searchMode === 'ai' ? 'border-[#b465f5]' : ''}
+        `}>
+          <span className="material-symbols-rounded text-[#b0b0b0] mr-3">search</span>
+          <input 
+            className="flex-1 bg-transparent outline-none text-white font-mc text-xl placeholder:text-[#58585a]"
+            placeholder={searchMode === 'ai' ? "Describe idea..." : "Search knowledge..."}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          {searchMode === 'ai' && <span className="material-symbols-rounded text-[#b465f5] animate-pulse">auto_awesome</span>}
+        </div>
 
-         <div className="flex bg-[#1e1e1f] border-2 border-[#5b5b5c] p-1 gap-1">
-            {(['all', 'script', 'block', 'entity'] as const).map(type => (
-               <button
-                 key={type}
-                 onClick={() => setFilterType(type)}
-                 className={`px-4 py-2 font-mc text-xs uppercase transition-all ${
-                   filterType === type 
-                   ? 'bg-[#3C8527] text-white border border-white shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]' 
-                   : 'text-[#b0b0b0] hover:bg-[#2b2b2b]'
-                 }`}
-               >
-                 {type}
-               </button>
-            ))}
-         </div>
+        {/* Configuration Row: Search Mode & Tag Filters */}
+        <div className="mt-4 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+           {/* Mode Selection */}
+           <div className="flex gap-2 items-center">
+             <span className="text-xs font-bold text-[#b0b0b0] font-mc uppercase tracking-wide mr-2">Mode</span>
+             <Chip 
+               label="Keywords" 
+               selected={searchMode === 'keyword'} 
+               onClick={() => setSearchMode('keyword')}
+             />
+             <Chip 
+               label="AI Clues" 
+               icon="auto_awesome"
+               selected={searchMode === 'ai'} 
+               onClick={() => setSearchMode('ai')}
+             />
+           </div>
+
+           {/* Tag Filters (Dropdown) */}
+           <div className="w-full md:w-48">
+             <Select 
+               label="Filter"
+               options={['All', ...PREDEFINED_TAGS]}
+               value={filterTag}
+               onChange={(val) => setFilterTag(val)}
+             />
+           </div>
+        </div>
       </div>
 
-      {/* Grid Content */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-         {filteredItems.map(item => (
-            <div 
-              key={item.id}
+      {/* Content Stream */}
+      <div className="space-y-4 pt-4">
+        {filteredItems.length === 0 ? (
+           <div className="text-center py-20 opacity-50">
+             <span className="material-symbols-rounded text-[48px] text-[#b0b0b0] mb-2 block">content_paste_off</span>
+             <p className="font-mc text-xl text-[#b0b0b0]">No knowledge found.</p>
+           </div>
+        ) : (
+          filteredItems.map(item => (
+            <Card 
+              key={item.id} 
               onClick={() => onNavigate(Page.DETAIL, item.id)}
-              className="group bg-[#2b2b2b] border-4 border-[#151515] p-0 cursor-pointer hover:-translate-y-1 transition-transform relative overflow-hidden flex flex-col h-[280px]"
+              className="group relative"
             >
-               {/* Decorative border lines */}
-               <div className="absolute top-0 left-0 w-full h-1 bg-[#5b5b5c] opacity-20"></div>
-               <div className="absolute bottom-0 left-0 w-full h-1 bg-[#000] opacity-20"></div>
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="text-xl font-bold font-mc text-white tracking-wide">{item.title}</h3>
+                {item.status === 'pending' && (
+                  <span className="bg-[#FFA500] border-2 border-[#fff] text-[#313233] text-xs px-2 py-0 font-bold uppercase tracking-wider font-mc">
+                    Reviewing
+                  </span>
+                )}
+              </div>
 
-               {/* Header */}
-               <div className="p-4 border-b-2 border-[#1e1e1f] bg-[#232323] flex justify-between items-start">
-                  <div className={`px-2 py-1 text-[10px] font-bold font-mc uppercase border border-[#000] text-black ${
-                     item.type === 'script' ? 'bg-[#98FB98]' : 
-                     item.type === 'block' ? 'bg-[#87CEEB]' : 'bg-[#DDA0DD]'
-                  }`}>
-                    {item.type}
+              <div className="flex gap-2 mb-3">
+                {item.tags.map(tag => (
+                  <span key={tag} className="text-xs font-mc text-[#b0b0b0] px-2 py-1 bg-[#1e1e1f] border border-[#5b5b5c]">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+
+              <p className="text-[#e0e0e0] text-sm line-clamp-3 mb-4 leading-relaxed font-mono">
+                {item.content.replace(/[#*`]/g, '')}
+              </p>
+              
+              <div className="flex items-center gap-3 mt-auto pt-3 border-t-2 border-[#1e1e1f]">
+                <Avatar name={item.author.name} src={item.author.avatar} size="sm" />
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold font-mc text-[#b0b0b0]">{item.author.name}</span>
+                  <span className="text-[10px] text-[#707070] font-mc">{new Date(item.createdAt).toLocaleDateString()}</span>
+                </div>
+                {item.aiClues && (
+                  <div className="ml-auto text-[10px] text-[#b465f5] flex items-center gap-1 font-mc">
+                    <span className="material-symbols-rounded text-[14px]">auto_awesome</span>
+                    Enhanced
                   </div>
-                  {item.status === 'pending' && (
-                     <span className="text-[10px] font-mc text-yellow-500 animate-pulse">PENDING</span>
-                  )}
-               </div>
-
-               {/* Body */}
-               <div className="p-5 flex-1 overflow-hidden relative">
-                  <h3 className="text-xl font-bold text-white font-mc mb-3 leading-snug group-hover:text-[#3C8527] transition-colors line-clamp-2">
-                    {item.title}
-                  </h3>
-                  <p className="text-[#b0b0b0] font-mono text-sm line-clamp-3 leading-relaxed">
-                    {item.content}
-                  </p>
-                  {/* Fade out effect */}
-                  <div className="absolute bottom-0 left-0 w-full h-12 bg-gradient-to-t from-[#2b2b2b] to-transparent"></div>
-               </div>
-
-               {/* Footer */}
-               <div className="p-3 bg-[#1e1e1f] border-t-2 border-[#151515] flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                     <div className="w-6 h-6 border border-[#5b5b5c]">
-                        <img src={item.author.avatar} className="w-full h-full object-cover" alt=""/>
-                     </div>
-                     <span className="text-xs text-[#b0b0b0] font-mono">{item.author.name}</span>
-                  </div>
-                  {/* AI Match Indicator (Mock visual for now) */}
-                  {searchText && (
-                    <span className="text-[10px] text-[#3C8527] font-mc flex items-center gap-1">
-                       <span className="material-symbols-rounded text-xs">auto_awesome</span>
-                       MATCH
-                    </span>
-                  )}
-               </div>
-            </div>
-         ))}
+                )}
+              </div>
+            </Card>
+          ))
+        )}
       </div>
 
-      {/* FAB */}
-      {currentUser && (
-        <button 
-          onClick={() => onNavigate(Page.EDITOR)}
-          className="fixed bottom-8 right-8 w-16 h-16 bg-[#3C8527] border-4 border-white shadow-[4px_4px_0_0_#000] flex items-center justify-center hover:bg-[#4CAF50] hover:scale-105 active:scale-95 transition-all z-40 group"
-        >
-          <span className="material-symbols-rounded text-white text-3xl font-bold group-hover:rotate-90 transition-transform">add</span>
-        </button>
-      )}
+      <FAB 
+        icon="add" 
+        onClick={() => onNavigate(Page.CREATE)} 
+        label="New"
+      />
     </div>
   );
 };
