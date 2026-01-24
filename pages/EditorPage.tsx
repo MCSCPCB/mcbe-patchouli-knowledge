@@ -15,9 +15,12 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
-  // [新增] 编辑模式初始化：如果 selectedItemId 存在，回填数据
+    // [新增] 使用 ref 来记录当前表单是否已经初始化过这个 ID
+  const initializedIdRef = React.useRef<string | null>(null);
+
   useEffect(() => {
-    if (selectedItemId) {
+    // 只有当有选中 ID，且数据库里有数据，且“还没初始化过这个 ID”时，才回填数据
+    if (selectedItemId && items.length > 0 && initializedIdRef.current !== selectedItemId) {
       const existingItem = items.find(i => i.id === selectedItemId);
       if (existingItem) {
         setTitle(existingItem.title);
@@ -25,6 +28,9 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
         setTags(existingItem.tags);
         setAiClues(existingItem.aiClues || '');
         setAttachments(existingItem.attachments || []);
+        
+        // 标记为已初始化，防止后续 items 变化导致表单被重置
+        initializedIdRef.current = selectedItemId;
       }
     }
   }, [selectedItemId, items]);
