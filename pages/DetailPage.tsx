@@ -35,7 +35,13 @@ const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | nul
   const parseMarkdown = (text: string) => {
     const codeBlocks: string[] = [];
     const inlineCodes: string[] = [];
+    const videoTags: string[] = [];
 
+    let processed = text.replace(/<video([\s\S]*?)<\/video>/g, (match) => {
+        videoTags.push(match); // 保持原样，不转义
+        return `___VIDEO_TAG_${videoTags.length - 1}___`;
+    });
+    
     const escapeHtml = (unsafe: string) => {
         return unsafe
              .replace(/&/g, "&amp;")
@@ -75,12 +81,10 @@ const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | nul
         return `<pre class="bg-[#151515] border-2 border-[#5b5b5c] p-4 my-4 overflow-x-auto text-[#3C8527]"><code class="font-mono">${codeBlocks[parseInt(index)]}</code></pre>`;
     });
 
-    // 6. Handle Paragraphs/Newlines (Simple)
-    // Wrap text not in tags with <p>? Or just replace \n\n with <br/><br/>
-    // For this simple view, we used whitespace-pre-wrap in CSS, so newlines are handled by CSS. 
-    // However, if we stripped out blocks, we might want to ensure the placeholders are respected.
-    // The previous implementation didn't do complex paragraph parsing, so we leave it as is.
-    
+    processed = processed.replace(/___VIDEO_TAG_(\d+)___/g, (match, index) => {
+        return videoTags[parseInt(index)]; // 直接放回原始 HTML
+    });
+
     return processed;
   };
 
