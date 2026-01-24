@@ -52,7 +52,7 @@ const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | nul
     };
 
     // 1. Extract and hide Code Blocks (```...```)
-    let processed = text.replace(/```([\s\S]*?)```/g, (match, code) => {
+    processed = text.replace(/```([\s\S]*?)```/g, (match, code) => {
         codeBlocks.push(escapeHtml(code)); // Escape code content
         return `___CODE_BLOCK_${codeBlocks.length - 1}___`;
     });
