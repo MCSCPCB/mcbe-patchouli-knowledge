@@ -1,7 +1,9 @@
--- 1. 创建枚举类型 (已对齐 Frontend types.ts)
--- 注意：前端 User role 是 'admin' | 'user'
+-- ==========================================
+-- MCBE Knowledge Base - Full Init Schema
+-- ==========================================
+
+-- 1. 创建枚举类型
 create type user_role as enum ('user', 'admin');
--- 注意：前端 Status 是 'published' | 'pending' | 'rejected'
 create type knowledge_status as enum ('pending', 'published', 'rejected');
 
 -- 2. 创建用户资料表
@@ -14,16 +16,15 @@ create table public.profiles (
   created_at timestamptz default now()
 );
 
--- 3. 创建知识库表 (已修正)
+-- 3. 创建知识库表
 create table public.knowledge_posts (
   id uuid default gen_random_uuid() primary key,
   author_id uuid references public.profiles(id) not null,
   title text not null,
   content text not null,
-  -- 移除旧的 type 枚举，改为 tags 数组以支持前端的多标签系统
   tags text[] default '{}'::text[], 
   attachments jsonb default '[]'::jsonb,
-  search_clues text, -- 对应前端 aiClues
+  search_clues text,
   status knowledge_status default 'pending'::knowledge_status,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
@@ -52,21 +53,21 @@ create policy "Authenticated non-banned users can insert"
     exists ( select 1 from public.profiles where id = auth.uid() and is_banned = false )
   );
 
--- 允许作者删除自己的 pending 贴，管理员删除任意贴
+-- 删除策略：作者删 Pending，管理员删所有
 create policy "Delete policy"
   on public.knowledge_posts for delete using (
     (auth.uid() = author_id and status = 'pending') or
     (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'))
   );
 
--- 更新策略：作者改 pending，管理员改所有
+-- 更新策略：作者改 Pending，管理员改所有
 create policy "Update policy"
   on public.knowledge_posts for update using (
     (auth.uid() = author_id and status = 'pending') or
     (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'))
   );
 
--- 5. 自动触发器 (保持不变)
+-- 5. 自动触发器：处理新用户
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
@@ -89,10 +90,14 @@ create trigger on_auth_user_created
 create index idx_search_clues on public.knowledge_posts using GIN (to_tsvector('english', search_clues));
 create index idx_tags on public.knowledge_posts using GIN (tags);
 
--- 7. 存储桶策略 (Storage Policies) - 针对 'kb-assets'
--- 注意：你需要先在 Supabase 控制台创建一个名为 'kb-assets' 的 Public Bucket
+-- 7. 存储系统配置 (自动创建 Bucket + 策略)
 
--- 允许任何登录用户上传文件
+-- [新增] 自动插入 Bucket 记录 (防止必须去 UI 手动创建)
+insert into storage.buckets (id, name, public)
+values ('kb-assets', 'kb-assets', true)
+on conflict (id) do nothing;
+
+-- 上传策略
 create policy "Authenticated users can upload assets"
   on storage.objects for insert
   with check (
@@ -100,12 +105,12 @@ create policy "Authenticated users can upload assets"
     auth.role() = 'authenticated'
   );
 
--- 允许所有人查看文件 (配合 Public Bucket 设置)
+-- 查看策略
 create policy "Public Access"
   on storage.objects for select
   using ( bucket_id = 'kb-assets' );
 
--- 允许用户删除自己上传的文件 (可选)
+-- 删除策略 (仅限自己)
 create policy "Users can delete own files"
   on storage.objects for delete
   using (
