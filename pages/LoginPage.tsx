@@ -26,7 +26,7 @@ const LoginPage: React.FC<LoginProps> = ({ onLogin }) => {
         <h1 className="text-6xl font-mc mb-4 text-white drop-shadow-[4px_4px_0_#000]">Patchouli</h1>
         <p className="text-xl font-mc text-[#b0b0b0] mb-12 drop-shadow-md">
           Collaborative Knowledge Base <br/>
-          <span className="text-[#3C8527]">> Start Adventure</span>
+          <span className="text-[#3C8527]">&gt; Start Adventure</span>
         </p>
 
         <button 
