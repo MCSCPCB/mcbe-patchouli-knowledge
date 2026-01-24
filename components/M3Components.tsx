@@ -151,7 +151,7 @@ interface RichEditorProps {
   onUploadVideo?: () => void;
 }
 
-export const RichMarkdownEditor: React.FC<RichEditorProps> = ({ label, value, onChange, onAddAttachment }) => {
+export const RichMarkdownEditor: React.FC<RichEditorProps> = ({ label, value, onChange, onAddAttachment, onUploadImage, onUploadVideo }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const insertText = (prefix: string, suffix: string = '') => {
