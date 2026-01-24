@@ -91,10 +91,10 @@ const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | nul
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 pb-32">
        <div className="mb-6 flex items-start justify-between">
-         <IconButton icon="edit" title="Edit" onClick={() => onNavigate(Page.CREATE, item.id)}/>
+         <IconButton icon="arrow_back" onClick={() => onNavigate(Page.HOME)} />
          {canEdit && (
            <div className="flex gap-2">
-             <IconButton icon="edit" title="Edit" />
+             <IconButton icon="edit" title="Edit" onClick={() => onNavigate(Page.CREATE, item.id)} />
              <IconButton icon="delete" title="Delete" onClick={() => setDeleteDialogOpen(true)} className="!bg-[#8B0000] !border-[#B22222]" />
            </div>
          )}
