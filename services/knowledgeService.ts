@@ -197,24 +197,31 @@ function mapDBToItem(row: DBPost): KnowledgeItem {
   };
 };
 
-// === 新增：文件上传服务 ===
 export const uploadFile = async (file: File): Promise<string> => {
-  // 生成文件名: timestamp_filename，防止重名
-  const fileName = `${Date.now()}_${file.name.replace(/\s/g, '_')}`;
+  // 1. 简单的文件名清洗，防止特殊字符导致 URL 问题
+  const cleanName = file.name.replace(/[^\x00-\x7F]/g, "").replace(/\s/g, '_'); 
+  const fileName = `${Date.now()}_${cleanName}`;
   
   const { data, error } = await supabase.storage
-    .from('kb-assets') // 确保你在 Supabase 创建了这个 bucket
-    .upload(fileName, file);
+    .from('kb-assets')
+    .upload(fileName, file, {
+      cacheControl: '3600',
+      upsert: false,
+      duplex: 'half' // [关键修复] 针对某些浏览器（如 Chrome）的大文件上传流处理
+    });
 
-  if (error) throw error;
+  if (error) {
+    console.error("Upload Error Details:", error);
+    throw error;
+  }
   
-  // 获取公开访问链接
   const { data: { publicUrl } } = supabase.storage
     .from('kb-assets')
     .getPublicUrl(fileName);
     
   return publicUrl;
-}
+};
+
 
 // === 新增：更新文章 ===
 export const updatePost = async (id: string, updates: Partial<KnowledgeItem>) => {
