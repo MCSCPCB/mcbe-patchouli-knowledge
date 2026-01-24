@@ -147,6 +147,7 @@ interface RichEditorProps {
   value: string;
   onChange: (val: string) => void;
   onAddAttachment: () => void;
+  onUploadImage?: () => void;
 }
 
 export const RichMarkdownEditor: React.FC<RichEditorProps> = ({ label, value, onChange, onAddAttachment }) => {
@@ -188,7 +189,13 @@ export const RichMarkdownEditor: React.FC<RichEditorProps> = ({ label, value, on
              <IconButton icon="code" className="w-8 h-8 scale-90" onClick={() => insertText('`', '`')} title="Inline Code" />
              <IconButton icon="data_object" className="w-8 h-8 scale-90" onClick={() => insertText('\n```\n', '\n```\n')} title="Code Block" />
              <div className="w-[2px] h-6 bg-[#5b5b5c] mx-1"></div>
-             <IconButton icon="image" className="w-8 h-8 scale-90" onClick={() => handleMedia('image')} title="Insert Image" />
+             <IconButton icon="image" className="w-8 h-8 scale-90" onClick={() => {
+             if (onUploadImage) {
+                    onUploadImage(); // 如果传了上传回调，就用回调
+                 } else {
+                    handleMedia('image'); // 否则还是用原来的 URL 弹窗
+                 }
+             }} title="Insert Image" />
              <IconButton icon="movie" className="w-8 h-8 scale-90" onClick={() => handleMedia('video')} title="Insert Video" />
              <div className="flex-1"></div>
              <div className="w-[2px] h-6 bg-[#5b5b5c] mx-1"></div>
