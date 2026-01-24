@@ -1,17 +1,14 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { AppContext } from '../App';
 import { Page, KnowledgeItem } from '../types';
-import { IconButton, Switch, Avatar, Chip } from '../components/M3Components';
-import { getPendingPosts, approvePost, rejectPost, toggleUserBan, getAllUsers } from '../services/knowledgeService'; // Import
+import { IconButton, Switch, Avatar, Chip, Button } from '../components/M3Components';
+import { getPendingPosts, approvePost, rejectPost, toggleUserBan, getAllUsers } from '../services/knowledgeService';
 
 const AdminPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) => {
   const { items, setItems, users, setUsers, refreshData } = useContext(AppContext);
   const [activeTab, setActiveTab] = useState<'audit' | 'users'>('audit');
-  
-  // Local state for pending items (since global 'items' usually stores published ones)
   const [pendingItems, setPendingItems] = useState<KnowledgeItem[]>([]); 
 
-  // Load data based on tab
   useEffect(() => {
     if (activeTab === 'audit') {
         getPendingPosts().then(setPendingItems);
@@ -23,7 +20,6 @@ const AdminPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) 
   const handleApprove = async (id: string) => {
     try {
         await approvePost(id);
-        // Remove from local pending list
         setPendingItems(prev => prev.filter(i => i.id !== id));
         refreshData();
     } catch (e) {
@@ -43,10 +39,8 @@ const AdminPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) 
   const toggleBan = async (userId: string) => {
     const user = users.find(u => u.id === userId);
     if (!user) return;
-    
     try {
         await toggleUserBan(userId, !user.banned);
-        // Update local state
         setUsers(users.map(u => u.id === userId ? { ...u, banned: !u.banned } : u));
     } catch (e) {
         alert("Action failed");
@@ -54,56 +48,120 @@ const AdminPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) 
   };
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-[#313233]">
-      {/* Navigation Rail/Panel */}
-      <div className="md:w-64 border-r-2 border-[#1e1e1f] md:h-screen sticky top-16 bg-[#2b2b2b] z-20 flex md:flex-col gap-2 p-4 border-b-2 md:border-b-0">
-         <h2 className="text-xl font-bold font-mc px-4 mb-4 hidden md:block text-[#e0e0e0]">Admin Panel</h2>
+    <div className="flex flex-col md:flex-row min-h-screen bg-[#121212] animate-[fadeIn_0.3s_ease-out]">
+      {/* Navigation Rail (Desktop) / Header (Mobile) */}
+      <div className="md:w-72 md:h-screen sticky top-0 bg-[#1E1E1E] md:border-r border-[#2C2C2C] z-20 flex flex-col p-4 md:p-6 shadow-xl md:shadow-none">
+         <div className="flex items-center gap-3 mb-6 md:mb-10">
+            <IconButton icon="arrow_back" onClick={() => onNavigate(Page.HOME)} className="md:hidden" />
+            <div className="flex flex-col">
+                <h2 className="text-2xl font-normal text-[#E6E6E6]">Admin</h2>
+                <span className="text-xs text-[#8C918C] uppercase tracking-widest">Control Panel</span>
+            </div>
+         </div>
          
-         <button 
-           onClick={() => setActiveTab('audit')}
-           className={`flex items-center gap-3 px-4 py-3 font-mc text-lg border-2 transition-all ${activeTab === 'audit' ? 'bg-[#313233] border-white text-white' : 'border-transparent text-[#b0b0b0] hover:bg-[#313233]'}`}
-         >
-           <span className="material-symbols-rounded">gavel</span>
-           Audit Queue
-           {pendingItems.length > 0 && <span className="ml-auto bg-[#8B0000] text-white text-[12px] font-bold px-2 border border-[#B22222]">{pendingItems.length}</span>}
-         </button>
-
-         <button 
-           onClick={() => setActiveTab('users')}
-           className={`flex items-center gap-3 px-4 py-3 font-mc text-lg border-2 transition-all ${activeTab === 'users' ? 'bg-[#313233] border-white text-white' : 'border-transparent text-[#b0b0b0] hover:bg-[#313233]'}`}
-         >
-           <span className="material-symbols-rounded">group</span>
-           User Management
-         </button>
-
-         <div className="mt-auto hidden md:block px-4 pb-20">
-            <button onClick={() => onNavigate(Page.HOME)} className="text-sm font-mc text-[#b0b0b0] hover:text-white flex items-center gap-2">
-              <span className="material-symbols-rounded">arrow_back</span> Return
+         {/* Mobile Segmented Button */}
+         <div className="flex md:hidden bg-[#2C2C2C] rounded-full p-1 mb-4 relative overflow-hidden">
+             {/* Slider logic could be added here, but simple conditional classes work for M3 */}
+            <button 
+                onClick={() => setActiveTab('audit')} 
+                className={`flex-1 py-2 rounded-full text-sm font-medium transition-all ${activeTab === 'audit' ? 'bg-[#7DA3A1] text-[#0F1D13] shadow-sm' : 'text-[#C7C7CC]'}`}
+            >
+                Audit
             </button>
+            <button 
+                onClick={() => setActiveTab('users')} 
+                className={`flex-1 py-2 rounded-full text-sm font-medium transition-all ${activeTab === 'users' ? 'bg-[#7DA3A1] text-[#0F1D13] shadow-sm' : 'text-[#C7C7CC]'}`}
+            >
+                Users
+            </button>
+         </div>
+
+         {/* Desktop Navigation Items */}
+         <div className="hidden md:flex flex-col gap-2">
+            <button 
+                onClick={() => setActiveTab('audit')}
+                className={`flex items-center gap-4 px-4 py-3 rounded-full transition-all text-sm font-medium tracking-wide
+                    ${activeTab === 'audit' ? 'bg-[#7DA3A1]/20 text-[#7DA3A1]' : 'text-[#C7C7CC] hover:bg-[#2C2C2C]'}
+                `}
+            >
+                <span className="material-symbols-rounded">gavel</span>
+                Audit Queue
+                {pendingItems.length > 0 && (
+                    <span className="ml-auto bg-[#CF6679] text-[#37000B] text-xs font-bold px-2 py-0.5 rounded-full">
+                        {pendingItems.length}
+                    </span>
+                )}
+            </button>
+
+            <button 
+                onClick={() => setActiveTab('users')}
+                className={`flex items-center gap-4 px-4 py-3 rounded-full transition-all text-sm font-medium tracking-wide
+                    ${activeTab === 'users' ? 'bg-[#7DA3A1]/20 text-[#7DA3A1]' : 'text-[#C7C7CC] hover:bg-[#2C2C2C]'}
+                `}
+            >
+                <span className="material-symbols-rounded">group</span>
+                User Management
+            </button>
+         </div>
+
+         <div className="mt-auto hidden md:block">
+            <Button 
+                variant="text" 
+                label="Return Home" 
+                icon="arrow_back" 
+                onClick={() => onNavigate(Page.HOME)} 
+                fullWidth 
+                className="!justify-start !pl-4 text-[#8C918C]"
+            />
          </div>
       </div>
 
-      <div className="flex-1 p-4 md:p-8 max-w-5xl">
+      {/* Main Content Area */}
+      <div className="flex-1 p-4 md:p-10 max-w-5xl overflow-y-auto">
         {activeTab === 'audit' && (
-          <div className="space-y-4">
-             <h3 className="text-2xl font-bold font-mc mb-6 text-white uppercase">Pending Review</h3>
+          <div className="space-y-6 animate-[slideUp_0.3s_ease-out]">
+             <h3 className="text-xl text-[#E6E6E6] mb-4 flex items-center gap-2">
+                <span className="material-symbols-rounded text-[#7DA3A1]">pending_actions</span>
+                Pending Review
+             </h3>
+             
              {pendingItems.length === 0 ? (
-               <div className="text-[#707070] font-mc text-center py-10 bg-[#2b2b2b] border-2 border-[#1e1e1f]">Inventory Empty.</div>
+               <div className="flex flex-col items-center justify-center py-20 bg-[#1E1E1E] rounded-[24px] border border-[#2C2C2C]">
+                 <span className="material-symbols-rounded text-5xl text-[#333] mb-4">task_alt</span>
+                 <span className="text-[#8C918C]">All caught up. No pending items.</span>
+               </div>
              ) : (
                pendingItems.map(item => (
-                 <div key={item.id} className="bg-[#313233] border-2 border-t-[#5b5b5c] border-l-[#5b5b5c] border-b-[#1e1e1f] border-r-[#1e1e1f] p-4 flex flex-col md:flex-row md:items-center gap-4">
-                    <div className="flex-1">
-                      <h4 className="font-bold font-mc text-lg mb-1 text-white">{item.title}</h4>
-                      <p className="text-sm font-mono text-[#b0b0b0] line-clamp-2 mb-2">{item.content}</p>
-                      <div className="flex items-center gap-2 text-xs font-mc text-[#707070]">
-                        <span>by {item.author.name}</span>
-                        <span>•</span>
-                        <span>{new Date(item.createdAt).toLocaleDateString()}</span>
-                      </div>
+                 <div key={item.id} className="bg-[#1E1E1E] rounded-[24px] p-6 hover:shadow-lg transition-shadow border border-[#2C2C2C] flex flex-col gap-4">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <h4 className="font-medium text-lg text-[#E6E6E6] mb-1">{item.title}</h4>
+                            <div className="flex items-center gap-2 text-xs text-[#8C918C]">
+                                <span>{item.author.name}</span>
+                                <span className="w-1 h-1 rounded-full bg-[#444]"></span>
+                                <span>{new Date(item.createdAt).toLocaleDateString()}</span>
+                            </div>
+                        </div>
                     </div>
-                    <div className="flex gap-2 justify-end border-t border-[#1e1e1f] md:border-t-0 pt-2 md:pt-0">
-                       <IconButton icon="close" className="!bg-[#8B0000] !border-[#B22222]" onClick={() => handleReject(item.id)} />
-                       <IconButton icon="check" className="!bg-[#3C8527] !border-[#52A535]" onClick={() => handleApprove(item.id)} />
+                    
+                    <p className="text-sm text-[#C7C7CC] line-clamp-2 leading-relaxed bg-[#252529] p-3 rounded-xl">
+                        {item.content}
+                    </p>
+
+                    <div className="flex gap-3 justify-end pt-2">
+                       <Button 
+                            variant="outlined" 
+                            label="Reject" 
+                            icon="close"
+                            className="!border-[#CF6679] !text-[#CF6679] hover:!bg-[#CF6679]/10"
+                            onClick={() => handleReject(item.id)} 
+                       />
+                       <Button 
+                            variant="filled" 
+                            label="Approve" 
+                            icon="check"
+                            onClick={() => handleApprove(item.id)} 
+                       />
                     </div>
                  </div>
                ))
@@ -112,30 +170,39 @@ const AdminPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) 
         )}
 
         {activeTab === 'users' && (
-          <div className="space-y-4">
-            <h3 className="text-2xl font-bold font-mc mb-6 text-white uppercase">All Users</h3>
-            {users.map(user => (
-              <div key={user.id} className="flex items-center justify-between p-4 bg-[#313233] border-2 border-t-[#5b5b5c] border-l-[#5b5b5c] border-b-[#1e1e1f] border-r-[#1e1e1f]">
-                 <div className="flex items-center gap-4">
-                    <Avatar name={user.name} src={user.avatar} />
-                    <div>
-                      <div className="font-bold font-mc text-white flex items-center gap-2">
-                        {user.name} 
-                        {user.role === 'admin' && <Chip label="OP" className="h-5 text-[10px] px-1 bg-[#b465f5]" />}
-                      </div>
-                      <div className="text-xs font-mono text-[#707070]">UUID: {user.id}</div>
+          <div className="space-y-4 animate-[slideUp_0.3s_ease-out]">
+            <h3 className="text-xl text-[#E6E6E6] mb-4 flex items-center gap-2">
+                <span className="material-symbols-rounded text-[#7DA3A1]">manage_accounts</span>
+                All Users
+            </h3>
+            
+            <div className="bg-[#1E1E1E] rounded-[24px] overflow-hidden border border-[#2C2C2C]">
+                {users.map((user, index) => (
+                <div key={user.id} className={`flex items-center justify-between p-4 hover:bg-[#252529] transition-colors ${index !== users.length - 1 ? 'border-b border-[#2C2C2C]' : ''}`}>
+                    <div className="flex items-center gap-4">
+                        <Avatar name={user.name} src={user.avatar} />
+                        <div>
+                        <div className="font-medium text-[#E6E6E6] flex items-center gap-2">
+                            {user.name} 
+                            {user.role === 'admin' && (
+                                <span className="bg-[#D0BCFF] text-[#381E72] text-[10px] px-2 py-0.5 rounded-full font-bold">Admin</span>
+                            )}
+                        </div>
+                        <div className="text-[10px] text-[#707070] font-mono">ID: {user.id.substring(0, 8)}...</div>
+                        </div>
                     </div>
-                 </div>
-                 {user.role !== 'admin' && (
-                   <div className="flex items-center gap-4 bg-[#1e1e1f] p-2 border border-[#000]">
-                     <span className={`text-sm font-mc ${user.banned ? 'text-[#ff5555]' : 'text-[#52A535]'}`}>
-                       {user.banned ? 'BANNED' : 'ACTIVE'}
-                     </span>
-                     <Switch checked={!!user.banned} onChange={() => toggleBan(user.id)} />
-                   </div>
-                 )}
-              </div>
-            ))}
+                    
+                    {user.role !== 'admin' && (
+                    <div className="flex items-center gap-4">
+                        <span className={`text-xs font-medium uppercase tracking-wider ${user.banned ? 'text-[#CF6679]' : 'text-[#8FBC8F]'}`}>
+                        {user.banned ? 'Banned' : 'Active'}
+                        </span>
+                        <Switch checked={!!user.banned} onChange={() => toggleBan(user.id)} />
+                    </div>
+                    )}
+                </div>
+                ))}
+            </div>
           </div>
         )}
       </div>
