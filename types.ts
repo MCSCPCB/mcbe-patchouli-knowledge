@@ -33,8 +33,11 @@ export enum Page {
   ADMIN = 'ADMIN',
 }
 
-// Predefined Tags for strict categorization
-export const PREDEFINED_TAGS = ['Block', 'Entity', 'Script', 'Mechanic', 'Theory', 'Item'];
+const envTags = import.meta.env.VITE_ALLOWED_TAGS;
+
+export const PREDEFINED_TAGS = envTags 
+  ? envTags.split(',').map(t => t.trim()) 
+  : [];
 
 // Design System Types
 export type Variant = 'filled' | 'outlined' | 'text' | 'tonal' | 'elevated';
