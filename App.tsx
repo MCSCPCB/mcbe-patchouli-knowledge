@@ -17,6 +17,7 @@ export const AppContext = React.createContext<{
   setCurrentUser: (u: User | null) => void;
   items: KnowledgeItem[];
   setItems: (i: KnowledgeItem[]) => void;
+  refreshData: () => Promise<void>;
   users: User[];
   setUsers: (u: User[]) => void;
   currentPage: Page;
@@ -28,6 +29,7 @@ export const AppContext = React.createContext<{
   setCurrentUser: () => {},
   items: [],
   setItems: () => {},
+  refreshData: async () => {},
   users: [],
   setUsers: () => {},
   currentPage: Page.LOGIN,
@@ -43,6 +45,15 @@ const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>(Page.LOGIN);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const refreshData = async () => {
+    try {
+      const posts = await getRecentPosts();
+      setItems(posts); // 核心：这里更新了，所有订阅 Context 的组件都会重绘
+    } catch (e) {
+      console.error("Refresh failed", e);
+    }
+  };
 
   // Navigation Logic
   const goTo = (page: Page, itemId?: string) => {
@@ -77,6 +88,7 @@ const App: React.FC = () => {
       };
 
       setCurrentUser(user);
+      await refreshData();
 
       // 2. Load Knowledge Content
       const posts = await getRecentPosts();
@@ -171,7 +183,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <AppContext.Provider value={{ currentUser, setCurrentUser, items, setItems, users, setUsers, currentPage, setCurrentPage, selectedItemId, setSelectedItemId }}>
+    <AppContext.Provider value={{ currentUser, setCurrentUser, items, setItems, refreshData, users, setUsers, currentPage, setCurrentPage, selectedItemId, setSelectedItemId }}>
       <div className="min-h-screen bg-[#313233] text-[#E0E0E0] font-sans selection:bg-[#3C8527] selection:text-white">
         {/* Header (Top App Bar) */}
         {currentPage !== Page.LOGIN && !loading && (
