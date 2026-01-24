@@ -304,3 +304,27 @@ export const Card: React.FC<{ children: React.ReactNode; variant?: 'elevated' | 
     </div>
   );
 };
+
+// --- M3 Card (追加部分) ---
+export const M3Card = ({ 
+  children, 
+  className, 
+  onClick 
+}: { 
+  children: React.ReactNode, 
+  className?: string, 
+  onClick?: () => void 
+}) => {
+  return (
+    <div
+      onClick={onClick}
+      className={cn(
+        "bg-[#FDFDFD] rounded-[16px] border border-[#E1E2E4] p-4 transition-all duration-200", 
+        onClick && "cursor-pointer active:scale-[0.99] hover:shadow-sm hover:bg-[#EEF1F4]",
+        className
+      )}
+    >
+      {children}
+    </div>
+  );
+};
