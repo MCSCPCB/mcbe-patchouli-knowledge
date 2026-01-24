@@ -5,22 +5,20 @@ import { FAB, Chip, Card, Avatar, Select } from '../components/M3Components';
 import { searchKnowledge } from '../services/knowledgeService'; // Import Service
 
 const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ onNavigate }) => {
-  const { items, setItems, currentUser } = useContext(AppContext);
+  const { items, setItems, currentUser, refreshData } = useContext(AppContext);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchMode, setSearchMode] = useState<'keyword' | 'ai'>('keyword');
   const [filterTag, setFilterTag] = useState<string>('All');
   const [isSearching, setIsSearching] = useState(false); // Loading state
 
-  // --- Real Search Logic ---
   useEffect(() => {
     const doSearch = async () => {
       if (!searchTerm.trim()) {
+        // [Modified] 搜索清空时，强制刷新回最新列表
+        // 这样如果你刚才在别处删了文章，清空搜索框也能看到最新状态
         setIsSearching(true);
-        try {
-            const defaults = await getRecentPosts();
-            setItems(defaults);
-        } catch(e) { console.error(e); }
-        finally { setIsSearching(false); }
+        await refreshData(); 
+        setIsSearching(false);
         return;
       }
 
@@ -28,8 +26,6 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
       try {
         const results = await searchKnowledge(searchTerm, searchMode);
         setItems(results);
-      } catch (e) {
-        console.error("Search failed", e);
       } finally {
         setIsSearching(false);
       }
