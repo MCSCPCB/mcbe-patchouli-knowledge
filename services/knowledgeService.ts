@@ -81,7 +81,6 @@ export const getRecentPosts = async (): Promise<KnowledgeItem[]> => {
   const { data, error } = await supabase
     .from('knowledge_posts')
     .select(`*, profiles ( github_id, avatar_url )`)
-    .eq('status', 'published') // 修正: 只看 published
     .order('created_at', { ascending: false })
     .limit(20);
 
