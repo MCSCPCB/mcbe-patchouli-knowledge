@@ -157,7 +157,7 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
           label="Content" 
           value={content} 
           onChange={setContent}
-          onAddAttachment={handleAddAttachment}
+          onAddAttachment={() => handleTriggerUpload('file')}
         />
 
         {/* Attachment List Preview */}
