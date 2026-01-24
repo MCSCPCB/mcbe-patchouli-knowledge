@@ -54,7 +54,6 @@ export const searchKnowledge = async (query: string, mode: 'keyword' | 'ai' = 'k
   let { data, error } = await supabase
     .from('knowledge_posts')
     .select(`*, profiles ( github_id, avatar_url )`)
-    .eq('status', 'published') // 修正: 只查询已发布的
     .textSearch('search_clues', searchTerms, {
       type: 'websearch',
       config: 'english'
@@ -197,4 +196,23 @@ function mapDBToItem(row: DBPost): KnowledgeItem {
       role: 'user' // 这里简化处理，列表页通常不需要知道作者是不是 admin
     }
   };
+};
+
+// === 新增：文件上传服务 ===
+export const uploadFile = async (file: File): Promise<string> => {
+  // 生成文件名: timestamp_filename，防止重名
+  const fileName = `${Date.now()}_${file.name.replace(/\s/g, '_')}`;
+  
+  const { data, error } = await supabase.storage
+    .from('kb-assets') // 确保你在 Supabase 创建了这个 bucket
+    .upload(fileName, file);
+
+  if (error) throw error;
+  
+  // 获取公开访问链接
+  const { data: { publicUrl } } = supabase.storage
+    .from('kb-assets')
+    .getPublicUrl(fileName);
+    
+  return publicUrl;
 }
