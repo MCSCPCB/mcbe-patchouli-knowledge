@@ -5,7 +5,7 @@ import { Button, IconButton, TextField, Select, Chip, RichMarkdownEditor } from 
 import { generateSearchClues, createPost, getRecentPosts, uploadFile } from '../services/knowledgeService';
 
 const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) => {
-  const { setItems, currentUser } = useContext(AppContext);
+  const { setItems, currentUser, refreshData } = useContext(AppContext);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [tags, setTags] = useState<string[]>([]);
@@ -92,6 +92,7 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
         // Refresh items
         const posts = await getRecentPosts();
         setItems(posts);
+        await refreshData();
 
         onNavigate(Page.HOME);
     } catch (e) {
