@@ -74,6 +74,47 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
     }
   };
 
+  // [新增] 隐藏的文件输入框引用
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  // [新增] 记录当前是要上传图片还是附件
+  const [uploadType, setUploadType] = useState<'image' | 'file'>('file');
+
+  // [修改] handleAddAttachment 改为触发文件选择
+  const handleTriggerUpload = (type: 'image' | 'file') => {
+      setUploadType(type);
+      if (fileInputRef.current) {
+          fileInputRef.current.click();
+      }
+  };
+
+  // [新增] 真正的上传处理逻辑
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      try {
+          const url = await uploadFile(file);
+          
+          if (uploadType === 'image') {
+              // 插入 Markdown 图片语法
+              setContent(prev => prev + `\n![${file.name}](${url})\n`);
+          } else {
+              // 添加到附件列表
+              setAttachments(prev => [...prev, {
+                  id: Date.now().toString(),
+                  name: file.name,
+                  type: 'file',
+                  url: url
+              }]);
+          }
+      } catch (error) {
+          alert("Upload failed: " + error);
+      } finally {
+          // 清空 input 防止重复上传同一文件不触发 onChange
+          if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+  };
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 pb-24">
       {/* Header Actions */}
