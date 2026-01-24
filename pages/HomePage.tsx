@@ -1,157 +1,170 @@
-import React, { useState, useEffect } from 'react';
-import { KnowledgePost } from '../types';
-import { searchKnowledge, getRecentPosts } from '../services/knowledgeService';
-import { M3Card } from '../components/M3Components';
+import React, { useContext, useState } from 'react';
+import { AppContext } from '../App';
+import { Page, ItemType, Item, KnowledgePost } from '../types';
+import { IconButton } from '../components/M3Components';
+import { searchKnowledge } from '../services/knowledgeService';
 
-interface HomePageProps {
-  onPostClick: (post: KnowledgePost) => void;
-  onFabClick: () => void;
-}
+const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ onNavigate }) => {
+  const { items, setItems, currentUser } = useContext(AppContext);
+  const [filterType, setFilterType] = useState<ItemType | 'all'>('all');
+  const [searchText, setSearchText] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
 
-export default function HomePage({ onPostClick, onFabClick }: HomePageProps) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchMode, setSearchMode] = useState<'keyword' | 'ai'>('keyword');
-  const [posts, setPosts] = useState<KnowledgePost[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // 初始加载最近的文章
-  useEffect(() => {
-    loadRecentPosts();
-  }, []);
-
-  const loadRecentPosts = async () => {
-    setIsLoading(true);
-    try {
-      const data = await getRecentPosts();
-      setPosts(data);
-    } catch (error) {
-      console.error('Failed to load posts:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSearch = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (!searchQuery.trim()) {
-      loadRecentPosts();
+  // 执行搜索 (AI + 关键词)
+  const handleSearch = async () => {
+    if (!searchText.trim()) {
+      // 如果搜索为空，通常应该重置为“最近文章”，这里我们在App.tsx已经加载了最近文章
+      // 可以在这里触发一次重新加载，或者简单不做处理
       return;
     }
 
-    setIsLoading(true);
+    setIsSearching(true);
     try {
-      // 调用真实 API
-      const results = await searchKnowledge(searchQuery, searchMode);
-      setPosts(results);
+      // 默认开启 AI 模式 ('ai')
+      const results = await searchKnowledge(searchText, 'ai');
+      
+      // 转换数据格式
+      const formattedResults: Item[] = results.map((p: KnowledgePost) => ({
+        id: p.id,
+        title: p.title,
+        content: p.content,
+        type: p.type,
+        attachments: p.attachments,
+        aiClues: p.searchClues,
+        status: p.status,
+        createdAt: p.createdAt,
+        author: {
+          id: p.authorId,
+          name: p.authorName,
+          avatar: p.authorAvatar,
+          role: 'user'
+        }
+      }));
+      setItems(formattedResults);
     } catch (error) {
-      console.error('Search failed:', error);
+      console.error(error);
+      alert('Search failed');
     } finally {
-      setIsLoading(false);
+      setIsSearching(false);
     }
   };
 
+  // 本地过滤 (类型筛选)
+  const filteredItems = items.filter(item => {
+    if (filterType !== 'all' && item.type !== filterType) return false;
+    return true;
+  });
+
   return (
-    <div className="flex flex-col gap-6 animate-fade-in">
-      {/* Search Area */}
-      <div className="flex flex-col gap-4 sticky top-0 pt-2 z-10">
-        <form 
-          onSubmit={handleSearch}
-          className={`
-            flex items-center px-4 h-14 rounded-[28px] bg-[#EEF1F4] transition-all duration-300
-            ${searchMode === 'ai' ? 'ring-2 ring-[#7CD3EA] shadow-md bg-[#F0F8FF]' : ''}
-          `}
-        >
-          <button type="button" onClick={() => handleSearch()} className="w-10 h-10 flex items-center justify-center text-[#40484C]">
-            <span className="material-symbols-rounded">search</span>
-          </button>
-          
-          <input 
-            type="text"
-            className="flex-1 bg-transparent border-none outline-none text-[#191C1E] placeholder-[#70787D] ml-2"
-            placeholder={searchMode === 'ai' ? "描述你的需求 (AI 正在辅助)..." : "搜索标题或标签..."}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+    <div className="flex flex-col gap-8 pb-20">
+      {/* Search & Filter Header */}
+      <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
+         <div className="relative flex-1 group">
+            <input 
+              type="text" 
+              placeholder="Search knowledge... (AI Powered)" 
+              className="w-full bg-[#1e1e1f] border-2 border-[#5b5b5c] text-white px-4 py-3 font-mono outline-none focus:border-[#3C8527] focus:bg-[#000] transition-colors placeholder-[#5b5b5c]"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            />
+            <button 
+              onClick={handleSearch}
+              className="absolute right-2 top-2 p-1 text-[#b0b0b0] hover:text-white"
+            >
+              {isSearching ? (
+                 <span className="material-symbols-rounded animate-spin">sync</span>
+              ) : (
+                 <span className="material-symbols-rounded">search</span>
+              )}
+            </button>
+         </div>
 
-          {searchMode === 'ai' && (
-             <span className="mr-2 text-[#00668B] text-sm font-medium flex items-center gap-1">
-               <span className="material-symbols-rounded text-base">auto_awesome</span>
-               AI
-             </span>
-          )}
-        </form>
-
-        {/* Mode Switcher */}
-        <div className="flex gap-2 px-2">
-           <button 
-             onClick={() => setSearchMode('keyword')}
-             className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-               searchMode === 'keyword' 
-               ? 'bg-[#CDE5FF] border-[#CDE5FF] text-[#001D32]' 
-               : 'bg-transparent border-[#70787D] text-[#40484C]'
-             }`}
-           >
-             关键词匹配
-           </button>
-           <button 
-             onClick={() => setSearchMode('ai')}
-             className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors flex items-center gap-1 ${
-               searchMode === 'ai' 
-               ? 'bg-[#D0F8FF] border-[#D0F8FF] text-[#001E2C]' 
-               : 'bg-transparent border-[#70787D] text-[#40484C]'
-             }`}
-           >
-             <span className="material-symbols-rounded text-sm">auto_awesome</span>
-             AI 智能线索
-           </button>
-        </div>
+         <div className="flex bg-[#1e1e1f] border-2 border-[#5b5b5c] p-1 gap-1">
+            {(['all', 'script', 'block', 'entity'] as const).map(type => (
+               <button
+                 key={type}
+                 onClick={() => setFilterType(type)}
+                 className={`px-4 py-2 font-mc text-xs uppercase transition-all ${
+                   filterType === type 
+                   ? 'bg-[#3C8527] text-white border border-white shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]' 
+                   : 'text-[#b0b0b0] hover:bg-[#2b2b2b]'
+                 }`}
+               >
+                 {type}
+               </button>
+            ))}
+         </div>
       </div>
 
-      {/* Results */}
-      <div className="flex flex-col gap-4 pb-20">
-        {isLoading ? (
-          <div className="text-center py-10 text-[#70787D]">加载中...</div>
-        ) : posts.length === 0 ? (
-          <div className="text-center py-10 text-[#70787D]">暂无相关内容</div>
-        ) : (
-          posts.map(post => (
-            <M3Card 
-              key={post.id} 
-              className="cursor-pointer hover:bg-[#EEF1F4] transition-colors"
-              onClick={() => onPostClick(post)}
+      {/* Grid Content */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+         {filteredItems.map(item => (
+            <div 
+              key={item.id}
+              onClick={() => onNavigate(Page.DETAIL, item.id)}
+              className="group bg-[#2b2b2b] border-4 border-[#151515] p-0 cursor-pointer hover:-translate-y-1 transition-transform relative overflow-hidden flex flex-col h-[280px]"
             >
-              <div className="flex justify-between items-start mb-2">
-                 <h3 className="text-lg font-medium text-[#191C1E] line-clamp-1">{post.title}</h3>
-                 <span className={`text-xs px-2 py-0.5 rounded-full border ${
-                   post.type === 'script' ? 'border-green-200 bg-green-50 text-green-700' :
-                   post.type === 'block' ? 'border-blue-200 bg-blue-50 text-blue-700' :
-                   'border-purple-200 bg-purple-50 text-purple-700'
-                 }`}>
-                   {post.type}
-                 </span>
-              </div>
-              <p className="text-[#40484C] text-sm line-clamp-2 mb-3">
-                {post.content}
-              </p>
-              <div className="flex items-center justify-between text-xs text-[#70787D]">
-                 <div className="flex items-center gap-2">
-                    <img src={post.authorAvatar} alt="" className="w-5 h-5 rounded-full bg-gray-200"/>
-                    <span>{post.authorName}</span>
-                 </div>
-                 {/* 如果是 AI 搜出来的，可以显示匹配度，这里暂不显示 */}
-              </div>
-            </M3Card>
-          ))
-        )}
+               {/* Decorative border lines */}
+               <div className="absolute top-0 left-0 w-full h-1 bg-[#5b5b5c] opacity-20"></div>
+               <div className="absolute bottom-0 left-0 w-full h-1 bg-[#000] opacity-20"></div>
+
+               {/* Header */}
+               <div className="p-4 border-b-2 border-[#1e1e1f] bg-[#232323] flex justify-between items-start">
+                  <div className={`px-2 py-1 text-[10px] font-bold font-mc uppercase border border-[#000] text-black ${
+                     item.type === 'script' ? 'bg-[#98FB98]' : 
+                     item.type === 'block' ? 'bg-[#87CEEB]' : 'bg-[#DDA0DD]'
+                  }`}>
+                    {item.type}
+                  </div>
+                  {item.status === 'pending' && (
+                     <span className="text-[10px] font-mc text-yellow-500 animate-pulse">PENDING</span>
+                  )}
+               </div>
+
+               {/* Body */}
+               <div className="p-5 flex-1 overflow-hidden relative">
+                  <h3 className="text-xl font-bold text-white font-mc mb-3 leading-snug group-hover:text-[#3C8527] transition-colors line-clamp-2">
+                    {item.title}
+                  </h3>
+                  <p className="text-[#b0b0b0] font-mono text-sm line-clamp-3 leading-relaxed">
+                    {item.content}
+                  </p>
+                  {/* Fade out effect */}
+                  <div className="absolute bottom-0 left-0 w-full h-12 bg-gradient-to-t from-[#2b2b2b] to-transparent"></div>
+               </div>
+
+               {/* Footer */}
+               <div className="p-3 bg-[#1e1e1f] border-t-2 border-[#151515] flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                     <div className="w-6 h-6 border border-[#5b5b5c]">
+                        <img src={item.author.avatar} className="w-full h-full object-cover" alt=""/>
+                     </div>
+                     <span className="text-xs text-[#b0b0b0] font-mono">{item.author.name}</span>
+                  </div>
+                  {/* AI Match Indicator (Mock visual for now) */}
+                  {searchText && (
+                    <span className="text-[10px] text-[#3C8527] font-mc flex items-center gap-1">
+                       <span className="material-symbols-rounded text-xs">auto_awesome</span>
+                       MATCH
+                    </span>
+                  )}
+               </div>
+            </div>
+         ))}
       </div>
 
       {/* FAB */}
-      <button 
-        onClick={onFabClick}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-[#CCE5FF] text-[#001D32] rounded-[20px] shadow-lg flex items-center justify-center hover:shadow-xl hover:scale-105 active:scale-95 transition-all z-20"
-      >
-        <span className="material-symbols-rounded text-2xl">add</span>
-      </button>
+      {currentUser && (
+        <button 
+          onClick={() => onNavigate(Page.EDITOR)}
+          className="fixed bottom-8 right-8 w-16 h-16 bg-[#3C8527] border-4 border-white shadow-[4px_4px_0_0_#000] flex items-center justify-center hover:bg-[#4CAF50] hover:scale-105 active:scale-95 transition-all z-40 group"
+        >
+          <span className="material-symbols-rounded text-white text-3xl font-bold group-hover:rotate-90 transition-transform">add</span>
+        </button>
+      )}
     </div>
   );
-}
+};
+
+export default HomePage;

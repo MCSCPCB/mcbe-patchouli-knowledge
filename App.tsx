@@ -1,41 +1,58 @@
-import React, { useState, useEffect } from 'react';
-import { M3Theme, M3NavigationRail, M3IconButton, M3Avatar } from './components/M3Components';
+import React, { useState, useEffect, createContext } from 'react';
 import HomePage from './pages/HomePage';
-import LoginPage from './pages/LoginPage';
 import EditorPage from './pages/EditorPage';
 import DetailPage from './pages/DetailPage';
+import LoginPage from './pages/LoginPage';
 import AdminPage from './pages/AdminPage';
-import { User, KnowledgePost } from './types';
-import { supabase } from './services/supabaseClient'; // 确保你已经创建了这个文件
+import { Page, User, Item, KnowledgePost } from './types';
+import { supabase } from './services/supabaseClient';
+import { getRecentPosts } from './services/knowledgeService';
 
-export default function App() {
+// App Context State Definition
+interface AppState {
+  currentUser: User | null;
+  setCurrentUser: (user: User | null) => void;
+  items: Item[];
+  setItems: (items: Item[]) => void;
+  navigateTo: (page: Page, itemId?: string) => void;
+}
+
+export const AppContext = createContext<AppState>({
+  currentUser: null,
+  setCurrentUser: () => {},
+  items: [],
+  setItems: () => {},
+  navigateTo: () => {},
+});
+
+const App: React.FC = () => {
+  const [currentPage, setCurrentPage] = useState<Page>(Page.HOME);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [currentRoute, setCurrentRoute] = useState<'home' | 'login' | 'editor' | 'detail' | 'admin'>('home');
-  const [selectedPost, setSelectedPost] = useState<KnowledgePost | null>(null);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [items, setItems] = useState<Item[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 初始化：监听 Supabase 登录状态
+  // 1. 初始化：监听 Supabase 登录状态并获取数据
   useEffect(() => {
-    // 1. 获取当前会话
+    // 检查 Session
     supabase.auth.getSession().then(({ data: { session } }) => {
       handleSession(session);
     });
 
-    // 2. 监听登录/登出变化
+    // 监听变化
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       handleSession(session);
     });
 
+    // 加载初始数据
+    loadKnowledgeData();
+
     return () => subscription.unsubscribe();
   }, []);
 
-  // 处理会话数据，映射为我们的 User 类型
   const handleSession = async (session: any) => {
-    if (!session?.user) {
-      setCurrentUser(null);
-      // 如果不在登录页，踢回首页或保留现状（根据需求，这里允许未登录访问首页）
-    } else {
-      // 查询 profiles 表获取角色信息
+    if (session?.user) {
+      // 获取用户扩展信息 (角色等)
       const { data: profile } = await supabase
         .from('profiles')
         .select('*')
@@ -45,105 +62,114 @@ export default function App() {
       if (profile) {
         setCurrentUser({
           id: session.user.id,
-          name: profile.github_id || session.user.user_metadata.user_name,
-          avatar: profile.avatar_url || session.user.user_metadata.avatar_url,
+          name: profile.github_id || 'User',
+          avatar: profile.avatar_url || '',
           role: profile.role,
           isBanned: profile.is_banned
         });
       }
+    } else {
+      setCurrentUser(null);
     }
     setIsLoading(false);
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setCurrentRoute('login');
+  // 2. 从后端加载数据并转换格式
+  const loadKnowledgeData = async () => {
+    try {
+      const posts = await getRecentPosts();
+      // 数据转换: KnowledgePost (Flat) -> Item (Nested)
+      const formattedItems: Item[] = posts.map((p: KnowledgePost) => ({
+        id: p.id,
+        title: p.title,
+        content: p.content,
+        type: p.type,
+        attachments: p.attachments,
+        aiClues: p.searchClues,
+        status: p.status,
+        createdAt: p.createdAt,
+        author: {
+          id: p.authorId,
+          name: p.authorName,
+          avatar: p.authorAvatar,
+          role: 'user' // 列表页暂时不需要具体role，默认为user即可
+        }
+      }));
+      setItems(formattedItems);
+    } catch (error) {
+      console.error('Failed to load posts', error);
+    }
   };
 
-  const navigateTo = (page: 'home' | 'login' | 'editor' | 'detail' | 'admin', post?: KnowledgePost) => {
-    setCurrentRoute(page);
-    if (post) setSelectedPost(post);
+  const navigateTo = (page: Page, itemId?: string) => {
+    setCurrentPage(page);
+    if (itemId) setSelectedItemId(itemId);
+    // 每次回到首页时刷新数据
+    if (page === Page.HOME) {
+      loadKnowledgeData();
+    }
   };
 
   if (isLoading) {
-    return <div className="flex items-center justify-center h-screen bg-[#FDFDFD]">Loading...</div>;
+    return <div className="min-h-screen bg-[#1e1e1f] flex items-center justify-center text-white font-mc">Loading...</div>;
   }
 
   return (
-    <div className="flex h-screen w-full bg-[#FDFDFD] text-[#191C1E] font-sans overflow-hidden">
-      {/* Navigation Rail (Desktop) or Drawer Trigger (Mobile) */}
-      {currentUser && (
-        <M3NavigationRail 
-          className="hidden md:flex z-20"
-          actions={[
-            { icon: 'home', label: '首页', active: currentRoute === 'home', onClick: () => navigateTo('home') },
-            // 只有管理员能看到 admin 入口
-            ...(currentUser.role === 'admin' ? [{ icon: 'admin_panel_settings', label: '管理', active: currentRoute === 'admin', onClick: () => navigateTo('admin') }] : []),
-            { icon: 'add_circle', label: '投稿', active: currentRoute === 'editor', onClick: () => navigateTo('editor') },
-            { icon: 'logout', label: '登出', onClick: handleLogout }
-          ]}
-        >
-          <div className="mb-4">
-             <M3Avatar src={currentUser.avatar} alt={currentUser.name} size="md" />
-          </div>
-        </M3NavigationRail>
-      )}
-
-      {/* Main Content Area */}
-      <main className="flex-1 h-full overflow-y-auto relative scroll-smooth">
-        
-        {/* Top Bar for Mobile / General */}
-        <header className="sticky top-0 z-10 bg-[#FDFDFD]/90 backdrop-blur-md px-4 py-3 flex items-center justify-between border-b border-[#E1E2E4]">
-           <div className="flex items-center gap-3" onClick={() => navigateTo('home')}>
-              <div className="w-8 h-8 rounded-full bg-[#DCE3E9] flex items-center justify-center">
-                 <span className="material-symbols-rounded text-[#40484C]">api</span>
+    <AppContext.Provider value={{ currentUser, setCurrentUser, items, setItems, navigateTo }}>
+      <div className="min-h-screen bg-[#1e1e1f] font-sans selection:bg-[#3C8527] selection:text-white">
+        {/* Navigation Bar */}
+        <nav className="border-b-4 border-[#151515] bg-[#2b2b2b] p-4 sticky top-0 z-50 shadow-lg">
+          <div className="max-w-6xl mx-auto flex items-center justify-between">
+            <div 
+              className="flex items-center gap-3 cursor-pointer group" 
+              onClick={() => navigateTo(Page.HOME)}
+            >
+              <div className="w-10 h-10 bg-[#3C8527] border-2 border-[#fff] shadow-[inset_-4px_-4px_0_rgba(0,0,0,0.5)] group-hover:bg-[#4CAF50] transition-colors flex items-center justify-center">
+                 <span className="material-symbols-rounded text-white">book_2</span>
               </div>
-              <h1 className="text-xl font-medium text-[#191C1E]">Ark Knowledge</h1>
-           </div>
-           
-           {!currentUser && currentRoute !== 'login' && (
-             <button 
-               onClick={() => navigateTo('login')}
-               className="px-4 py-2 bg-[#00668B] text-white rounded-full text-sm font-medium hover:shadow-md transition-all"
-             >
-               登录
-             </button>
-           )}
-        </header>
+              <span className="text-xl font-bold text-white tracking-wider font-mc drop-shadow-md">PATCHOULI</span>
+            </div>
 
-        <div className="max-w-5xl mx-auto p-4 md:p-6 pb-24">
-          {currentRoute === 'login' && (
-            <LoginPage onLoginSuccess={() => navigateTo('home')} />
-          )}
+            <div className="flex items-center gap-4">
+              {currentUser ? (
+                <>
+                  <div className="hidden md:flex flex-col items-end mr-2">
+                    <span className="text-white font-bold font-mc text-sm">{currentUser.name}</span>
+                    <span className="text-[#b0b0b0] text-xs font-mono">LV.{currentUser.role === 'admin' ? 'OP' : '1'}</span>
+                  </div>
+                  <img src={currentUser.avatar} alt="Avatar" className="w-10 h-10 border-2 border-white bg-[#1e1e1f]" />
+                  {currentUser.role === 'admin' && (
+                     <button onClick={() => navigateTo(Page.ADMIN)} className="p-2 text-[#b0b0b0] hover:text-white">
+                        <span className="material-symbols-rounded">admin_panel_settings</span>
+                     </button>
+                  )}
+                  <button onClick={() => supabase.auth.signOut()} className="p-2 text-[#b0b0b0] hover:text-white" title="Logout">
+                    <span className="material-symbols-rounded">logout</span>
+                  </button>
+                </>
+              ) : (
+                <button 
+                  onClick={() => navigateTo(Page.LOGIN)}
+                  className="px-4 py-2 bg-[#1e1e1f] border-2 border-[#5b5b5c] text-white font-mc text-sm hover:bg-[#3C8527] hover:border-white transition-all"
+                >
+                  LOGIN
+                </button>
+              )}
+            </div>
+          </div>
+        </nav>
 
-          {currentRoute === 'home' && (
-            <HomePage 
-              onPostClick={(post) => navigateTo('detail', post)} 
-              onFabClick={() => currentUser ? navigateTo('editor') : navigateTo('login')}
-            />
-          )}
-
-          {currentRoute === 'editor' && currentUser && (
-             <EditorPage 
-               currentUser={currentUser} 
-               onCancel={() => navigateTo('home')} 
-               onSuccess={() => navigateTo('home')}
-             />
-          )}
-
-          {currentRoute === 'detail' && selectedPost && (
-            <DetailPage 
-              post={selectedPost} 
-              currentUser={currentUser}
-              onBack={() => navigateTo('home')}
-            />
-          )}
-
-          {currentRoute === 'admin' && currentUser?.role === 'admin' && (
-             <AdminPage currentUser={currentUser} />
-          )}
-        </div>
-      </main>
-    </div>
+        {/* Main Content */}
+        <main className="max-w-6xl mx-auto p-4 md:p-6">
+          {currentPage === Page.LOGIN && <LoginPage onLoginSuccess={() => navigateTo(Page.HOME)} />}
+          {currentPage === Page.HOME && <HomePage onNavigate={navigateTo} />}
+          {currentPage === Page.EDITOR && <EditorPage onNavigate={navigateTo} />}
+          {currentPage === Page.DETAIL && <DetailPage onNavigate={navigateTo} itemId={selectedItemId} />}
+          {currentPage === Page.ADMIN && <AdminPage onNavigate={navigateTo} />}
+        </main>
+      </div>
+    </AppContext.Provider>
   );
-}
+};
+
+export default App;

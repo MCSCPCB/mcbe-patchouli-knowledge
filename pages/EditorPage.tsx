@@ -1,40 +1,21 @@
 import React, { useState } from 'react';
-import { User, KnowledgeType, Attachment } from '../types';
-import { generateSearchClues, createPost, uploadFile } from '../services/knowledgeService';
+import { Page, KnowledgeType, Attachment } from '../types';
+import { IconButton } from '../components/M3Components';
+import { uploadFile, generateSearchClues, createPost } from '../services/knowledgeService';
 
-interface EditorPageProps {
-  currentUser: User;
-  onCancel: () => void;
-  onSuccess: () => void;
-}
-
-export default function EditorPage({ currentUser, onCancel, onSuccess }: EditorPageProps) {
+const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [type, setType] = useState<KnowledgeType>('script');
-  const [searchClues, setSearchClues] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [aiClues, setAiClues] = useState('');
   
-  // Loading states
+  // Loading States
   const [isGeneratingClues, setIsGeneratingClues] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 1. 生成 AI 线索
-  const handleGenerateClues = async () => {
-    if (!content) return;
-    setIsGeneratingClues(true);
-    try {
-      const clues = await generateSearchClues(content);
-      setSearchClues(clues);
-    } catch (error) {
-      alert('AI 生成失败，请稍后重试');
-    } finally {
-      setIsGeneratingClues(false);
-    }
-  };
-
-  // 2. 上传文件
+  // 1. 真实文件上传
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -45,24 +26,38 @@ export default function EditorPage({ currentUser, onCancel, onSuccess }: EditorP
           id: Date.now().toString(),
           name: file.name,
           url: url,
-          type: file.name.split('.').pop() || 'file'
+          type: 'file'
         }]);
       } catch (error) {
         console.error(error);
-        alert('文件上传失败');
+        alert('Upload failed');
       } finally {
         setIsUploading(false);
       }
     }
   };
 
-  // 3. 提交表单
+  // 2. 真实 AI 线索生成
+  const handleGenerateClues = async () => {
+    if (!content.trim()) return;
+    setIsGeneratingClues(true);
+    try {
+      const clues = await generateSearchClues(content);
+      setAiClues(clues);
+    } catch (error) {
+      alert('AI generation failed');
+    } finally {
+      setIsGeneratingClues(false);
+    }
+  };
+
+  // 3. 真实提交
   const handleSubmit = async () => {
-    if (!title || !content || !searchClues) {
-      alert('请填写标题、内容并生成检索线索');
+    if (!title || !content || !aiClues) {
+      alert('Please fill all fields and generate AI clues.');
       return;
     }
-    
+
     setIsSubmitting(true);
     try {
       await createPost({
@@ -70,139 +65,149 @@ export default function EditorPage({ currentUser, onCancel, onSuccess }: EditorP
         content,
         type,
         attachments,
-        searchClues
+        searchClues: aiClues
       });
-      alert('投稿成功！请等待管理员审核。');
-      onSuccess();
+      alert('Submission successful! Pending review.');
+      onNavigate(Page.HOME);
     } catch (error) {
       console.error(error);
-      alert('提交失败: ' + (error as Error).message);
+      alert('Submission failed');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="flex flex-col gap-6 animate-fade-in-up pb-20">
-      <div className="flex items-center gap-4 mb-2">
-        <button onClick={onCancel} className="p-2 -ml-2 rounded-full hover:bg-black/5">
-           <span className="material-symbols-rounded">arrow_back</span>
-        </button>
-        <h2 className="text-2xl font-normal text-[#191C1E]">新建知识</h2>
-      </div>
+    <div className="max-w-4xl mx-auto px-4 py-8 pb-32 animate-fade-in">
+       {/* Header */}
+       <div className="flex items-center justify-between mb-8 border-b-4 border-[#1e1e1f] pb-4">
+          <div className="flex items-center gap-4">
+             <IconButton icon="arrow_back" onClick={() => onNavigate(Page.HOME)} />
+             <h1 className="text-3xl font-bold font-mc text-white tracking-wide">NEW ENTRY</h1>
+          </div>
+          <button 
+             onClick={handleSubmit}
+             disabled={isSubmitting}
+             className="px-6 py-3 bg-[#3C8527] border-2 border-white text-white font-mc shadow-[4px_4px_0_0_#000] hover:translate-y-1 hover:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+             {isSubmitting ? (
+               <span className="material-symbols-rounded animate-spin">progress_activity</span>
+             ) : (
+               <span className="material-symbols-rounded">save</span>
+             )}
+             SUBMIT
+          </button>
+       </div>
 
-      {/* Title */}
-      <div className="flex flex-col gap-1">
-         <label className="text-xs text-[#40484C] font-medium ml-1">标题</label>
-         <input 
-           className="w-full bg-[#EEF1F4] rounded-t-[4px] border-b border-[#70787D] px-4 py-3 outline-none focus:border-[#00668B] focus:bg-[#E6E8EB] transition-colors text-lg"
-           placeholder="输入知识标题"
-           value={title}
-           onChange={(e) => setTitle(e.target.value)}
-         />
-      </div>
-
-      {/* Type Chips */}
-      <div className="flex flex-col gap-2">
-        <label className="text-xs text-[#40484C] font-medium ml-1">类型标签</label>
-        <div className="flex gap-2">
-          {(['script', 'block', 'entity'] as KnowledgeType[]).map(t => (
-            <button
-              key={t}
-              onClick={() => setType(t)}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                 type === t 
-                 ? 'bg-[#001D32] text-white border-[#001D32]' 
-                 : 'border-[#70787D] text-[#40484C]'
-              }`}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="flex flex-col gap-1">
-         <label className="text-xs text-[#40484C] font-medium ml-1">详细内容 (Markdown)</label>
-         <textarea 
-           className="w-full h-64 bg-[#EEF1F4] rounded-[12px] border border-transparent px-4 py-3 outline-none focus:border-[#00668B] transition-colors resize-none font-mono text-sm leading-relaxed"
-           placeholder="在此输入正文..."
-           value={content}
-           onChange={(e) => setContent(e.target.value)}
-         />
-      </div>
-
-      {/* Attachments */}
-      <div className="flex flex-col gap-2">
-        <div className="flex justify-between items-center ml-1">
-           <label className="text-xs text-[#40484C] font-medium">附件</label>
-           {isUploading && <span className="text-xs text-[#00668B]">上传中...</span>}
-        </div>
-        <div className="flex flex-wrap gap-2">
-           {attachments.map(att => (
-             <div key={att.id} className="flex items-center gap-2 bg-[#E1E2E4] pl-3 pr-1 py-1 rounded-lg text-sm">
-                <span className="truncate max-w-[150px]">{att.name}</span>
-                <button 
-                  onClick={() => setAttachments(attachments.filter(a => a.id !== att.id))}
-                  className="p-1 rounded-full hover:bg-black/10"
-                >
-                  <span className="material-symbols-rounded text-base">close</span>
-                </button>
+       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column: Inputs */}
+          <div className="lg:col-span-2 flex flex-col gap-6">
+             {/* Title */}
+             <div className="group">
+                <label className="block text-[#b0b0b0] font-mc text-xs mb-2 uppercase">Title</label>
+                <input 
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full bg-[#2b2b2b] border-2 border-[#5b5b5c] p-4 text-white font-bold text-lg outline-none focus:border-[#3C8527] focus:bg-[#000] transition-colors placeholder-[#5b5b5c]"
+                  placeholder="Enter knowledge title..."
+                />
              </div>
-           ))}
-           <label className="flex items-center gap-1 px-3 py-1.5 border border-[#70787D] rounded-lg text-sm font-medium text-[#40484C] cursor-pointer hover:bg-black/5">
-              <span className="material-symbols-rounded text-base">upload_file</span>
-              添加文件
-              <input type="file" className="hidden" onChange={handleFileUpload} />
-           </label>
-        </div>
-      </div>
 
-      {/* AI Clue Generator */}
-      <div className="p-4 rounded-[16px] bg-[#D0F8FF]/30 border border-[#D0F8FF] flex flex-col gap-3">
-         <div className="flex justify-between items-center">
-            <h3 className="text-sm font-medium text-[#001E2C] flex items-center gap-1">
-               <span className="material-symbols-rounded text-base text-[#00668B]">auto_awesome</span>
-               检索线索 (AI)
-            </h3>
-            <button 
-              onClick={handleGenerateClues}
-              disabled={!content || isGeneratingClues}
-              className="text-xs font-bold text-[#00668B] px-3 py-1 rounded-full hover:bg-[#D0F8FF] transition-colors disabled:opacity-50"
-            >
-              {isGeneratingClues ? '生成中...' : '✨ 生成/刷新'}
-            </button>
-         </div>
-         
-         <p className="text-xs text-[#40484C]">
-           AI 将分析正文内容生成以下线索，用于增强搜索匹配度。你可以手动修改。
-         </p>
-         
-         <textarea 
-           className="w-full h-24 bg-[#FDFDFD] rounded-[8px] border border-[#70787D]/30 p-3 text-sm outline-none focus:border-[#00668B]"
-           value={searchClues}
-           onChange={(e) => setSearchClues(e.target.value)}
-           placeholder="点击上方按钮自动生成..."
-         />
-      </div>
+             {/* Content */}
+             <div className="group flex-1 flex flex-col">
+                <label className="block text-[#b0b0b0] font-mc text-xs mb-2 uppercase">Content (Markdown Supported)</label>
+                <textarea 
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  className="w-full h-[400px] bg-[#2b2b2b] border-2 border-[#5b5b5c] p-4 text-[#e0e0e0] font-mono outline-none focus:border-[#3C8527] focus:bg-[#000] transition-colors resize-none leading-relaxed"
+                  placeholder="Write your detailed content here..."
+                />
+             </div>
 
-      {/* Submit */}
-      <div className="flex gap-4 mt-4">
-         <button 
-           onClick={onCancel}
-           className="flex-1 h-12 rounded-full border border-[#70787D] text-[#001D32] font-medium hover:bg-black/5"
-         >
-           取消
-         </button>
-         <button 
-           onClick={handleSubmit}
-           disabled={isSubmitting}
-           className="flex-1 h-12 rounded-full bg-[#00668B] text-white font-medium shadow-md hover:shadow-lg active:scale-95 transition-all disabled:opacity-70"
-         >
-           {isSubmitting ? '提交中...' : '提交审核'}
-         </button>
-      </div>
+             {/* Attachments */}
+             <div>
+                <label className="block text-[#b0b0b0] font-mc text-xs mb-2 uppercase flex justify-between">
+                   <span>Attachments</span>
+                   {isUploading && <span className="text-[#3C8527] animate-pulse">UPLOADING...</span>}
+                </label>
+                <div className="flex flex-wrap gap-3">
+                   {attachments.map(att => (
+                      <div key={att.id} className="flex items-center gap-2 bg-[#1e1e1f] border border-[#5b5b5c] px-3 py-2">
+                         <span className="material-symbols-rounded text-[#b0b0b0] text-sm">attachment</span>
+                         <span className="text-white font-mono text-sm max-w-[150px] truncate">{att.name}</span>
+                         <button 
+                           onClick={() => setAttachments(attachments.filter(a => a.id !== att.id))}
+                           className="hover:text-red-500"
+                         >
+                            <span className="material-symbols-rounded text-sm">close</span>
+                         </button>
+                      </div>
+                   ))}
+                   <label className="cursor-pointer bg-[#2b2b2b] border border-dashed border-[#5b5b5c] px-4 py-2 text-[#b0b0b0] font-mono text-sm hover:border-white hover:text-white transition-colors flex items-center gap-2">
+                      <span className="material-symbols-rounded">add</span>
+                      Add File
+                      <input type="file" className="hidden" onChange={handleFileUpload} />
+                   </label>
+                </div>
+             </div>
+          </div>
+
+          {/* Right Column: Metadata & AI */}
+          <div className="flex flex-col gap-6">
+             {/* Type Selector */}
+             <div className="bg-[#1e1e1f] border-2 border-[#5b5b5c] p-4">
+                <label className="block text-[#b0b0b0] font-mc text-xs mb-3 uppercase">Category</label>
+                <div className="flex flex-col gap-2">
+                   {(['script', 'block', 'entity'] as KnowledgeType[]).map(t => (
+                      <button
+                        key={t}
+                        onClick={() => setType(t)}
+                        className={`w-full py-3 px-4 text-left font-mc uppercase border-2 transition-all flex items-center justify-between ${
+                           type === t 
+                           ? 'bg-[#2b2b2b] border-white text-white shadow-[inset_0_0_10px_rgba(255,255,255,0.1)]' 
+                           : 'border-transparent text-[#5b5b5c] hover:bg-[#2b2b2b] hover:text-[#b0b0b0]'
+                        }`}
+                      >
+                        {t}
+                        {type === t && <span className="material-symbols-rounded text-sm">check</span>}
+                      </button>
+                   ))}
+                </div>
+             </div>
+
+             {/* AI Clues Generator */}
+             <div className="bg-[#2b2b2b] border-2 border-[#b465f5] p-1 shadow-[4px_4px_0_0_#000]">
+                <div className="bg-[#151515] p-4 border border-[#b465f5]/30">
+                   <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-[#b465f5] font-mc text-sm flex items-center gap-2">
+                         <span className="material-symbols-rounded">auto_awesome</span>
+                         AI CLUES
+                      </h3>
+                      <button 
+                        onClick={handleGenerateClues}
+                        disabled={isGeneratingClues || !content}
+                        className="text-[10px] font-bold bg-[#b465f5] text-black px-2 py-1 hover:bg-white transition-colors disabled:opacity-50"
+                      >
+                        {isGeneratingClues ? 'GENERATING...' : 'GENERATE'}
+                      </button>
+                   </div>
+                   
+                   <p className="text-[#5b5b5c] text-xs font-mono mb-3 leading-tight">
+                      AI will analyze your content to generate search keywords.
+                   </p>
+
+                   <textarea 
+                     value={aiClues}
+                     onChange={(e) => setAiClues(e.target.value)}
+                     className="w-full h-32 bg-[#000] border border-[#333] p-3 text-[#b465f5] font-mono text-xs outline-none focus:border-[#b465f5] resize-none placeholder-[#333]"
+                     placeholder="Click GENERATE to start..."
+                   />
+                </div>
+             </div>
+          </div>
+       </div>
     </div>
   );
-}
+};
+
+export default EditorPage;
