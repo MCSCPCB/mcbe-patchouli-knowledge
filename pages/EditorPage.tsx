@@ -2,7 +2,7 @@ import React, { useState, useContext } from 'react';
 import { AppContext } from '../App';
 import { Page, KnowledgeItem, PREDEFINED_TAGS, Attachment } from '../types';
 import { Button, IconButton, TextField, Select, Chip, RichMarkdownEditor } from '../components/M3Components';
-import { generateSearchClues } from '../services/geminiService';
+import { generateSearchClues } from '../services/knowledgeService';
 
 const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) => {
   const { items, setItems, currentUser } = useContext(AppContext);
