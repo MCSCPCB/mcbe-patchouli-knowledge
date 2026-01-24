@@ -14,10 +14,13 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
   // --- Real Search Logic ---
   useEffect(() => {
     const doSearch = async () => {
-      // If empty, we rely on the default 'items' loaded by App.tsx (which are getRecentPosts)
-      // But we still need to filter locally if there's a tag selected.
       if (!searchTerm.trim()) {
-        getRecentPosts().then(setItems);
+        setIsSearching(true);
+        try {
+            const defaults = await getRecentPosts();
+            setItems(defaults);
+        } catch(e) { console.error(e); }
+        finally { setIsSearching(false); }
         return;
       }
 
