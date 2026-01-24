@@ -1,38 +1,61 @@
-import React, { useContext, useState, useMemo } from 'react';
+import React, { useContext, useState, useEffect } from 'react'; // Added useEffect
 import { AppContext } from '../App';
-import { Page, PREDEFINED_TAGS } from '../types';
+import { Page, PREDEFINED_TAGS, KnowledgeItem } from '../types';
 import { FAB, Chip, Card, Avatar, Select } from '../components/M3Components';
+import { searchKnowledge } from '../services/knowledgeService'; // Import Service
 
 const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ onNavigate }) => {
-  const { items, currentUser } = useContext(AppContext);
+  const { items, setItems, currentUser } = useContext(AppContext);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchMode, setSearchMode] = useState<'keyword' | 'ai'>('keyword');
   const [filterTag, setFilterTag] = useState<string>('All');
+  const [isSearching, setIsSearching] = useState(false); // Loading state
 
-  const filteredItems = useMemo(() => {
-    return items.filter(item => {
-      if (item.status === 'rejected') return false;
-      // Show pending only to author or admin
-      if (item.status === 'pending' && currentUser?.role !== 'admin' && item.author.id !== currentUser?.id) return false;
-
-      // Tag Filter
-      if (filterTag !== 'All' && !item.tags.includes(filterTag)) {
-        return false;
+  // --- Real Search Logic ---
+  useEffect(() => {
+    const doSearch = async () => {
+      // If empty, we rely on the default 'items' loaded by App.tsx (which are getRecentPosts)
+      // But we still need to filter locally if there's a tag selected.
+      if (!searchTerm.trim()) {
+        // Ideally reload recent posts if needed, but App.tsx handles init.
+        // We just let the local filter below handle 'items'
+        return;
       }
 
-      const lowerTerm = searchTerm.toLowerCase();
-      
-      if (searchMode === 'keyword') {
-        return item.title.toLowerCase().includes(lowerTerm) || 
-               item.content.toLowerCase().includes(lowerTerm) ||
-               item.tags.some(t => t.toLowerCase().includes(lowerTerm));
-      } else {
-        // AI Clue search: Look specifically in the aiClues field
-        return item.aiClues?.toLowerCase().includes(lowerTerm) || 
-               item.title.toLowerCase().includes(lowerTerm);
+      setIsSearching(true);
+      try {
+        const results = await searchKnowledge(searchTerm, searchMode);
+        setItems(results);
+      } catch (e) {
+        console.error("Search failed", e);
+      } finally {
+        setIsSearching(false);
       }
-    });
-  }, [items, searchTerm, searchMode, filterTag, currentUser]);
+    };
+
+    // Debounce search by 500ms
+    const timeoutId = setTimeout(doSearch, 500);
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm, searchMode, setItems]);
+
+  // --- Local Filtering (for Tags & Status) ---
+  // Note: searchKnowledge returns matches, but we still filter by Status/Tag locally for UI consistency
+  const filteredItems = items.filter(item => {
+    if (item.status === 'rejected') return false;
+    // Show pending only to author or admin
+    if (item.status === 'pending' && currentUser?.role !== 'admin' && item.author.id !== currentUser?.id) return false;
+
+    // Tag Filter
+    if (filterTag !== 'All' && !item.tags.includes(filterTag)) {
+      return false;
+    }
+    
+    // If we have a search term, the API returned relevant results.
+    // However, if we are in local mode (no search term), we rely on the initial list.
+    // The previous logic did local keyword matching. We keep it as fallback for "no search term" filtering?
+    // Actually, if searchTerm is empty, we just show the list.
+    return true; 
+  });
 
   return (
     <div className="max-w-3xl mx-auto px-4 pb-24">
@@ -50,7 +73,7 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          {searchMode === 'ai' && <span className="material-symbols-rounded text-[#b465f5] animate-pulse">auto_awesome</span>}
+          {searchMode === 'ai' && <span className={`material-symbols-rounded text-[#b465f5] ${isSearching ? 'animate-spin' : 'animate-pulse'}`}>auto_awesome</span>}
         </div>
 
         {/* Configuration Row: Search Mode & Tag Filters */}
