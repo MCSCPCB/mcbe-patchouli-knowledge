@@ -88,3 +88,27 @@ create trigger on_auth_user_created
 -- 6. 索引优化
 create index idx_search_clues on public.knowledge_posts using GIN (to_tsvector('english', search_clues));
 create index idx_tags on public.knowledge_posts using GIN (tags);
+
+-- 7. 存储桶策略 (Storage Policies) - 针对 'kb-assets'
+-- 注意：你需要先在 Supabase 控制台创建一个名为 'kb-assets' 的 Public Bucket
+
+-- 允许任何登录用户上传文件
+create policy "Authenticated users can upload assets"
+  on storage.objects for insert
+  with check (
+    bucket_id = 'kb-assets' and
+    auth.role() = 'authenticated'
+  );
+
+-- 允许所有人查看文件 (配合 Public Bucket 设置)
+create policy "Public Access"
+  on storage.objects for select
+  using ( bucket_id = 'kb-assets' );
+
+-- 允许用户删除自己上传的文件 (可选)
+create policy "Users can delete own files"
+  on storage.objects for delete
+  using (
+    bucket_id = 'kb-assets' and
+    auth.uid() = owner
+  );
