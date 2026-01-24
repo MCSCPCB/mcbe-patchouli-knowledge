@@ -40,9 +40,7 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
   // Note: searchKnowledge returns matches, but we still filter by Status/Tag locally for UI consistency
   const filteredItems = items.filter(item => {
     if (item.status === 'rejected') return false;
-    // Show pending only to author or admin
-    if (item.status === 'pending' && currentUser?.role !== 'admin' && item.author.id !== currentUser?.id) return false;
-
+    
     // Tag Filter
     if (filterTag !== 'All' && !item.tags.includes(filterTag)) {
       return false;
