@@ -1,11 +1,11 @@
 import React, { useState, useContext, useRef, useEffect } from 'react';
 import { AppContext } from '../App';
-import { Page, KnowledgeItem, PREDEFINED_TAGS, Attachment } from '../types';
+import { Page, PREDEFINED_TAGS, Attachment } from '../types';
 import { Button, IconButton, TextField, Select, Chip, RichMarkdownEditor } from '../components/M3Components';
 import { generateSearchClues, createPost, updatePost, getRecentPosts, uploadFile } from '../services/knowledgeService';
 
 const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) => {
-  const { items, setItems, currentUser, selectedItemId, refreshData } = useContext(AppContext); // 添加 items 和 selectedItemId
+  const { items, setItems, currentUser, selectedItemId, refreshData } = useContext(AppContext);
   
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -15,11 +15,9 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
-    // [新增] 使用 ref 来记录当前表单是否已经初始化过这个 ID
-  const initializedIdRef = React.useRef<string | null>(null);
+  const initializedIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    // 只有当有选中 ID，且数据库里有数据，且“还没初始化过这个 ID”时，才回填数据
     if (selectedItemId && items.length > 0 && initializedIdRef.current !== selectedItemId) {
       const existingItem = items.find(i => i.id === selectedItemId);
       if (existingItem) {
@@ -28,16 +26,12 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
         setTags(existingItem.tags);
         setAiClues(existingItem.aiClues || '');
         setAttachments(existingItem.attachments || []);
-        
-        // 标记为已初始化，防止后续 items 变化导致表单被重置
         initializedIdRef.current = selectedItemId;
       }
     }
   }, [selectedItemId, items]);
 
-  // 隐藏的文件输入框引用
   const fileInputRef = useRef<HTMLInputElement>(null);
-  // [修改] 增加 'video' 类型到状态定义
   const [uploadType, setUploadType] = useState<'image' | 'video' | 'file'>('file');
 
   const handleTagChange = (tag: string) => {
@@ -59,7 +53,6 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
     }
   };
 
-  // [修改] 统一的上传触发函数，支持 image, video, file
   const handleTriggerUpload = (type: 'image' | 'video' | 'file') => {
       setUploadType(type);
       if (fileInputRef.current) {
@@ -67,22 +60,17 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
       }
   };
 
-  // [修改] 真正的上传处理逻辑，增加视频处理
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
 
       try {
           const url = await uploadFile(file);
-          
           if (uploadType === 'image') {
-              // 插入 Markdown 图片语法
               setContent(prev => prev + `\n![${file.name}](${url})\n`);
           } else if (uploadType === 'video') {
-              // [新增] 插入 HTML 视频标签
-              setContent(prev => prev + `\n<video src="${url}" controls class="w-full border-2 border-[#1e1e1f] my-2"></video>\n`);
+              setContent(prev => prev + `\n<video src="${url}" controls class="w-full rounded-xl my-2"></video>\n`);
           } else {
-              // 添加到附件列表
               setAttachments(prev => [...prev, {
                   id: Date.now().toString(),
                   name: file.name,
@@ -93,7 +81,6 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
       } catch (error) {
           alert("Upload failed: " + error);
       } finally {
-          // 清空 input 防止重复上传同一文件不触发 onChange
           if (fileInputRef.current) fileInputRef.current.value = '';
       }
   };
@@ -103,31 +90,16 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
     setIsSaving(true);
     
     try {
+        const payload = { title, content, tags, aiClues, attachments };
         if (selectedItemId) {
-            // [新增] 编辑模式：调用 Update
-            await updatePost(selectedItemId, {
-                title,
-                content,
-                tags,
-                aiClues,
-                attachments
-            });
+            await updatePost(selectedItemId, payload);
         } else {
-            // [修改] 新建模式：调用 Create
-            await createPost({
-                title,
-                content,
-                tags,
-                aiClues,
-                attachments
-            });
+            await createPost(payload);
         }
 
-        // Refresh items
         const posts = await getRecentPosts();
         setItems(posts);
         await refreshData();
-
         onNavigate(Page.HOME);
     } catch (e) {
         alert("Failed to save: " + e);
@@ -137,47 +109,54 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 pb-24">
-      {/* Header Actions */}
-      <div className="flex items-center justify-between mb-6 bg-[#313233] p-2 border-b-2 border-[#1e1e1f] sticky top-16 z-20">
-        <IconButton icon="arrow_back" onClick={() => onNavigate(Page.HOME)} />
-        {/* [修改] 动态标题 */}
-        <h2 className="text-xl font-bold font-mc text-white uppercase">
-            {selectedItemId ? 'Edit Entry' : 'New Entry'}
-        </h2>
-        <Button label={isSaving ? "Saving..." : "Save"} onClick={handleSubmit} variant="success" disabled={!title || !content || isSaving} />
+    <div className="max-w-3xl mx-auto px-4 py-6 pb-24 animate-[fadeIn_0.3s_ease-out]">
+      {/* Top App Bar */}
+      <div className="flex items-center justify-between mb-8 sticky top-4 z-40 bg-[#121212]/80 backdrop-blur-xl rounded-full px-4 py-2 border border-[#2C2C2C] shadow-xl">
+        <IconButton icon="arrow_back" onClick={() => onNavigate(Page.HOME)} className="!w-10 !h-10" />
+        <span className="text-sm font-medium text-[#C7C7CC] uppercase tracking-wider">
+            {selectedItemId ? 'Edit Manuscript' : 'New Entry'}
+        </span>
+        <Button 
+            label={isSaving ? "Saving..." : "Save"} 
+            onClick={handleSubmit} 
+            disabled={!title || !content || isSaving}
+            className={`!h-9 !rounded-full !px-6 ${isSaving ? 'opacity-50' : ''}`}
+        />
       </div>
 
-      <div className="space-y-6">
-        <TextField 
-          label="Title" 
-          value={title} 
-          onChange={(e) => setTitle(e.target.value)} 
-          placeholder="e.g., Diamond Mining Logic"
-        />
+      <div className="space-y-8">
+        {/* Title Input */}
+        <div className="space-y-1">
+             <TextField 
+                label="Title" 
+                value={title} 
+                onChange={(e) => setTitle(e.target.value)} 
+                placeholder="Ex: Diamond Mining Logic"
+                className="!bg-transparent !border-0 !border-b !border-[#444] !text-3xl !h-auto !px-0 !pb-2 focus-within:!border-[#7DA3A1] !rounded-none"
+             />
+        </div>
 
         {/* Tag Selection */}
-        <div className="bg-[#313233] p-4 border-2 border-t-[#5b5b5c] border-l-[#5b5b5c] border-b-[#1e1e1f] border-r-[#1e1e1f]">
-           <div className="mb-4">
-             <Select 
-                label="Category Tag"
-                options={PREDEFINED_TAGS}
-                value=""
-                onChange={handleTagChange}
-                placeholder="Add Tag..."
-             />
-           </div>
-           
-           <div className="flex flex-wrap gap-2">
+        <div className="space-y-3">
+           <label className="text-xs text-[#8C918C] ml-1 uppercase tracking-wide">Classification</label>
+           <div className="flex flex-wrap gap-2 items-center min-h-[48px]">
              {tags.map(tag => (
                <Chip key={tag} label={tag} onDelete={() => setTags(tags.filter(t => t !== tag))} selected />
              ))}
-             {tags.length === 0 && <span className="text-sm font-mc text-[#707070]">No tags selected</span>}
+             <div className="relative">
+                <Select 
+                    label=""
+                    options={PREDEFINED_TAGS}
+                    value=""
+                    onChange={handleTagChange}
+                    placeholder="+ Add Tag"
+                    className="w-32 !mb-0"
+                />
+             </div>
            </div>
         </div>
 
-        {/* Rich Text Editor */}
-        {/* [修改] 绑定了 onUploadVideo 并修复了 onUploadImage */}
+        {/* Editor */}
         <RichMarkdownEditor 
           label="Content" 
           value={content} 
@@ -187,62 +166,66 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
           onUploadVideo={() => handleTriggerUpload('video')}
         />
 
-        {/* Attachment List Preview */}
+        {/* Attachments List */}
         {attachments.length > 0 && (
-            <div className="bg-[#1e1e1f] border-2 border-[#5b5b5c] p-4">
-                <h4 className="text-xs font-bold font-mc uppercase text-[#b0b0b0] mb-3">Attachments ({attachments.length})</h4>
-                <div className="space-y-2">
+            <div className="bg-[#1E1E1E] rounded-2xl border border-[#2C2C2C] overflow-hidden">
+                <div className="px-4 py-3 bg-[#252529] border-b border-[#2C2C2C] flex items-center gap-2">
+                    <span className="material-symbols-rounded text-[#7DA3A1] text-sm">attachment</span>
+                    <span className="text-xs font-bold text-[#8C918C] uppercase tracking-wider">Attachments ({attachments.length})</span>
+                </div>
+                <div className="divide-y divide-[#2C2C2C]">
                     {attachments.map(att => (
-                        <div key={att.id} className="flex items-center gap-3 bg-[#313233] p-2 border border-[#000]">
-                            <span className="material-symbols-rounded text-[#b0b0b0]">attachment</span>
-                            <span className="text-sm font-mono text-white flex-1 truncate">{att.name}</span>
-                            <IconButton 
-                                icon="delete" 
-                                className="w-8 h-8 !bg-[#8B0000] !border-[#B22222]" 
-                                onClick={() => setAttachments(attachments.filter(a => a.id !== att.id))} 
-                            />
+                        <div key={att.id} className="flex items-center gap-4 p-3 hover:bg-[#2C2C2C] transition-colors group">
+                            <div className="w-8 h-8 rounded bg-[#333] flex items-center justify-center text-[#E6E6E6]">
+                                <span className="material-symbols-rounded text-lg">description</span>
+                            </div>
+                            <span className="text-sm text-[#E6E6E6] flex-1 truncate">{att.name}</span>
+                            <button 
+                                onClick={() => setAttachments(attachments.filter(a => a.id !== att.id))}
+                                className="w-8 h-8 rounded-full flex items-center justify-center text-[#CF6679] hover:bg-[#CF6679]/10 opacity-0 group-hover:opacity-100 transition-all"
+                            >
+                                <span className="material-symbols-rounded text-lg">delete</span>
+                            </button>
                         </div>
                     ))}
                 </div>
             </div>
         )}
 
-        {/* AI Clue Generator Section */}
-        <div className="p-4 bg-[#2b2b2b] border-2 border-[#b465f5]">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2 text-[#b465f5]">
-               <span className="material-symbols-rounded">auto_awesome</span>
-               <h3 className="font-bold font-mc text-sm uppercase tracking-wide">AI Keywords</h3>
-            </div>
-            <Button 
-              variant="tonal" 
-              label={isGenerating ? "..." : "Generate"} 
-              icon={!isGenerating ? "refresh" : undefined}
-              onClick={handleGenerateClues}
-              disabled={isGenerating || !content}
-              className="h-8 text-xs px-4"
-            />
+        {/* AI Insight Generator */}
+        <div className="relative overflow-hidden rounded-[24px] bg-[#D0BCFF]/5 border border-[#D0BCFF]/10 p-6 transition-all hover:border-[#D0BCFF]/30">
+          <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+               <span className="material-symbols-rounded text-[120px] text-[#D0BCFF]">auto_awesome</span>
           </div>
           
-          <div className="bg-[#1e1e1f] border-2 border-t-[#000] border-l-[#000] border-b-[#5b5b5c] border-r-[#5b5b5c] p-2">
-               <textarea
-                 className="w-full bg-transparent outline-none text-[#e0e0e0] font-mono text-sm"
-                 rows={3}
-                 value={aiClues}
-                 onChange={(e) => setAiClues(e.target.value)}
-                 placeholder="Clues will appear here..."
-               />
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2 text-[#D0BCFF]">
+                    <span className="material-symbols-rounded">auto_awesome</span>
+                    <h3 className="font-medium text-sm">AI Enhancement</h3>
+                </div>
+                <Button 
+                    variant="tonal" 
+                    label={isGenerating ? "Analyzing..." : "Generate Insights"} 
+                    icon={!isGenerating ? "refresh" : undefined}
+                    onClick={handleGenerateClues}
+                    disabled={isGenerating || !content}
+                    className="!h-8 !text-xs !bg-[#D0BCFF]/10 !text-[#D0BCFF] hover:!bg-[#D0BCFF]/20"
+                />
+            </div>
+            
+            <textarea
+                className="w-full bg-[#121212]/50 rounded-xl border border-[#D0BCFF]/20 p-4 text-[#E6E1E5] text-sm leading-relaxed outline-none focus:border-[#D0BCFF]/50 transition-colors resize-none placeholder-[#D0BCFF]/30"
+                rows={3}
+                value={aiClues}
+                onChange={(e) => setAiClues(e.target.value)}
+                placeholder="AI generated context and search clues will appear here..."
+            />
           </div>
         </div>
       </div>
       
-      {/* Hidden File Input */}
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        className="hidden" 
-        onChange={handleFileChange} 
-      />
+      <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} />
     </div>
   );
 };
