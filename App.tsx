@@ -200,6 +200,13 @@ const App: React.FC = () => {
                         <span className="material-symbols-rounded text-lg">library_books</span>
                         My Knowledge
                      </button>
+                     {currentUser.role === 'admin' && (
+                       <button onClick={() => goTo(Page.ADMIN)} className="md:hidden w-full text-left px-4 py-3 rounded-xl hover:bg-[#383838] text-sm text-[#7DA3A1] flex items-center gap-3 mt-1">
+                         <span className="material-symbols-rounded text-lg">shield_person</span>
+                         Admin Panel
+                       </button>
+                     )}
+
                      <button onClick={handleLogout} className="w-full text-left px-4 py-3 rounded-xl hover:bg-[#3F2E2E] text-[#FFB4AB] text-sm flex items-center gap-3 mt-1">
                         <span className="material-symbols-rounded text-lg">logout</span>
                         Logout
