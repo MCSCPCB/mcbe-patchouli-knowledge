@@ -4,18 +4,18 @@ import { KnowledgeItem, User, Attachment } from '../types';
 import imageCompression from 'browser-image-compression';
 
 /**
- * 数据库行结构 (Internal DB Representation)
- * 这里必须严格对应 init.sql 的表结构
+ * 数据库行结构
  */
 interface DBPost {
   id: string;
   author_id: string;
   title: string;
   content: string;
-  tags: string[];      // 修正: 对应 init.sql 的 tags
+  tags: string[];      
   attachments: any;
-  search_clues: string; // 对应 init.sql 的 search_clues
-  status: 'pending' | 'published' | 'rejected'; // 修正: 对应新的枚举
+  search_clues: string;
+  embedding?: number[]; // 向量字段
+  status: 'pending' | 'published' | 'rejected';
   created_at: string;
   profiles?: {
     github_id: string;
@@ -25,34 +25,69 @@ interface DBPost {
 
 // === AI 功能 ===
 
-export const generateSearchClues = async (content: string): Promise<string> => {
+export const generateSearchClues = async (content: string): Promise<{ clues: string, embedding?: number[] }> => {
   try {
     const response = await axios.post('/api/generate_clues', { content });
-    return response.data.clues;
+    return {
+      clues: response.data.clues,         // 火山引擎生成的文本线索
+      embedding: response.data.embedding  // 硅基流动生成的向量
+    };
   } catch (error) {
     console.error('Failed to generate clues:', error);
-    return '';
+    return { clues: '' };
   }
 };
 
 // === 核心检索功能 ===
 
 export const searchKnowledge = async (query: string, mode: 'keyword' | 'ai' = 'keyword'): Promise<KnowledgeItem[]> => {
-  let searchTerms = query;
-
+  
+  let searchTerms = query; // 默认为原始查询
+  
+  // AI 增强模式：向量检索 + 意图优化
   if (mode === 'ai') {
     try {
-      const { data } = await axios.post('/api/search_intent', { query });
-      if (data.searchStr) {
-        searchTerms = data.searchStr;
+      // 调用双核接口
+      const { data: intentData } = await axios.post('/api/search_intent', { query });
+      
+      // 1. 尝试向量检索
+      if (intentData.embedding) {
+        const { data, error } = await supabase.rpc('match_knowledge', {
+          query_embedding: intentData.embedding,
+          match_threshold: 0.5,
+          match_count: 20
+        });
+
+        if (!error && data && data.length > 0) {
+           // 如果向量搜到了结果，补充用户信息后返回
+           const ids = data.map((d: any) => d.id);
+           const { data: fullData } = await supabase
+               .from('knowledge_posts')
+               .select(`*, profiles ( github_id, avatar_url )`)
+               .in('id', ids);
+           
+           if (fullData) {
+             // 保持向量相似度排序
+             const sorted = ids.map((id: string) => fullData.find((item: any) => item.id === id)).filter(Boolean);
+             return (sorted as DBPost[]).map(mapDBToItem);
+           }
+        }
       }
+
+      // 2. 如果向量没结果，使用 AI 优化过的关键词 (searchStr)
+      if (intentData.searchStr) {
+        searchTerms = intentData.searchStr;
+      }
+
     } catch (e) {
-      console.warn('AI intent analysis failed, falling back to keyword search');
+      console.warn('AI search enhancement failed, falling back to raw keyword', e);
     }
   }
 
-  // 1. 全文检索 (针对 search_clues)
-  // 修改: config 改为 'simple' 以支持中文和非英语系的准确匹配
+  // === 传统检索 (关键词/降级) ===
+  
+  // 1. 全文检索 (针对 search_clues 和内容)
+  // 使用 'simple' 配置以兼容多语言，搜索范围包括 AI 生成的 searchTerms
   let { data, error } = await supabase
     .from('knowledge_posts')
     .select(`*, profiles ( github_id, avatar_url )`)
@@ -61,14 +96,12 @@ export const searchKnowledge = async (query: string, mode: 'keyword' | 'ai' = 'k
       config: 'simple' 
     });
 
-  // 2. 降级策略: 全字段模糊匹配
-  // 修改: 如果全文检索无结果，扩大搜索范围到 标题、内容、AI线索
+  // 2. 降级策略: 模糊匹配 (使用原始 query 以防分词错误)
   if (!data || data.length === 0) {
     const fallback = await supabase
       .from('knowledge_posts')
       .select(`*, profiles ( github_id, avatar_url )`)
       .eq('status', 'published')
-      // 使用 OR 语法检查 title, content, search_clues 是否包含查询词
       .or(`title.ilike.%${query}%,content.ilike.%${query}%,search_clues.ilike.%${query}%`);
     
     data = fallback.data;
@@ -98,21 +131,36 @@ export const createPost = async (
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
-  // 修正: 插入时映射字段
+  // 发布前检查：如果还没有向量，强制生成一次 (利用双核接口)
+  // 这里的 item.aiClues 可能是用户手动改过的文本，我们保留它
+  // 但我们需要重新生成一次 embedding 来确保数据有向量
+  let finalEmbedding = undefined;
+  let finalClues = item.aiClues;
+
+  try {
+     const aiResult = await generateSearchClues(`${item.title}\n${item.content}`);
+     finalEmbedding = aiResult.embedding;
+     // 如果用户没填线索，就用 AI 生成的
+     if (!finalClues) finalClues = aiResult.clues; 
+  } catch (e) {
+     console.warn('Auto-embedding generation failed on create', e);
+  }
+
   const { error } = await supabase.from('knowledge_posts').insert({
     author_id: user.id,
     title: item.title,
     content: item.content,
-    tags: item.tags, // 修正: 存入 tags
+    tags: item.tags,
     attachments: item.attachments,
-    search_clues: item.aiClues, // 修正: aiClues -> search_clues
+    search_clues: finalClues, 
+    embedding: finalEmbedding, // 存入向量
     status: 'pending'
   });
 
   if (error) throw error;
 };
 
-// === 管理员功能 ===
+// === 管理员功能 (保持不变) ===
 
 export const getPendingPosts = async (): Promise<KnowledgeItem[]> => {
   const { data, error } = await supabase
@@ -128,7 +176,7 @@ export const getPendingPosts = async (): Promise<KnowledgeItem[]> => {
 export const approvePost = async (postId: string) => {
   const { error } = await supabase
     .from('knowledge_posts')
-    .update({ status: 'published' }) // 修正: 使用 published
+    .update({ status: 'published' })
     .eq('id', postId);
 
   if (error) throw error;
@@ -137,7 +185,7 @@ export const approvePost = async (postId: string) => {
 export const rejectPost = async (postId: string) => {
   const { error } = await supabase
     .from('knowledge_posts')
-    .update({ status: 'rejected' }) // 修正: 使用 rejected 而不是 delete
+    .update({ status: 'rejected' })
     .eq('id', postId);
 
   if (error) throw error;
@@ -152,7 +200,7 @@ export const deletePost = async (postId: string) => {
   if (error) throw error;
 };
 
-// === 用户管理 ===
+// === 用户管理 (保持不变) ===
 
 export const getAllUsers = async (): Promise<User[]> => {
   const { data, error } = await supabase
@@ -167,7 +215,7 @@ export const getAllUsers = async (): Promise<User[]> => {
     name: p.github_id || 'Unknown',
     avatar: p.avatar_url || '',
     role: p.role,
-    banned: p.is_banned // 修正: is_banned -> banned
+    banned: p.is_banned
   }));
 };
 
@@ -180,15 +228,14 @@ export const toggleUserBan = async (userId: string, isBanned: boolean) => {
   if (error) throw error;
 };
 
-// === Data Mapper (转换器) ===
-// 将数据库的下划线命名转换为前端的驼峰命名
+// === Data Mapper ===
 function mapDBToItem(row: DBPost): KnowledgeItem {
   return {
     id: row.id,
     title: row.title,
     content: row.content,
-    tags: row.tags || [], // 修正: 映射 tags
-    aiClues: row.search_clues, // 修正: search_clues -> aiClues
+    tags: row.tags || [],
+    aiClues: row.search_clues, 
     attachments: row.attachments || [],
     status: row.status,
     createdAt: row.created_at,
@@ -196,21 +243,17 @@ function mapDBToItem(row: DBPost): KnowledgeItem {
       id: row.author_id,
       name: row.profiles?.github_id || 'Unknown',
       avatar: row.profiles?.avatar_url || '',
-      role: 'user' // 这里简化处理，列表页通常不需要知道作者是不是 admin
+      role: 'user'
     }
   };
 };
 
-// === 文件上传逻辑修改 ===
+// === 文件上传 (保持不变) ===
 
-// 允许的附件类型白名单 (纯文本类)
 const ALLOWED_ATTACHMENT_EXTENSIONS = [
   'txt', 'json', 'md', 'csv', 'py', 'js', 'ts', 'html', 'css', 'sql', 'log', 'xml', 'yml', 'yaml'
 ];
 
-/**
- * 上传普通附件到 Supabase (受严格类型限制)
- */
 export const uploadFile = async (file: File): Promise<string> => {
   const ext = file.name.split('.').pop()?.toLowerCase();
   
@@ -218,7 +261,6 @@ export const uploadFile = async (file: File): Promise<string> => {
     throw new Error(`Forbidden file type: .${ext}. Only text-based files (txt, json, code) are allowed.`);
   }
 
-  // 1. 简单的文件名清洗
   const cleanName = file.name.replace(/[^\x00-\x7F]/g, "").replace(/\s/g, '_'); 
   const fileName = `${Date.now()}_${cleanName}`;
   
@@ -242,31 +284,22 @@ export const uploadFile = async (file: File): Promise<string> => {
   return publicUrl;
 };
 
-/**
- * 上传图片到 GitHub
- */
 export const uploadImage = async (file: File): Promise<string> => {
   try {
-    // 步骤 A: 直接使用原始文件（跳过压缩步骤）
     const originalFile = file;
-
-    // 步骤 B: 转换为 Base64
     const base64Content = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(originalFile);
       reader.onloadend = () => {
         const base64 = reader.result as string;
-        // 移除 data:image/png;base64, 前缀，GitHub API 不需要它
         resolve(base64.split(',')[1]); 
       };
       reader.onerror = (e) => reject(new Error("File reading failed"));
     });
 
-    // 步骤 C: 生成随机文件名 (规避审查 + 防止重名)
     const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
     const randomName = `${crypto.randomUUID()}.${ext}`;
 
-    // 步骤 D: 调用后端 API 代理上传
     const response = await axios.post('/api/upload_github', {
       content: base64Content,
       fileName: randomName
@@ -280,24 +313,18 @@ export const uploadImage = async (file: File): Promise<string> => {
 
   } catch (error: any) {
     console.error('Image Upload Error:', error);
-    
-    // 生成友好的错误提示
     let errorMsg = 'Failed to upload image';
     if (axios.isAxiosError(error) && error.response) {
-       // 如果是服务器明确返回错误（比如 400/500）
        errorMsg = `Server Error (${error.response.status}): ${JSON.stringify(error.response.data)}`;
     } else if (error instanceof Error) {
        errorMsg = error.message;
     }
-
     throw new Error(errorMsg);
   }
 };
 
-
-// === 新增：更新文章 ===
+// === 更新文章 (含向量更新) ===
 export const updatePost = async (id: string, updates: Partial<KnowledgeItem>) => {
-  // 映射前端字段到数据库字段
   const dbUpdates: any = {};
   if (updates.title) dbUpdates.title = updates.title;
   if (updates.content) dbUpdates.content = updates.content;
@@ -305,7 +332,27 @@ export const updatePost = async (id: string, updates: Partial<KnowledgeItem>) =>
   if (updates.aiClues) dbUpdates.search_clues = updates.aiClues;
   if (updates.attachments) dbUpdates.attachments = updates.attachments;
   
-  // 总是更新时间
+  // 如果关键内容变化，尝试重新生成向量和线索
+  if (updates.title || updates.content) {
+      const textToEmbed = `${updates.title || ''}\n${updates.content || ''}`;
+      if (textToEmbed.trim().length > 5) {
+         try {
+             // 重新调用双核生成，更新向量
+             const aiResult = await generateSearchClues(textToEmbed);
+             if (aiResult.embedding) {
+                 dbUpdates.embedding = aiResult.embedding;
+             }
+             // 如果用户没有明确修改线索，且 AI 生成了新线索，是否自动更新？
+             // 这里保守策略：只更新向量，除非 updates.aiClues 为空
+             if (!updates.aiClues && aiResult.clues) {
+                 dbUpdates.search_clues = aiResult.clues;
+             }
+         } catch (e) {
+             console.warn('Failed to update embedding', e);
+         }
+      }
+  }
+  
   dbUpdates.updated_at = new Date().toISOString();
 
   const { error } = await supabase
