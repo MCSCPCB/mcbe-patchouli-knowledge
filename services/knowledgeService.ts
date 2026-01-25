@@ -15,7 +15,7 @@ interface DBPost {
   attachments: any;
   search_clues: string;
   embedding?: number[]; // 向量字段
-  status: 'pending' | 'published' | 'rejected';
+  status: 'pending' | 'published' | 'rejected'; 
   created_at: string;
   profiles?: {
     github_id: string;
@@ -25,32 +25,43 @@ interface DBPost {
 
 // === AI 功能 ===
 
-export const generateSearchClues = async (content: string): Promise<{ clues: string, embedding?: number[] }> => {
+/**
+ * 内部辅助函数：获取完整的 AI 数据 (线索 + 向量)
+ */
+const _fetchCluesAndEmbedding = async (content: string): Promise<{ clues: string, embedding?: number[] }> => {
   try {
     const response = await axios.post('/api/generate_clues', { content });
     return {
-      clues: response.data.clues,         // 火山引擎生成的文本线索
-      embedding: response.data.embedding  // 硅基流动生成的向量
+      clues: response.data.clues,
+      embedding: response.data.embedding
     };
   } catch (error) {
-    console.error('Failed to generate clues:', error);
+    console.error('Failed to generate clues/embedding:', error);
     return { clues: '' };
   }
+};
+
+/**
+ * 公开给 UI 使用的函数
+ * 修正：只返回字符串，解决 UI 显示 [object Object] 的问题
+ */
+export const generateSearchClues = async (content: string): Promise<string> => {
+  const data = await _fetchCluesAndEmbedding(content);
+  return data.clues || ''; // 只返回文本线索
 };
 
 // === 核心检索功能 ===
 
 export const searchKnowledge = async (query: string, mode: 'keyword' | 'ai' = 'keyword'): Promise<KnowledgeItem[]> => {
   
-  let searchTerms = query; // 默认为原始查询
-  
+  let searchTerms = query;
+
   // AI 增强模式：向量检索 + 意图优化
   if (mode === 'ai') {
     try {
-      // 调用双核接口
       const { data: intentData } = await axios.post('/api/search_intent', { query });
       
-      // 1. 尝试向量检索
+      // 1. 优先尝试向量检索
       if (intentData.embedding) {
         const { data, error } = await supabase.rpc('match_knowledge', {
           query_embedding: intentData.embedding,
@@ -58,8 +69,8 @@ export const searchKnowledge = async (query: string, mode: 'keyword' | 'ai' = 'k
           match_count: 20
         });
 
+        // 如果向量检索成功且有结果
         if (!error && data && data.length > 0) {
-           // 如果向量搜到了结果，补充用户信息后返回
            const ids = data.map((d: any) => d.id);
            const { data: fullData } = await supabase
                .from('knowledge_posts')
@@ -67,27 +78,24 @@ export const searchKnowledge = async (query: string, mode: 'keyword' | 'ai' = 'k
                .in('id', ids);
            
            if (fullData) {
-             // 保持向量相似度排序
              const sorted = ids.map((id: string) => fullData.find((item: any) => item.id === id)).filter(Boolean);
              return (sorted as DBPost[]).map(mapDBToItem);
            }
         }
       }
 
-      // 2. 如果向量没结果，使用 AI 优化过的关键词 (searchStr)
+      // 2. 如果向量没结果，使用 AI 优化过的关键词
       if (intentData.searchStr) {
         searchTerms = intentData.searchStr;
       }
-
     } catch (e) {
-      console.warn('AI search enhancement failed, falling back to raw keyword', e);
+      console.warn('AI search failed, falling back to keyword', e);
     }
   }
 
-  // === 传统检索 (关键词/降级) ===
+  // === 关键词/降级检索 ===
   
-  // 1. 全文检索 (针对 search_clues 和内容)
-  // 使用 'simple' 配置以兼容多语言，搜索范围包括 AI 生成的 searchTerms
+  // 1. 全文检索
   let { data, error } = await supabase
     .from('knowledge_posts')
     .select(`*, profiles ( github_id, avatar_url )`)
@@ -96,7 +104,7 @@ export const searchKnowledge = async (query: string, mode: 'keyword' | 'ai' = 'k
       config: 'simple' 
     });
 
-  // 2. 降级策略: 模糊匹配 (使用原始 query 以防分词错误)
+  // 2. 模糊匹配降级
   if (!data || data.length === 0) {
     const fallback = await supabase
       .from('knowledge_posts')
@@ -131,17 +139,18 @@ export const createPost = async (
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
-  // 发布前检查：如果还没有向量，强制生成一次 (利用双核接口)
-  // 这里的 item.aiClues 可能是用户手动改过的文本，我们保留它
-  // 但我们需要重新生成一次 embedding 来确保数据有向量
+  // 核心修改：在提交时，重新调用 API 获取向量 (和线索)
+  // 虽然这会产生一次额外的 API 调用，但能确保：
+  // 1. 向量一定存在
+  // 2. 向量是基于最终提交的 Title + Content 生成的 (比 UI 上生成的更准)
   let finalEmbedding = undefined;
   let finalClues = item.aiClues;
 
   try {
-     const aiResult = await generateSearchClues(`${item.title}\n${item.content}`);
-     finalEmbedding = aiResult.embedding;
-     // 如果用户没填线索，就用 AI 生成的
-     if (!finalClues) finalClues = aiResult.clues; 
+     const aiData = await _fetchCluesAndEmbedding(`${item.title}\n${item.content}`);
+     finalEmbedding = aiData.embedding;
+     // 如果用户界面没填线索，使用 AI 生成的
+     if (!finalClues) finalClues = aiData.clues;
   } catch (e) {
      console.warn('Auto-embedding generation failed on create', e);
   }
@@ -160,7 +169,7 @@ export const createPost = async (
   if (error) throw error;
 };
 
-// === 管理员功能 (保持不变) ===
+// ... (以下函数保持不变) ...
 
 export const getPendingPosts = async (): Promise<KnowledgeItem[]> => {
   const { data, error } = await supabase
@@ -200,8 +209,6 @@ export const deletePost = async (postId: string) => {
   if (error) throw error;
 };
 
-// === 用户管理 (保持不变) ===
-
 export const getAllUsers = async (): Promise<User[]> => {
   const { data, error } = await supabase
     .from('profiles')
@@ -228,7 +235,6 @@ export const toggleUserBan = async (userId: string, isBanned: boolean) => {
   if (error) throw error;
 };
 
-// === Data Mapper ===
 function mapDBToItem(row: DBPost): KnowledgeItem {
   return {
     id: row.id,
@@ -248,7 +254,7 @@ function mapDBToItem(row: DBPost): KnowledgeItem {
   };
 };
 
-// === 文件上传 (保持不变) ===
+// === 文件上传 ===
 
 const ALLOWED_ATTACHMENT_EXTENSIONS = [
   'txt', 'json', 'md', 'csv', 'py', 'js', 'ts', 'html', 'css', 'sql', 'log', 'xml', 'yml', 'yaml'
@@ -323,7 +329,7 @@ export const uploadImage = async (file: File): Promise<string> => {
   }
 };
 
-// === 更新文章 (含向量更新) ===
+// === 更新文章 ===
 export const updatePost = async (id: string, updates: Partial<KnowledgeItem>) => {
   const dbUpdates: any = {};
   if (updates.title) dbUpdates.title = updates.title;
@@ -332,20 +338,18 @@ export const updatePost = async (id: string, updates: Partial<KnowledgeItem>) =>
   if (updates.aiClues) dbUpdates.search_clues = updates.aiClues;
   if (updates.attachments) dbUpdates.attachments = updates.attachments;
   
-  // 如果关键内容变化，尝试重新生成向量和线索
   if (updates.title || updates.content) {
       const textToEmbed = `${updates.title || ''}\n${updates.content || ''}`;
       if (textToEmbed.trim().length > 5) {
          try {
-             // 重新调用双核生成，更新向量
-             const aiResult = await generateSearchClues(textToEmbed);
-             if (aiResult.embedding) {
-                 dbUpdates.embedding = aiResult.embedding;
+             // 重新获取向量
+             const aiData = await _fetchCluesAndEmbedding(textToEmbed);
+             if (aiData.embedding) {
+                 dbUpdates.embedding = aiData.embedding;
              }
-             // 如果用户没有明确修改线索，且 AI 生成了新线索，是否自动更新？
-             // 这里保守策略：只更新向量，除非 updates.aiClues 为空
-             if (!updates.aiClues && aiResult.clues) {
-                 dbUpdates.search_clues = aiResult.clues;
+             // 自动更新线索 (如果用户没填)
+             if (!updates.aiClues && aiData.clues) {
+                 dbUpdates.search_clues = aiData.clues;
              }
          } catch (e) {
              console.warn('Failed to update embedding', e);
