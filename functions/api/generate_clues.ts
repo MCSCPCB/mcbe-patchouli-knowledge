@@ -1,13 +1,12 @@
 interface Env {
   VOLCENGINE_API_KEY: string;
   VOLCENGINE_ENDPOINT_ID: string;
-  SILICONFLOW_API_KEY: string; // 新增
+  SILICONFLOW_API_KEY: string;
 }
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
   const { request, env } = context;
 
-  // 1. 检查环境变量
   if (!env.VOLCENGINE_API_KEY || !env.VOLCENGINE_ENDPOINT_ID || !env.SILICONFLOW_API_KEY) {
     return new Response(JSON.stringify({ error: 'AI Service Configuration Missing' }), {
       status: 500,
@@ -29,9 +28,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       });
     }
 
-    // === 并行调用两个 AI 服务 ===
+    // === 并行任务 ===
     
-    // 任务 A: 火山引擎 - 生成文本线索 (原有功能)
+    // 1. 火山引擎：生成文本线索
     const taskClues = fetch(VOLC_URL, {
       method: 'POST',
       headers: {
@@ -54,7 +53,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       return data.choices?.[0]?.message?.content || '';
     });
 
-    // 任务 B: 硅基流动 - 生成向量 (新增功能)
+    // 2. 硅基流动：生成向量
     const taskEmbedding = fetch(SILICON_URL, {
       method: 'POST',
       headers: {
@@ -63,7 +62,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       },
       body: JSON.stringify({
         model: 'BAAI/bge-m3',
-        input: content.substring(0, 8000), // 截断防止超长
+        input: content.substring(0, 8000), 
         encoding_format: 'float'
       })
     }).then(async res => {
@@ -72,9 +71,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       return data.data?.[0]?.embedding;
     });
 
-    // 等待两者完成
     const [clues, embedding] = await Promise.all([taskClues, taskEmbedding]);
 
+    // 返回对象结构
     return new Response(JSON.stringify({ clues, embedding }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
