@@ -8,30 +8,50 @@ interface LoginProps {
 const LoginPage: React.FC<LoginProps> = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState(''); // 新增：名字状态
   const [loading, setLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false); // 默认为登录模式
   const [message, setMessage] = useState<{ text: string; type: 'error' | 'success' } | null>(null);
 
-  // 处理邮箱认证
-  const handleEmailAuth = async (e: React.FormEvent) => {
+  // 处理 登录 / 注册
+  const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setMessage(null);
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
+        // === 注册逻辑 ===
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            // 这里将用户输入的名字存入元数据
+            data: {
+              full_name: name, 
+            },
+          },
         });
+        
         if (error) throw error;
-        setMessage({ text: '注册确认邮件已发送，请查收', type: 'success' });
+
+        // 因为关闭了 Confirm Email，注册成功会直接返回 session
+        if (data.session) {
+          onLogin(); // 直接登录进入系统
+        } else {
+          // 防御性代码：万一你在后台又把验证打开了，这里会提示
+          setMessage({ text: '注册成功！', type: 'success' });
+          setIsSignUp(false); // 切回登录页
+        }
+
       } else {
+        // === 登录逻辑 ===
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         if (error) throw error;
+        
         onLogin(); // 登录成功
       }
     } catch (error: any) {
@@ -41,29 +61,25 @@ const LoginPage: React.FC<LoginProps> = ({ onLogin }) => {
     }
   };
 
-  // 处理 GitHub 登录
   const handleGithubLogin = async () => {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'github',
       });
       if (error) throw error;
-      // OAuth 通常会跳转，所以这里不需要立即调用 onLogin，
-      // 而是通过 Supabase 的 onAuthStateChange 监听器在 App 入口处处理 session
     } catch (error: any) {
       setMessage({ text: error.message, type: 'error' });
     }
   };
 
   return (
-    // Surface: MD3 推荐的深色背景通常不是纯黑，而是极深的灰色 (#121212 or #0F0F0F)
     <div className="min-h-screen flex items-center justify-center bg-[#121212] text-[#E3E3E3] font-sans p-4">
       
-      {/* Surface Container High: 卡片容器 */}
+      {/* Surface Container High */}
       <div className="w-full max-w-md bg-[#1E1E1E] rounded-[28px] p-8 shadow-xl animate-[slideUp_0.4s_ease-out]">
         
-        {/* Header Section */}
-        <div className="flex flex-col items-center mb-10">
+        {/* Header */}
+        <div className="flex flex-col items-center mb-8">
           <div className="w-16 h-16 bg-[#2C2C2C] rounded-[20px] flex items-center justify-center mb-4 shadow-inner">
              <span className="material-symbols-rounded text-3xl text-[#D0BCFF]">menu_book</span>
           </div>
@@ -71,10 +87,30 @@ const LoginPage: React.FC<LoginProps> = ({ onLogin }) => {
           <p className="text-sm text-[#C4C7C5] mt-1 tracking-wide">Knowledge Archive</p>
         </div>
 
-        {/* Email Form */}
-        <form onSubmit={handleEmailAuth} className="flex flex-col gap-4">
+        <form onSubmit={handleAuth} className="flex flex-col gap-4">
           
-          {/* Material Design 3 Filled Input - Email */}
+          {/* === 新增：Name Input (仅在注册时显示) === */}
+          {isSignUp && (
+            <div className="group relative animate-[fadeIn_0.3s_ease-out]">
+              <input
+                type="text"
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required={isSignUp} // 仅在注册时必填
+                className="peer block w-full rounded-t-xl border-b-2 border-[#444746] bg-[#2A2A2A] px-4 pt-6 pb-2 text-base text-[#E3E3E3] focus:border-[#D0BCFF] focus:bg-[#333] focus:outline-none transition-colors"
+                placeholder=" "
+              />
+              <label
+                htmlFor="name"
+                className="absolute left-4 top-4 z-10 origin-[0] -translate-y-3 scale-75 text-[#C4C7C5] duration-200 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:-translate-y-3 peer-focus:scale-75 peer-focus:text-[#D0BCFF]"
+              >
+                Display Name
+              </label>
+            </div>
+          )}
+
+          {/* Email Input */}
           <div className="group relative">
             <input
               type="email"
@@ -93,7 +129,7 @@ const LoginPage: React.FC<LoginProps> = ({ onLogin }) => {
             </label>
           </div>
 
-          {/* Material Design 3 Filled Input - Password */}
+          {/* Password Input */}
           <div className="group relative">
             <input
               type="password"
@@ -113,14 +149,14 @@ const LoginPage: React.FC<LoginProps> = ({ onLogin }) => {
             </label>
           </div>
 
-          {/* Error/Success Message */}
+          {/* Message Area */}
           {message && (
             <div className={`text-sm px-4 py-2 rounded-lg ${message.type === 'error' ? 'bg-[#3C1E1E] text-[#F2B8B5]' : 'bg-[#1E3C26] text-[#B8F2C2]'}`}>
               {message.text}
             </div>
           )}
 
-          {/* Primary Action Button */}
+          {/* Submit Button */}
           <button
             type="submit"
             disabled={loading}
@@ -134,21 +170,23 @@ const LoginPage: React.FC<LoginProps> = ({ onLogin }) => {
         <div className="mt-4 text-center">
           <button
             type="button"
-            onClick={() => setIsSignUp(!isSignUp)}
+            onClick={() => {
+              setIsSignUp(!isSignUp);
+              setMessage(null); // 切换时清空消息
+            }}
             className="text-sm text-[#D0BCFF] hover:text-[#E8DEF8] font-medium py-2 px-4 rounded-full hover:bg-[#381E72]/20 transition-colors"
           >
             {isSignUp ? "Already have an account? Log In" : "Need an account? Sign Up"}
           </button>
         </div>
 
-        {/* Divider */}
+        {/* Divider & GitHub (Optional) */}
         <div className="my-6 flex items-center gap-4">
           <div className="h-[1px] flex-1 bg-[#444746]"></div>
           <span className="text-xs text-[#8E918F] font-medium">OR</span>
           <div className="h-[1px] flex-1 bg-[#444746]"></div>
         </div>
 
-        {/* GitHub Button (Outlined variant) */}
         <button
           onClick={handleGithubLogin}
           className="h-12 w-full rounded-full border border-[#8E918F] text-[#E3E3E3] text-sm font-medium flex items-center justify-center gap-3 hover:bg-[#2A2A2A] hover:border-[#C4C7C5] transition-all duration-200"
