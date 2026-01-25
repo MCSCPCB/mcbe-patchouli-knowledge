@@ -1,6 +1,10 @@
 -- ==========================================
 -- MCBE Knowledge Base - Full Init Schema
+-- Updated for Vector Search & Chinese Support
 -- ==========================================
+
+-- 0. [新增] 启用必要的扩展 (必须最先执行)
+create extension if not exists vector;
 
 -- 1. 创建枚举类型
 create type user_role as enum ('user', 'admin');
@@ -25,6 +29,8 @@ create table public.knowledge_posts (
   tags text[] default '{}'::text[], 
   attachments jsonb default '[]'::jsonb,
   search_clues text,
+  -- [新增] 向量存储列 (维度 1024 对应 BAAI/bge-m3)
+  embedding vector(1024),
   status knowledge_status default 'pending'::knowledge_status,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
@@ -87,12 +93,37 @@ create trigger on_auth_user_created
   for each row execute procedure public.handle_new_user();
 
 -- 6. 索引优化
-create index idx_search_clues on public.knowledge_posts using GIN (to_tsvector('english', search_clues));
+
+-- [修正] 关键词索引: 改为 'simple' 以支持中文分词
+create index idx_search_clues on public.knowledge_posts using GIN (to_tsvector('simple', search_clues));
+
 create index idx_tags on public.knowledge_posts using GIN (tags);
 
--- 7. 存储系统配置 (自动创建 Bucket + 策略)
+-- [新增] 向量索引: 使用 HNSW 算法加速相似度查询
+create index idx_embedding on public.knowledge_posts using hnsw (embedding vector_l2_ops);
 
--- [新增] 自动插入 Bucket 记录 (防止必须去 UI 手动创建)
+
+-- 7. [新增] 向量匹配函数 (核心检索逻辑)
+create or replace function match_knowledge (
+  query_embedding vector(1024),
+  match_threshold float,
+  match_count int
+)
+returns setof knowledge_posts
+language plpgsql
+as $$
+begin
+  return query
+  select *
+  from knowledge_posts
+  where 1 - (knowledge_posts.embedding <=> query_embedding) > match_threshold
+  order by knowledge_posts.embedding <=> query_embedding
+  limit match_count;
+end;
+$$;
+
+
+-- 8. 存储系统配置 (自动创建 Bucket + 策略)
 insert into storage.buckets (id, name, public)
 values ('kb-assets', 'kb-assets', true)
 on conflict (id) do nothing;
