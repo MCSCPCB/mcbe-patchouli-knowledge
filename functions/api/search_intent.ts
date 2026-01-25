@@ -28,8 +28,10 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       });
     }
 
-    // 1. 火山引擎：意图分析 (转 SQL 关键词)
-    const taskIntent = fetch(VOLC_URL, {
+    // === 第一步：火山引擎 (意图翻译 + 关键词提取) ===
+    // 我们要求 AI 返回 JSON，同时搞定 "向量描述" 和 "SQL关键词"
+    
+    const intentResponse = await fetch(VOLC_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -40,25 +42,60 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         messages: [
           {
             role: 'system',
-            content: `你是一个搜索意图分析专家。用户会输入一句自然语言查询，你需要将其转换为 PostgreSQL 的 websearch_to_tsquery 可识别的查询字符串。
-规则：
-1. 提取核心关键词。
-2. 如果有多个可能的同义词，用 " OR " 连接。
-3. 如果有多个必须满足的条件，用 " " (空格) 或 " AND " 连接。
-4. 所有的关键词和逻辑符号组成一个单行字符串返回。
-5. 不要包含任何解释，只返回转换后的字符串。`
+            content: `你是一个 Minecraft 基岩版 (Bedrock Edition) 开发领域的**搜索意图翻译官**。
+你的目标是将用户的搜索词转换为两部分数据，分别用于向量检索和数据库关键词匹配。
+
+请根据用户输入执行以下【意图转译策略】：
+
+**策略 A：用户问“玩法功能” (如：做火车、做枪、技能)**
+*   **翻译逻辑**：将玩法拆解为底层的**组件组合**。
+*   *知识注入*：移动 -> Entity Positioning/Velocity; 显示 -> Render Controller/Geometry; 交互 -> Script API Events.
+
+**策略 B：用户问“底层技术” (如：向量点积、NBT、同步)**
+*   **翻译逻辑**：将口语转为精准的**API定义**。
+*   *知识注入*：传递 -> Data Sync/Dynamic Properties; 向量 -> Vector3/Math Library; 生成 -> spawnEntity.
+
+**输出格式要求 (JSON)**：
+必须只返回一个标准 JSON 对象（不要 Markdown 代码块），包含两个字段：
+1. "vector_context": (String) 一段以英文为主的技术描述，**必须**包含 "Minecraft Bedrock Development context" 前缀。这是给向量模型看的。
+2. "sql_keywords": (String) 提取的核心技术词，如果有多个用 " OR " 连接。这是给数据库模糊搜索用的。
+
+**Example JSON:**
+{
+  "vector_context": "Minecraft Bedrock Development context: Real-time entity positioning mechanics. Tech path: Script API, Vector3 calculations, applyImpulse, Rideable component.",
+  "sql_keywords": "Script_API OR Vector3 OR applyImpulse"
+}`
           },
           { role: 'user', content: query }
         ]
       })
-    }).then(async res => {
-      if (!res.ok) throw new Error(`Volcengine Error: ${await res.text()}`);
-      const data: any = await res.json();
-      return data.choices?.[0]?.message?.content || '';
     });
 
-    // 2. 硅基流动：查询转向量
-    const taskEmbedding = fetch(SILICON_URL, {
+    if (!intentResponse.ok) throw new Error(`Volcengine Error: ${await intentResponse.text()}`);
+    
+    const intentData: any = await intentResponse.json();
+    const rawContent = intentData.choices?.[0]?.message?.content || '{}';
+    
+    // 安全解析 JSON (防止 AI 偶尔返回非 JSON 格式)
+    let parsedIntent = { vector_context: '', sql_keywords: '' };
+    try {
+        // 尝试移除可能存在的 Markdown 代码块标记 ```json ... ```
+        const cleanJson = rawContent.replace(/```json|```/g, '').trim();
+        parsedIntent = JSON.parse(cleanJson);
+    } catch (e) {
+        console.warn('AI returned invalid JSON, falling back to raw query', e);
+        // 降级策略：如果是乱码，直接用原词
+        parsedIntent = { 
+            vector_context: `Minecraft Bedrock Development context: ${query}`, 
+            sql_keywords: query 
+        };
+    }
+
+    // === 第二步：硅基流动 (生成向量) ===
+    // 这里的输入是 AI 翻译过的 "vector_context"，而不是用户原本的 "怎么做火车"
+    // 这实现了 "搜玩法 -> 匹配技术" 的核心逻辑
+
+    const embeddingResponse = await fetch(SILICON_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -66,18 +103,20 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       },
       body: JSON.stringify({
         model: 'BAAI/bge-m3',
-        input: query,
+        input: parsedIntent.vector_context || query, // 优先用翻译后的，否则用原词
         encoding_format: 'float'
       })
-    }).then(async res => {
-      if (!res.ok) throw new Error(`SiliconFlow Error: ${await res.text()}`);
-      const data: any = await res.json();
-      return data.data?.[0]?.embedding;
     });
 
-    const [searchStr, embedding] = await Promise.all([taskIntent, taskEmbedding]);
+    if (!embeddingResponse.ok) throw new Error(`SiliconFlow Error: ${await embeddingResponse.text()}`);
+    const embeddingData: any = await embeddingResponse.json();
+    const embedding = embeddingData.data?.[0]?.embedding;
 
-    return new Response(JSON.stringify({ searchStr, embedding }), {
+    // === 返回结果 ===
+    return new Response(JSON.stringify({ 
+        searchStr: parsedIntent.sql_keywords, // 用于前端降级搜索
+        embedding: embedding                  // 用于前端向量搜索
+    }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
