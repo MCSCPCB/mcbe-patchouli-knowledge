@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { supabase } from './supabaseClient';
 import { KnowledgeItem, User, Attachment } from '../types';
+import imageCompression from 'browser-image-compression';
 
 /**
  * 数据库行结构 (Internal DB Representation)
@@ -197,8 +198,24 @@ function mapDBToItem(row: DBPost): KnowledgeItem {
   };
 };
 
+// === 文件上传逻辑修改 ===
+
+// 允许的附件类型白名单 (纯文本类)
+const ALLOWED_ATTACHMENT_EXTENSIONS = [
+  'txt', 'json', 'md', 'csv', 'py', 'js', 'ts', 'html', 'css', 'sql', 'log', 'xml', 'yml', 'yaml'
+];
+
+/**
+ * 上传普通附件到 Supabase (受严格类型限制)
+ */
 export const uploadFile = async (file: File): Promise<string> => {
-  // 1. 简单的文件名清洗，防止特殊字符导致 URL 问题
+  const ext = file.name.split('.').pop()?.toLowerCase();
+  
+  if (!ext || !ALLOWED_ATTACHMENT_EXTENSIONS.includes(ext)) {
+    throw new Error(`Forbidden file type: .${ext}. Only text-based files (txt, json, code) are allowed.`);
+  }
+
+  // 1. 简单的文件名清洗
   const cleanName = file.name.replace(/[^\x00-\x7F]/g, "").replace(/\s/g, '_'); 
   const fileName = `${Date.now()}_${cleanName}`;
   
@@ -207,11 +224,11 @@ export const uploadFile = async (file: File): Promise<string> => {
     .upload(fileName, file, {
       cacheControl: '3600',
       upsert: false,
-      duplex: 'half' // [关键修复] 针对某些浏览器（如 Chrome）的大文件上传流处理
+      duplex: 'half'
     });
 
   if (error) {
-    console.error("Upload Error Details:", error);
+    console.error("Supabase Upload Error:", error);
     throw error;
   }
   
@@ -220,6 +237,49 @@ export const uploadFile = async (file: File): Promise<string> => {
     .getPublicUrl(fileName);
     
   return publicUrl;
+};
+
+/**
+ * 上传图片到 GitHub (经过压缩处理)
+ */
+export const uploadImage = async (file: File): Promise<string> => {
+  // 1. 压缩图片
+  const options = {
+    maxSizeMB: 0.5, // 压缩到 0.5MB 以下
+    maxWidthOrHeight: 1920,
+    useWebWorker: true,
+  };
+
+  try {
+    const compressedFile = await imageCompression(file, options);
+    
+    // 2. 转换为 Base64
+    const base64Content = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(compressedFile);
+      reader.onloadend = () => {
+        const base64 = reader.result as string;
+        // 移除 data:image/png;base64, 前缀
+        resolve(base64.split(',')[1]); 
+      };
+      reader.onerror = reject;
+    });
+
+    // 3. 生成随机文件名 (规避审查)
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const randomName = `${crypto.randomUUID()}.${ext}`;
+
+    // 4. 调用后端 API 代理上传
+    const response = await axios.post('/api/upload_github', {
+      content: base64Content,
+      fileName: randomName
+    });
+
+    return response.data.url;
+  } catch (error) {
+    console.error('Image Upload Error:', error);
+    throw new Error('Failed to compress or upload image');
+  }
 };
 
 
@@ -243,4 +303,3 @@ export const updatePost = async (id: string, updates: Partial<KnowledgeItem>) =>
 
   if (error) throw error;
 };
-
