@@ -2,7 +2,7 @@ import React, { useState, useContext, useRef, useEffect } from 'react';
 import { AppContext } from '../App';
 import { Page, PREDEFINED_TAGS, Attachment } from '../types';
 import { Button, IconButton, TextField, Select, Chip, RichMarkdownEditor } from '../components/M3Components';
-import { generateSearchClues, createPost, updatePost, getRecentPosts, uploadFile } from '../services/knowledgeService';
+import { generateSearchClues, createPost, updatePost, getRecentPosts, uploadFile, uploadImage } from '../services/knowledgeService';
 
 const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) => {
   const { items, setItems, currentUser, selectedItemId, refreshData } = useContext(AppContext);
@@ -54,8 +54,20 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
   };
 
   const handleTriggerUpload = (type: 'image' | 'video' | 'file') => {
+      // 视频特殊处理：只允许 URL，不触发文件选择
+      if (type === 'video') {
+        const url = prompt("Please enter the video URL (MP4/WebM):");
+        if (url) {
+          setContent(prev => prev + `\n<video src="${url}" controls class="w-full rounded-xl my-2"></video>\n`);
+        }
+        return;
+      }
+
+      // 其他类型：触发文件选择
       setUploadType(type);
       if (fileInputRef.current) {
+          // 清空 value，允许重复选择同一文件
+          fileInputRef.current.value = ''; 
           fileInputRef.current.click();
       }
   };
@@ -65,12 +77,13 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
       if (!file) return;
 
       try {
-          const url = await uploadFile(file);
           if (uploadType === 'image') {
+              // 图片逻辑：走 GitHub + 压缩
+              const url = await uploadImage(file);
               setContent(prev => prev + `\n![${file.name}](${url})\n`);
-          } else if (uploadType === 'video') {
-              setContent(prev => prev + `\n<video src="${url}" controls class="w-full rounded-xl my-2"></video>\n`);
-          } else {
+          } else if (uploadType === 'file') {
+              // 附件逻辑：走 Supabase + 白名单检查
+              const url = await uploadFile(file);
               setAttachments(prev => [...prev, {
                   id: Date.now().toString(),
                   name: file.name,
@@ -78,10 +91,8 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
                   url: url
               }]);
           }
-      } catch (error) {
-          alert("Upload failed: " + error);
-      } finally {
-          if (fileInputRef.current) fileInputRef.current.value = '';
+      } catch (error: any) {
+          alert("Upload failed: " + error.message);
       }
   };
 
@@ -225,7 +236,14 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
         </div>
       </div>
       
-      <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} />
+      {/* Input accept 属性限制 */}
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        className="hidden" 
+        onChange={handleFileChange} 
+        accept={uploadType === 'image' ? "image/*" : ".txt,.json,.md,.csv,.py,.js,.ts,.html,.css,.sql,.log,.xml,.yml,.yaml"}
+      />
     </div>
   );
 };
