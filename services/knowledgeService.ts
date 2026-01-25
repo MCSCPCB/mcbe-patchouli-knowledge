@@ -240,152 +240,54 @@ export const uploadFile = async (file: File): Promise<string> => {
 };
 
 /**
- * 上传图片到 GitHub (经过压缩处理)
- */
-/**
- * 上传图片到 GitHub
- */
-/**
  * 上传图片到 GitHub
  */
 export const uploadImage = async (file: File): Promise<string> => {
-  console.log('上传图片开始:', {
-    fileName: file.name,
-    fileSize: `${(file.size / 1024).toFixed(2)} KB`,
-    fileType: file.type,
-    lastModified: new Date(file.lastModified).toISOString()
-  });
-
   try {
-    // 直接读取文件为 Base64（不压缩）
-    console.log('开始读取文件为Base64...');
+    // 步骤 A: 直接使用原始文件（跳过压缩步骤）
+    const originalFile = file;
+
+    // 步骤 B: 转换为 Base64
     const base64Content = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
-      
-      reader.onloadstart = () => console.log('FileReader: 开始读取文件');
-      reader.onprogress = (e) => {
-        if (e.lengthComputable) {
-          const percent = (e.loaded / e.total * 100).toFixed(2);
-          console.log(`FileReader: 读取进度 ${percent}%`);
-        }
-      };
-      
+      reader.readAsDataURL(originalFile);
       reader.onloadend = () => {
-        console.log('FileReader: 读取完成');
-        try {
-          const base64 = reader.result as string;
-          console.log('Base64数据长度:', base64.length, '字符');
-          
-          // 检查Base64数据是否有效
-          if (!base64 || base64.length < 100) {
-            console.error('Base64数据过短或无效');
-            reject(new Error('Base64数据无效'));
-            return;
-          }
-          
-          // 移除 data:image/png;base64, 前缀
-          const contentOnly = base64.split(',')[1];
-          if (!contentOnly) {
-            console.error('无法分割Base64数据');
-            reject(new Error('Base64格式错误'));
-            return;
-          }
-          
-          console.log('处理后的Base64长度:', contentOnly.length, '字符');
-          resolve(contentOnly);
-        } catch (error) {
-          console.error('FileReader回调错误:', error);
-          reject(error);
-        }
+        const base64 = reader.result as string;
+        // 移除 data:image/png;base64, 前缀，GitHub API 不需要它
+        resolve(base64.split(',')[1]); 
       };
-      
-      reader.onerror = (error) => {
-        console.error('FileReader错误:', error);
-        reject(new Error(`文件读取失败: ${reader.error?.message || '未知错误'}`));
-      };
-      
-      reader.onabort = () => {
-        console.warn('FileReader: 读取被中止');
-        reject(new Error('文件读取被中止'));
-      };
-      
-      reader.readAsDataURL(file);
+      reader.onerror = (e) => reject(new Error("File reading failed"));
     });
 
-    console.log('Base64内容前100字符:', base64Content.substring(0, 100) + '...');
-
-    // 生成随机文件名
+    // 步骤 C: 生成随机文件名 (规避审查 + 防止重名)
     const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
     const randomName = `${crypto.randomUUID()}.${ext}`;
-    
-    console.log('生成的文件名:', randomName);
-    console.log('准备调用上传API...');
 
-    // 检查文件大小
-    const base64Size = (base64Content.length * 3) / 4; // Base64大致大小估算
-    console.log('Base64编码后大致大小:', `${(base64Size / 1024).toFixed(2)} KB`);
-    
-    if (base64Size > 5 * 1024 * 1024) { // 5MB限制
-      console.warn('文件过大，可能超过GitHub API限制');
-    }
-
-    // 调用后端 API 代理上传
+    // 步骤 D: 调用后端 API 代理上传
     const response = await axios.post('/api/upload_github', {
       content: base64Content,
       fileName: randomName
-    }, {
-      timeout: 30000, // 30秒超时
-      headers: {
-        'Content-Type': 'application/json'
-      }
     });
 
-    console.log('API响应状态:', response.status);
-    console.log('API响应数据:', response.data);
-    
     if (!response.data || !response.data.url) {
-      console.error('API响应缺少URL字段');
-      throw new Error('服务器响应无效');
+      throw new Error('Server response missing URL');
     }
 
-    console.log('上传成功，URL:', response.data.url);
     return response.data.url;
+
+  } catch (error: any) {
+    console.error('Image Upload Error:', error);
     
-  } catch (error) {
-    console.error('=== 上传图片详细错误日志 ===');
-    console.error('错误类型:', error.constructor.name);
-    
-    if (axios.isAxiosError(error)) {
-      console.error('Axios错误详情:');
-      console.error('请求配置:', error.config);
-      console.error('响应状态:', error.response?.status);
-      console.error('响应数据:', error.response?.data);
-      console.error('响应头:', error.response?.headers);
-      console.error('请求头:', error.request?.headers);
+    // 生成友好的错误提示
+    let errorMsg = 'Failed to upload image';
+    if (axios.isAxiosError(error) && error.response) {
+       // 如果是服务器明确返回错误（比如 400/500）
+       errorMsg = `Server Error (${error.response.status}): ${JSON.stringify(error.response.data)}`;
     } else if (error instanceof Error) {
-      console.error('错误消息:', error.message);
-      console.error('错误堆栈:', error.stack);
-    } else {
-      console.error('未知错误对象:', error);
+       errorMsg = error.message;
     }
-    
-    console.error('=== 错误日志结束 ===');
-    
-    // 提供更详细的错误消息
-    let errorMessage = 'Failed to upload image';
-    if (axios.isAxiosError(error)) {
-      if (error.response) {
-        errorMessage = `服务器错误: ${error.response.status} - ${JSON.stringify(error.response.data)}`;
-      } else if (error.request) {
-        errorMessage = '无法连接到服务器，请检查网络';
-      } else {
-        errorMessage = `请求配置错误: ${error.message}`;
-      }
-    } else if (error instanceof Error) {
-      errorMessage = error.message;
-    }
-    
-    throw new Error(errorMessage);
+
+    throw new Error(errorMsg);
   }
 };
 
