@@ -14,7 +14,8 @@
     "axios": "^1.6.0",
     "@supabase/supabase-js": "^2.39.0",
     "clsx": "^2.0.0",
-    "tailwind-merge": "^2.0.0"
+    "tailwind-merge": "^2.0.0",
+    "browser-image-compression": "^2.0.2"
   },
   "devDependencies": {
     "@types/react": "^18.2.66",
