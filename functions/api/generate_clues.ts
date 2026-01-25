@@ -1,23 +1,24 @@
 interface Env {
   VOLCENGINE_API_KEY: string;
   VOLCENGINE_ENDPOINT_ID: string;
+  SILICONFLOW_API_KEY: string; // 新增
 }
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
   const { request, env } = context;
 
   // 1. 检查环境变量
-  if (!env.VOLCENGINE_API_KEY || !env.VOLCENGINE_ENDPOINT_ID) {
+  if (!env.VOLCENGINE_API_KEY || !env.VOLCENGINE_ENDPOINT_ID || !env.SILICONFLOW_API_KEY) {
     return new Response(JSON.stringify({ error: 'AI Service Configuration Missing' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
     });
   }
 
-  const API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
+  const VOLC_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
+  const SILICON_URL = 'https://api.siliconflow.cn/v1/embeddings';
 
   try {
-    // 2. 解析请求体
     const body = await request.json() as { content: string };
     const { content } = body;
 
@@ -28,8 +29,10 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       });
     }
 
-    // 3. 调用火山引擎 API (使用原生 fetch)
-    const aiResponse = await fetch(API_URL, {
+    // === 并行调用两个 AI 服务 ===
+    
+    // 任务 A: 火山引擎 - 生成文本线索 (原有功能)
+    const taskClues = fetch(VOLC_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -45,31 +48,43 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
           { role: 'user', content: content }
         ]
       })
+    }).then(async res => {
+      if (!res.ok) throw new Error(`Volcengine Error: ${await res.text()}`);
+      const data: any = await res.json();
+      return data.choices?.[0]?.message?.content || '';
     });
 
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error('Volcengine API Error:', errorText);
-      return new Response(JSON.stringify({ error: 'AI Provider Error', details: errorText }), { 
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
+    // 任务 B: 硅基流动 - 生成向量 (新增功能)
+    const taskEmbedding = fetch(SILICON_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${env.SILICONFLOW_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'BAAI/bge-m3',
+        input: content.substring(0, 8000), // 截断防止超长
+        encoding_format: 'float'
+      })
+    }).then(async res => {
+      if (!res.ok) throw new Error(`SiliconFlow Error: ${await res.text()}`);
+      const data: any = await res.json();
+      return data.data?.[0]?.embedding;
+    });
 
-    const aiData: any = await aiResponse.json();
-    const clues = aiData.choices?.[0]?.message?.content || '';
+    // 等待两者完成
+    const [clues, embedding] = await Promise.all([taskClues, taskEmbedding]);
 
-    return new Response(JSON.stringify({ clues }), {
+    return new Response(JSON.stringify({ clues, embedding }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
 
   } catch (error: any) {
     console.error('AI Service Error:', error);
-    return new Response(JSON.stringify({ error: 'Failed to generate clues', message: error.message }), { 
+    return new Response(JSON.stringify({ error: 'Failed to process content', message: error.message }), { 
       status: 500,
       headers: { 'Content-Type': 'application/json' }
     });
   }
 }
-
