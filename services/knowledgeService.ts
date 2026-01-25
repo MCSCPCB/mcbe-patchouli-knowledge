@@ -52,21 +52,24 @@ export const searchKnowledge = async (query: string, mode: 'keyword' | 'ai' = 'k
   }
 
   // 1. 全文检索 (针对 search_clues)
+  // 修改: config 改为 'simple' 以支持中文和非英语系的准确匹配
   let { data, error } = await supabase
     .from('knowledge_posts')
     .select(`*, profiles ( github_id, avatar_url )`)
     .textSearch('search_clues', searchTerms, {
       type: 'websearch',
-      config: 'english'
+      config: 'simple' 
     });
 
-  // 2. 降级策略: 标题模糊匹配
+  // 2. 降级策略: 全字段模糊匹配
+  // 修改: 如果全文检索无结果，扩大搜索范围到 标题、内容、AI线索
   if (!data || data.length === 0) {
     const fallback = await supabase
       .from('knowledge_posts')
       .select(`*, profiles ( github_id, avatar_url )`)
       .eq('status', 'published')
-      .ilike('title', `%${query}%`);
+      // 使用 OR 语法检查 title, content, search_clues 是否包含查询词
+      .or(`title.ilike.%${query}%,content.ilike.%${query}%,search_clues.ilike.%${query}%`);
     
     data = fallback.data;
     error = fallback.error;
