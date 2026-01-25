@@ -227,7 +227,7 @@ export const RichMarkdownEditor: React.FC<RichEditorProps> = ({ label, value, on
                <IconButton icon="code" className="!w-8 !h-8" onClick={() => insertText('`', '`')} title="Inline Code" />
                <IconButton icon="data_object" className="!w-8 !h-8" onClick={() => insertText('\n```\n', '\n```\n')} title="Code Block" />
                <div className="w-[1px] h-4 bg-[#555] mx-1"></div>
-               <IconButton icon="image" className="!w-8 !h-8" onClick={() => onUploadImage ? onUploadImage() : handleMedia('image')} title="Insert Image" />
+               <IconButton icon="image" className="!w-8 !h-8" onClick={async () => {if (onUploadImage) {const originalUrl = await (onUploadImage() as any); if (originalUrl && typeof originalUrl === 'string') {const optimizedUrl = `https://wsrv.nl/?url=${encodeURIComponent(originalUrl)}&w=800&q=80`;insertText(`![Image](${optimizedUrl})`);}} else {handleMedia('image');}}} title="Insert Image" />
                <IconButton icon="movie" className="!w-8 !h-8" onClick={() => onUploadVideo ? onUploadVideo() : handleMedia('video')} title="Insert Video" />
                <div className="flex-1"></div>
                <IconButton icon="attach_file" className="!w-8 !h-8 !text-[#7DA3A1]" onClick={onAddAttachment} title="Add Attachment" />
