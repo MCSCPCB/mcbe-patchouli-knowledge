@@ -123,27 +123,28 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'file') => {
-      const file = e.target.files?.[0];
-      if (!file) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-      try {
-          if (type === 'image') {
-              const url = await uploadImage(file);
-              setContent(prev => prev + `\n![${file.name}](${url})\n`);
-          } else {
-              const url = await uploadFile(file);
-              setAttachments(prev => [...prev, {
-                  id: Date.now().toString(),
-                  name: file.name,
-                  type: 'file',
-                  url: url
-              }]);
-          }
-      } catch (error: any) {
-          handleError("Upload failed: " + error.message);
-      }
-  };
-
+    try {
+        if (type === 'image') {
+            const url = await uploadImage(file);
+            // 关键修复：在这里对上传后的 URL 进行加速包装（移除了 w=800 限制）
+            const optimizedUrl = `https://wsrv.nl/?url=${encodeURIComponent(url)}&q=80`;
+            setContent(prev => prev + `\n![${file.name}](${optimizedUrl})\n`);
+        } else {
+            const url = await uploadFile(file);
+            setAttachments(prev => [...prev, {
+                id: Date.now().toString(),
+                name: file.name,
+                type: 'file',
+                url: url
+            }]);
+        }
+    } catch (error: any) {
+        handleError("Upload failed: " + error.message);
+    }
+};
   const handleSubmit = async () => {
     if (!title || !content || !currentUser) return;
     setIsSaving(true);
