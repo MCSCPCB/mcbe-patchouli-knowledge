@@ -1,7 +1,7 @@
 interface Env {
   VOLCENGINE_API_KEY: string;
   VOLCENGINE_ENDPOINT_ID: string;
-  SILICONFLOW_API_KEY: string; // 新增
+  SILICONFLOW_API_KEY: string;
 }
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
@@ -28,9 +28,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       });
     }
 
-    // === 并行调用 ===
-
-    // 任务 A: 火山引擎 - 搜索意图分析 (原有功能)
+    // 1. 火山引擎：意图分析 (转 SQL 关键词)
     const taskIntent = fetch(VOLC_URL, {
       method: 'POST',
       headers: {
@@ -59,7 +57,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       return data.choices?.[0]?.message?.content || '';
     });
 
-    // 任务 B: 硅基流动 - 生成查询向量 (新增功能)
+    // 2. 硅基流动：查询转向量
     const taskEmbedding = fetch(SILICON_URL, {
       method: 'POST',
       headers: {
