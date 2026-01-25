@@ -1,7 +1,7 @@
 import React, { useState, useContext, useRef, useEffect } from 'react';
 import { AppContext } from '../App';
 import { Page, PREDEFINED_TAGS, Attachment } from '../types';
-import { Button, IconButton, TextField, Select, Chip, RichMarkdownEditor } from '../components/M3Components';
+import { Button, IconButton, TextField, Select, Chip, RichMarkdownEditor, Dialog } from '../components/M3Components';
 import { generateSearchClues, createPost, updatePost, getRecentPosts, uploadFile, uploadImage } from '../services/knowledgeService';
 
 const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) => {
@@ -14,6 +14,11 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
   const [isGenerating, setIsGenerating] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+
+  // === 修改点 3: 统一弹窗状态管理 ===
+  const [videoDialogOpen, setVideoDialogOpen] = useState(false);
+  const [videoUrlInput, setVideoUrlInput] = useState('');
+  const [errorDialog, setErrorDialog] = useState<{ open: boolean, message: string }>({ open: false, message: '' });
 
   const initializedIdRef = useRef<string | null>(null);
 
@@ -31,7 +36,6 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
     }
   }, [selectedItemId, items]);
 
-  // === 修复点 1: 分离两个 ref，彻底解决安卓端唤起图库的问题 ===
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -41,6 +45,10 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
     }
   };
 
+  const handleError = (msg: string) => {
+      setErrorDialog({ open: true, message: msg });
+  };
+
   const handleGenerateClues = async () => {
     if (!content) return;
     setIsGenerating(true);
@@ -48,33 +56,38 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
       const clues = await generateSearchClues(content);
       setAiClues(clues);
     } catch (e) {
-      alert("AI Service Unavailable");
+      handleError("AI Service Unavailable");
     } finally {
       setIsGenerating(false);
     }
   };
 
-  // === 修复点 2: 视频链接智能解析 (支持 Bilibili) ===
-  const handleVideoInsert = () => {
-      const url = prompt("Please enter the video URL (Bilibili/YouTube or .mp4):");
-      if (!url) return;
+  // 点击插入视频按钮，打开弹窗
+  const handleTriggerVideo = () => {
+      setVideoUrlInput('');
+      setVideoDialogOpen(true);
+  };
+
+  // 确认插入视频
+  const handleConfirmVideoInsert = () => {
+      const url = videoUrlInput.trim();
+      if (!url) {
+          setVideoDialogOpen(false);
+          return;
+      }
 
       let insertCode = '';
 
-      // Bilibili 短链 (b23.tv) 提示 - 前端无法直接解析短链，建议用户用长链
       if (url.includes('b23.tv')) {
-        alert("Please use the full Bilibili URL (starting with www.bilibili.com/video/BV...) for best compatibility.");
+        handleError("Please use the full Bilibili URL (starting with www.bilibili.com/video/BV...) for best compatibility.");
         return;
       }
 
-      // Bilibili 长链处理
       const bvidMatch = url.match(/BV[a-zA-Z0-9]+/);
       if (url.includes('bilibili.com') && bvidMatch) {
         const bvid = bvidMatch[0];
-        // 使用 iframe 嵌入，增加样式保证自适应
         insertCode = `\n<iframe src="//player.bilibili.com/player.html?bvid=${bvid}&page=1&high_quality=1" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true" class="w-full aspect-video rounded-xl my-2"></iframe>\n`;
       } 
-      // YouTube 处理
       else if (url.includes('youtube.com') || url.includes('youtu.be')) {
         let videoId = '';
         if (url.includes('v=')) videoId = url.split('v=')[1]?.split('&')[0];
@@ -84,7 +97,6 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
             insertCode = `\n<iframe src="https://www.youtube.com/embed/${videoId}" class="w-full aspect-video rounded-xl my-2" frameborder="0" allowfullscreen></iframe>\n`;
         }
       }
-      // 普通直链 (mp4)
       else {
         insertCode = `\n<video src="${url}" controls class="w-full rounded-xl my-2"></video>\n`;
       }
@@ -92,15 +104,15 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
       if (insertCode) {
         setContent(prev => prev + insertCode);
       }
+      setVideoDialogOpen(false);
   };
 
   const handleTriggerUpload = (type: 'image' | 'video' | 'file') => {
       if (type === 'video') {
-        handleVideoInsert();
+        handleTriggerVideo();
         return;
       }
 
-      // 根据类型点击不同的 input
       if (type === 'image' && imageInputRef.current) {
           imageInputRef.current.value = ''; 
           imageInputRef.current.click();
@@ -128,7 +140,7 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
               }]);
           }
       } catch (error: any) {
-          alert("Upload failed: " + error.message);
+          handleError("Upload failed: " + error.message);
       }
   };
 
@@ -148,8 +160,8 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
         setItems(posts);
         await refreshData();
         onNavigate(Page.HOME);
-    } catch (e) {
-        alert("Failed to save: " + e);
+    } catch (e: any) {
+        handleError("Failed to save: " + e.message || e);
     } finally {
         setIsSaving(false);
     }
@@ -272,7 +284,7 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
         </div>
       </div>
       
-      {/* 独立的 Inputs，解决状态异步问题 */}
+      {/* 独立的 Inputs */}
       <input 
         type="file" 
         ref={imageInputRef} 
@@ -288,6 +300,41 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
         onChange={(e) => handleFileChange(e, 'file')} 
         accept=".txt,.json,.md,.csv,.py,.js,.ts,.html,.css,.sql,.log,.xml,.yml,.yaml"
       />
+
+      {/* Insert Video Dialog */}
+      <Dialog
+        open={videoDialogOpen}
+        title="Insert Video"
+        onClose={() => setVideoDialogOpen(false)}
+        actions={
+            <>
+              <Button variant="text" label="Cancel" onClick={() => setVideoDialogOpen(false)} />
+              <Button variant="filled" label="Insert" onClick={handleConfirmVideoInsert} />
+            </>
+        }
+      >
+        <div className="pt-2 pb-4">
+            <p className="text-[#C7C7CC] text-sm mb-4">Support: Bilibili (BV...), YouTube, or .mp4 links.</p>
+            <TextField 
+                label="Video URL" 
+                value={videoUrlInput}
+                onChange={(e) => setVideoUrlInput(e.target.value)}
+                placeholder="https://..."
+            />
+        </div>
+      </Dialog>
+
+      {/* Error Dialog */}
+      <Dialog
+        open={errorDialog.open}
+        title="Notice"
+        onClose={() => setErrorDialog({ ...errorDialog, open: false })}
+        actions={
+            <Button variant="text" label="OK" onClick={() => setErrorDialog({ ...errorDialog, open: false })} />
+        }
+      >
+        <p className="text-[#E6E6E6]">{errorDialog.message}</p>
+      </Dialog>
     </div>
   );
 };
