@@ -179,42 +179,55 @@ const App: React.FC = () => {
              </div>
              
              {currentUser && (
-               <div className="flex items-center gap-3">
-                 {currentUser.role === 'admin' && (
-                    <IconButton 
-                      icon="shield_person" 
-                      onClick={() => goTo(Page.ADMIN)} 
-                      active={currentPage === Page.ADMIN}
-                      className="hidden md:flex"
-                    />
-                 )}
-                 <div className="relative group">
-                   <Avatar name={currentUser.name} src={currentUser.avatar} onClick={() => {}} />
-                   {/* MD3 Menu Surface */}
-                   <div className="absolute right-0 top-12 w-56 bg-[#252529] rounded-2xl p-2 hidden group-hover:block z-50 shadow-[0_8px_24px_rgba(0,0,0,0.5)] origin-top-right animate-[scaleIn_0.2s_ease-out]">
-                     <div className="px-4 py-3 border-b border-[#333] mb-2">
-                        <div className="text-sm font-medium text-[#E6E6E6]">{currentUser.name}</div>
-                        <div className="text-xs text-[#A0A0A0]">{currentUser.role}</div>
-                     </div>
-                     <button onClick={() => goTo(Page.HOME)} className="w-full text-left px-4 py-3 rounded-xl hover:bg-[#383838] text-sm text-[#E6E6E6] flex items-center gap-3">
-                        <span className="material-symbols-rounded text-lg">library_books</span>
-                        My Knowledge
-                     </button>
-                     {currentUser.role === 'admin' && (
-                       <button onClick={() => goTo(Page.ADMIN)} className="md:hidden w-full text-left px-4 py-3 rounded-xl hover:bg-[#383838] text-sm text-[#7DA3A1] flex items-center gap-3 mt-1">
-                         <span className="material-symbols-rounded text-lg">shield_person</span>
-                         Admin Panel
-                       </button>
-                     )}
+  <div className="flex items-center gap-3">
+    {currentUser.role === 'admin' && (
+      <IconButton 
+        icon="shield_person" 
+        onClick={() => goTo(Page.ADMIN)} 
+        active={currentPage === Page.ADMIN}
+        className="hidden md:flex"
+      />
+    )}
+    
+    {/* 增加了一个 pb-2 确保鼠标向下移动时始终处于 hover 区域内 */}
+    <div className="relative group pb-2">
+      <Avatar name={currentUser.name} src={currentUser.avatar} onClick={() => {}} />
+      
+      {/* 修改点 1: top-full 确保菜单紧贴父容器底部
+        修改点 2: pt-2 (padding-top) 创建了一个 8px 的透明感应区，消灭“真空地带”
+        修改点 3: 内部背景层 div 保持原样，视觉上依然有间距
+      */}
+      <div className="absolute right-0 top-full pt-2 w-56 hidden group-hover:block z-50 origin-top-right animate-[scaleIn_0.2s_ease-out]">
+        <div className="bg-[#252529] rounded-2xl p-2 shadow-[0_8px_24px_rgba(0,0,0,0.5)] border border-[#333]/50">
+          {/* 用户信息栏 */}
+          <div className="px-4 py-3 border-b border-[#333] mb-2">
+            <div className="text-sm font-medium text-[#E6E6E6]">{currentUser.name}</div>
+            <div className="text-xs text-[#A0A0A0]">{currentUser.role}</div>
+          </div>
 
-                     <button onClick={handleLogout} className="w-full text-left px-4 py-3 rounded-xl hover:bg-[#3F2E2E] text-[#FFB4AB] text-sm flex items-center gap-3 mt-1">
-                        <span className="material-symbols-rounded text-lg">logout</span>
-                        Logout
-                     </button>
-                   </div>
-                 </div>
-               </div>
-             )}
+          {/* 菜单选项 */}
+          <button onClick={() => goTo(Page.HOME)} className="w-full text-left px-4 py-3 rounded-xl hover:bg-[#383838] text-sm text-[#E6E6E6] flex items-center gap-3 transition-colors">
+            <span className="material-symbols-rounded text-lg">library_books</span>
+            My Knowledge
+          </button>
+
+          {currentUser.role === 'admin' && (
+            <button onClick={() => goTo(Page.ADMIN)} className="md:hidden w-full text-left px-4 py-3 rounded-xl hover:bg-[#383838] text-sm text-[#7DA3A1] flex items-center gap-3 mt-1 transition-colors">
+              <span className="material-symbols-rounded text-lg">shield_person</span>
+              Admin Panel
+            </button>
+          )}
+
+          <button onClick={handleLogout} className="w-full text-left px-4 py-3 rounded-xl hover:bg-[#3F2E2E] text-[#FFB4AB] text-sm flex items-center gap-3 mt-1 transition-colors">
+            <span className="material-symbols-rounded text-lg">logout</span>
+            Logout
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
           </header>
         )}
         
