@@ -15,11 +15,13 @@
     "@supabase/supabase-js": "^2.39.0",
     "clsx": "^2.0.0",
     "tailwind-merge": "^2.0.0",
-    "browser-image-compression": "^2.0.2"
+    "browser-image-compression": "^2.0.2",
+    "highlight.js": "^11.9.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.66",
     "@types/react-dom": "^18.2.22",
+    "@types/highlight.js": "^10.1.0",
     "@typescript-eslint/eslint-plugin": "^7.2.0",
     "@typescript-eslint/parser": "^7.2.0",
     "@vitejs/plugin-react": "^4.2.1",
