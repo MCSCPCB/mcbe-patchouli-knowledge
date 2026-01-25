@@ -207,7 +207,11 @@ export const RichMarkdownEditor: React.FC<RichEditorProps> = ({ label, value, on
     const handleMedia = (type: 'image' | 'video') => {
       const url = prompt(`Enter ${type} URL:`);
       if (!url) return;
-      if (type === 'image') insertText(`![Image](${url})`);
+      if (type === 'image') {
+         const optimizedUrl = `https://wsrv.nl/?url=${encodeURIComponent(url)}&q=80`;
+         insertText(`![Image](${optimizedUrl})`);
+      }
+
       if (type === 'video') insertText(`<video controls src="${url}" class="w-full rounded-xl my-2"></video>\n`);
     };
   
