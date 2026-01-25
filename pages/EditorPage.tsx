@@ -31,8 +31,9 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
     }
   }, [selectedItemId, items]);
 
+  // === 修复点 1: 分离两个 ref，彻底解决安卓端唤起图库的问题 ===
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadType, setUploadType] = useState<'image' | 'video' | 'file'>('file');
 
   const handleTagChange = (tag: string) => {
     if (!tags.includes(tag)) {
@@ -53,36 +54,71 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
     }
   };
 
-  const handleTriggerUpload = (type: 'image' | 'video' | 'file') => {
-      // 视频特殊处理：只允许 URL，不触发文件选择
-      if (type === 'video') {
-        const url = prompt("Please enter the video URL (MP4/WebM):");
-        if (url) {
-          setContent(prev => prev + `\n<video src="${url}" controls class="w-full rounded-xl my-2"></video>\n`);
-        }
+  // === 修复点 2: 视频链接智能解析 (支持 Bilibili) ===
+  const handleVideoInsert = () => {
+      const url = prompt("Please enter the video URL (Bilibili/YouTube or .mp4):");
+      if (!url) return;
+
+      let insertCode = '';
+
+      // Bilibili 短链 (b23.tv) 提示 - 前端无法直接解析短链，建议用户用长链
+      if (url.includes('b23.tv')) {
+        alert("Please use the full Bilibili URL (starting with www.bilibili.com/video/BV...) for best compatibility.");
         return;
       }
 
-      // 其他类型：触发文件选择
-      setUploadType(type);
-      if (fileInputRef.current) {
-          // 清空 value，允许重复选择同一文件
-          fileInputRef.current.value = ''; 
+      // Bilibili 长链处理
+      const bvidMatch = url.match(/BV[a-zA-Z0-9]+/);
+      if (url.includes('bilibili.com') && bvidMatch) {
+        const bvid = bvidMatch[0];
+        // 使用 iframe 嵌入，增加样式保证自适应
+        insertCode = `\n<iframe src="//player.bilibili.com/player.html?bvid=${bvid}&page=1&high_quality=1" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true" class="w-full aspect-video rounded-xl my-2"></iframe>\n`;
+      } 
+      // YouTube 处理
+      else if (url.includes('youtube.com') || url.includes('youtu.be')) {
+        let videoId = '';
+        if (url.includes('v=')) videoId = url.split('v=')[1]?.split('&')[0];
+        else if (url.includes('youtu.be/')) videoId = url.split('youtu.be/')[1];
+        
+        if (videoId) {
+            insertCode = `\n<iframe src="https://www.youtube.com/embed/${videoId}" class="w-full aspect-video rounded-xl my-2" frameborder="0" allowfullscreen></iframe>\n`;
+        }
+      }
+      // 普通直链 (mp4)
+      else {
+        insertCode = `\n<video src="${url}" controls class="w-full rounded-xl my-2"></video>\n`;
+      }
+
+      if (insertCode) {
+        setContent(prev => prev + insertCode);
+      }
+  };
+
+  const handleTriggerUpload = (type: 'image' | 'video' | 'file') => {
+      if (type === 'video') {
+        handleVideoInsert();
+        return;
+      }
+
+      // 根据类型点击不同的 input
+      if (type === 'image' && imageInputRef.current) {
+          imageInputRef.current.value = ''; 
+          imageInputRef.current.click();
+      } else if (type === 'file' && fileInputRef.current) {
+          fileInputRef.current.value = '';
           fileInputRef.current.click();
       }
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'file') => {
       const file = e.target.files?.[0];
       if (!file) return;
 
       try {
-          if (uploadType === 'image') {
-              // 图片逻辑：走 GitHub + 压缩
+          if (type === 'image') {
               const url = await uploadImage(file);
               setContent(prev => prev + `\n![${file.name}](${url})\n`);
-          } else if (uploadType === 'file') {
-              // 附件逻辑：走 Supabase + 白名单检查
+          } else {
               const url = await uploadFile(file);
               setAttachments(prev => [...prev, {
                   id: Date.now().toString(),
@@ -236,13 +272,21 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
         </div>
       </div>
       
-      {/* Input accept 属性限制 */}
+      {/* 独立的 Inputs，解决状态异步问题 */}
+      <input 
+        type="file" 
+        ref={imageInputRef} 
+        className="hidden" 
+        onChange={(e) => handleFileChange(e, 'image')}
+        accept="image/*"
+      />
+      
       <input 
         type="file" 
         ref={fileInputRef} 
         className="hidden" 
-        onChange={handleFileChange} 
-        accept={uploadType === 'image' ? "image/*" : ".txt,.json,.md,.csv,.py,.js,.ts,.html,.css,.sql,.log,.xml,.yml,.yaml"}
+        onChange={(e) => handleFileChange(e, 'file')} 
+        accept=".txt,.json,.md,.csv,.py,.js,.ts,.html,.css,.sql,.log,.xml,.yml,.yaml"
       />
     </div>
   );
