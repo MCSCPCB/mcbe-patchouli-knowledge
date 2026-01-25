@@ -28,7 +28,7 @@ const LoginPage: React.FC<LoginProps> = ({ onLogin }) => {
           options: {
             // 这里将用户输入的名字存入元数据
             data: {
-              full_name: name, 
+              user_name: name, 
             },
           },
         });
