@@ -107,8 +107,16 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
                 )}
               </div>
 
-              <p className="text-[#C7C7CC] text-sm line-clamp-3 mb-4 leading-relaxed font-sans">
-                {item.content.replace(/[#*`]/g, '')}
+              {/* 修改点 1: 优先显示 AI Clues，如果没有则显示原文摘要 */}
+              <p className={`text-sm line-clamp-3 mb-4 leading-relaxed font-sans ${item.aiClues ? 'text-[#D0BCFF] italic' : 'text-[#C7C7CC]'}`}>
+                {item.aiClues ? (
+                   <span className="flex gap-1">
+                     <span className="material-symbols-rounded text-[14px] mt-0.5">auto_awesome</span>
+                     {item.aiClues}
+                   </span>
+                ) : (
+                   item.content.replace(/[#*`]/g, '')
+                )}
               </p>
               
               <div className="flex items-center gap-3 mt-auto pt-4 border-t border-[#333]">
