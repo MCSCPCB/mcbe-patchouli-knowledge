@@ -242,21 +242,15 @@ export const uploadFile = async (file: File): Promise<string> => {
 /**
  * 上传图片到 GitHub (经过压缩处理)
  */
+/**
+ * 上传图片到 GitHub
+ */
 export const uploadImage = async (file: File): Promise<string> => {
-  // 1. 压缩图片
-  const options = {
-    maxSizeMB: 0.5, // 压缩到 0.5MB 以下
-    maxWidthOrHeight: 1920,
-    useWebWorker: true,
-  };
-
   try {
-    const compressedFile = await imageCompression(file, options);
-    
-    // 2. 转换为 Base64
+    // 直接读取文件为 Base64（不压缩）
     const base64Content = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
-      reader.readAsDataURL(compressedFile);
+      reader.readAsDataURL(file);
       reader.onloadend = () => {
         const base64 = reader.result as string;
         // 移除 data:image/png;base64, 前缀
@@ -265,11 +259,11 @@ export const uploadImage = async (file: File): Promise<string> => {
       reader.onerror = reject;
     });
 
-    // 3. 生成随机文件名 (规避审查)
+    // 生成随机文件名
     const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
     const randomName = `${crypto.randomUUID()}.${ext}`;
 
-    // 4. 调用后端 API 代理上传
+    // 调用后端 API 代理上传
     const response = await axios.post('/api/upload_github', {
       content: base64Content,
       fileName: randomName
@@ -278,7 +272,7 @@ export const uploadImage = async (file: File): Promise<string> => {
     return response.data.url;
   } catch (error) {
     console.error('Image Upload Error:', error);
-    throw new Error('Failed to compress or upload image');
+    throw new Error('Failed to upload image');
   }
 };
 
