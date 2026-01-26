@@ -13,11 +13,6 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
   const [isGenerating, setIsGenerating] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isSaving, setIsSaving] = useState(false);
-  
-  // === 修改点 1: 引入 Ref 管理编辑器焦点和位置 ===
-  const editorRef = useRef<HTMLDivElement>(null);
-  const savedCursorPosRef = useRef<number>(content.length);
-
   // === 修改点 3: 统一弹窗状态管理 ===
   const [videoDialogOpen, setVideoDialogOpen] = useState(false);
   const [videoUrlInput, setVideoUrlInput] = useState('');
@@ -36,42 +31,12 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
         setAttachments(existingItem.attachments || []);
         initializedIdRef.current = selectedItemId;
       }
+  
     }
   }, [selectedItemId, items]);
 
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // === 辅助函数：在记录的位置插入文本并恢复焦点 (解决手机跳顶问题) ===
-  const insertTextAtSavedPosition = (textToInsert: string) => {
-    const pos = savedCursorPosRef.current;
-    const newContent = content.substring(0, pos) + textToInsert + content.substring(pos);
-    setContent(newContent);
-    
-    // 更新记录位置到新内容之后
-    const newPos = pos + textToInsert.length;
-    savedCursorPosRef.current = newPos;
-
-    // 关键：在 DOM 更新后重新聚焦并定位，防止页面滚动
-    setTimeout(() => {
-        const textarea = editorRef.current?.querySelector('textarea');
-        if (textarea) {
-            textarea.focus();
-            textarea.setSelectionRange(newPos, newPos);
-        }
-    }, 0);
-  };
-
-  // === 辅助函数：保存当前光标位置 ===
-  const captureCursorPosition = () => {
-    const textarea = editorRef.current?.querySelector('textarea');
-    if (textarea) {
-        savedCursorPosRef.current = textarea.selectionStart;
-    } else {
-        savedCursorPosRef.current = content.length;
-    }
-  };
-
   const handleTagChange = (tag: string) => {
     if (!tags.includes(tag)) {
         setTags([...tags, tag]);
@@ -94,14 +59,11 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
       setIsGenerating(false);
     }
   };
-
   // 点击插入视频按钮，打开弹窗
   const handleTriggerVideo = () => {
-      captureCursorPosition(); // 记录位置
       setVideoUrlInput('');
       setVideoDialogOpen(true);
   };
-
   // 确认插入视频
   const handleConfirmVideoInsert = () => {
       const url = videoUrlInput.trim();
@@ -134,13 +96,12 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
       }
 
       if (insertCode) {
-        insertTextAtSavedPosition(insertCode); // 修复：在光标处插入
+        setContent(prev => prev + insertCode);
       }
       setVideoDialogOpen(false);
   };
 
   const handleTriggerUpload = (type: 'image' | 'video' | 'file') => {
-      captureCursorPosition(); // 记录位置
       if (type === 'video') {
         handleTriggerVideo();
         return;
@@ -162,9 +123,9 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
     try {
         if (type === 'image') {
             const url = await uploadImage(file);
+            // 关键修复：在这里对上传后的 URL 进行加速包装（移除了 w=800 限制）
             const optimizedUrl = `https://wsrv.nl/?url=${encodeURIComponent(url)}&q=80`;
-            // 修复：在光标处插入图片链接
-            insertTextAtSavedPosition(`\n![${file.name}](${optimizedUrl})\n`);
+            setContent(prev => prev + `\n![${file.name}](${optimizedUrl})\n`);
         } else {
             const url = await uploadFile(file);
             setAttachments(prev => [...prev, {
@@ -178,7 +139,6 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
         handleError("Upload failed: " + error.message);
     }
 };
-
   const handleSubmit = async () => {
     if (!title || !content || !currentUser) return;
     setIsSaving(true);
@@ -200,14 +160,16 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
         setIsSaving(false);
     }
   };
-
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 pb-24 animate-[fadeIn_0.3s_ease-out]">
+      {/* Top App Bar */}
+      {/* 修复：将 top-4 改为 top-20，避免与顶栏重叠 */}
       <div className="flex items-center justify-between mb-8 sticky top-20 z-10 bg-[#121212]/80 backdrop-blur-xl rounded-full px-4 py-2 border border-[#2C2C2C] shadow-xl">
         <IconButton icon="arrow_back" onClick={() => onNavigate(Page.HOME)} className="!w-10 !h-10" />
         <span className="text-sm font-medium text-[#C7C7CC] uppercase tracking-wider">
             {selectedItemId ? '修改知识' : '创建新知识'}
         </span>
+      
         <Button 
             label={isSaving ? "正在保存..." : "保存"} 
             onClick={handleSubmit} 
@@ -217,6 +179,7 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
       </div>
 
       <div className="space-y-8">
+        {/* Title Input */}
         <div className="space-y-1">
              <TextField 
                 label="标题" 
@@ -227,9 +190,11 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
              />
         </div>
 
+        {/* Tag Selection */}
         <div className="space-y-3">
            <label className="text-xs text-[#8C918C] ml-1 uppercase tracking-wide">分类</label>
            <div className="flex flex-wrap gap-2 items-center min-h-[48px]">
+       
               {tags.map(tag => (
                <Chip key={tag} label={tag} onDelete={() => setTags(tags.filter(t => t !== tag))} selected />
              ))}
@@ -246,18 +211,17 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
            </div>
         </div>
 
-        {/* 修复点 2: 绑定 Ref */}
-        <div ref={editorRef}>
-            <RichMarkdownEditor 
-              label="内容" 
-              value={content} 
-              onChange={setContent}
-              onAddAttachment={() => handleTriggerUpload('file')}
-              onUploadImage={() => handleTriggerUpload('image')}
-              onUploadVideo={() => handleTriggerUpload('video')}
-            />
-        </div>
+        {/* Editor */}
+        <RichMarkdownEditor 
+          label="内容" 
+          value={content} 
+          onChange={setContent}
+          onAddAttachment={() => handleTriggerUpload('file')}
+          onUploadImage={() => handleTriggerUpload('image')}
+          onUploadVideo={() => handleTriggerUpload('video')}
+        />
 
+        {/* Attachments List */}
         {attachments.length > 0 && (
             <div className="bg-[#1E1E1E] rounded-2xl border border-[#2C2C2C] overflow-hidden">
                 <div className="px-4 py-3 bg-[#252529] border-b border-[#2C2C2C] flex items-center gap-2">
@@ -265,12 +229,15 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
                     <span className="text-xs font-bold text-[#8C918C] uppercase tracking-wider">附件 ({attachments.length})</span>
                 </div>
                 <div className="divide-y divide-[#2C2C2C]">
+          
                      {attachments.map(att => (
                         <div key={att.id} className="flex items-center gap-4 p-3 hover:bg-[#2C2C2C] transition-colors group">
                             <div className="w-8 h-8 rounded bg-[#333] flex items-center justify-center text-[#E6E6E6]">
-                                <span className="material-symbols-rounded text-lg">description</span>
+                    
+                             <span className="material-symbols-rounded text-lg">description</span>
                             </div>
                             <span className="text-sm text-[#E6E6E6] flex-1 truncate">{att.name}</span>
+                          
                             <button 
                                 onClick={() => setAttachments(attachments.filter(a => a.id !== att.id))}
                                 className="w-8 h-8 rounded-full flex items-center justify-center text-[#CF6679] hover:bg-[#CF6679]/10 opacity-0 group-hover:opacity-100 transition-all"
@@ -278,19 +245,24 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
                                 <span className="material-symbols-rounded text-lg">delete</span>
                             </button>
                         </div>
+   
                      ))}
                 </div>
             </div>
         )}
 
+        {/* AI Insight Generator */}
         <div className="relative overflow-hidden rounded-[24px] bg-[#D0BCFF]/5 border border-[#D0BCFF]/10 p-6 transition-all hover:border-[#D0BCFF]/30">
           <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+  
               <span className="material-symbols-rounded text-[120px] text-[#D0BCFF]">auto_awesome</span>
           </div>
+          
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2 text-[#D0BCFF]">
-                    <span className="material-symbols-rounded">auto_awesome</span>
+                
+                     <span className="material-symbols-rounded">auto_awesome</span>
                     <h3 className="font-medium text-sm">检索线索</h3>
                 </div>
                 <Button 
@@ -302,6 +274,7 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
                     className="!h-8 !text-xs !bg-[#D0BCFF]/10 !text-[#D0BCFF] hover:!bg-[#D0BCFF]/20"
                 />
             </div>
+            
             <textarea
                 className="w-full bg-[#121212]/50 rounded-xl border border-[#D0BCFF]/20 p-4 text-[#E6E1E5] text-sm leading-relaxed outline-none focus:border-[#D0BCFF]/50 transition-colors resize-none placeholder-[#D0BCFF]/30"
                 rows={3}
@@ -310,9 +283,11 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
                 placeholder="描述该知识可能会用于什么场景，可以帮助AI更容易找到这个芝士哦！"
             />
           </div>
+       
          </div>
       </div>
       
+      {/* 独立的 Inputs */}
       <input 
         type="file" 
         ref={imageInputRef} 
@@ -320,6 +295,7 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
         onChange={(e) => handleFileChange(e, 'image')}
         accept="image/*"
       />
+      
       <input 
         type="file" 
         ref={fileInputRef} 
@@ -328,6 +304,7 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
         accept=".txt,.json,.md,.csv,.py,.js,.ts,.html,.css,.sql,.log,.xml,.yml,.yaml"
       />
 
+      {/* Insert Video Dialog */}
       <Dialog
         open={videoDialogOpen}
         title="插入视频"
@@ -346,10 +323,12 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
                 value={videoUrlInput}
                 onChange={(e) => setVideoUrlInput(e.target.value)}
                 placeholder="https://..."
-           />
+            />
+      
          </div>
       </Dialog>
 
+      {/* Error Dialog */}
       <Dialog
         open={errorDialog.open}
         title="注意"
@@ -363,5 +342,4 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
     </div>
   );
 };
-
 export default EditorPage;
