@@ -5,6 +5,9 @@ import { FAB, Chip, Card, Avatar } from '../components/M3Components';
 // 移除了未使用的 Select
 import { searchKnowledge } from '../services/knowledgeService';
 
+// 新增：每页显示数量常量
+const PAGE_SIZE = 10;
+
 const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ onNavigate }) => {
   const { items, setItems, refreshData } = useContext(AppContext);
   const [searchTerm, setSearchTerm] = useState('');
@@ -13,6 +16,9 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
   // 修改：将单选状态改为数组，默认包含 "All"
   const [selectedTags, setSelectedTags] = useState<string[]>(['All']);
   const [isSearching, setIsSearching] = useState(false);
+  
+  // 新增：分页状态
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     const doSearch = async () => {
@@ -35,6 +41,13 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
     const timeoutId = setTimeout(doSearch, 500);
     return () => clearTimeout(timeoutId);
   }, [searchTerm, searchMode, setItems]);
+
+  // 新增：当筛选条件改变时重置分页
+  useEffect(() => {
+    setPage(1);
+    // 可选：切换筛选时滚动到顶部
+    // window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [searchTerm, searchMode, selectedTags]);
 
   // 新增：标签切换处理函数
   const toggleTag = (tag: string) => {
@@ -62,23 +75,26 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
   };
 
   // 修改：根据多标签筛选逻辑
-  // 修复：确保 items 是数组，防止 Context 未就绪时 crash
-  const safeItems = Array.isArray(items) ? items : [];
-
-  const filteredItems = safeItems.filter(item => {
-    // 增加数据完整性检查
-    if (!item) return false;
-
+  const filteredItems = items.filter(item => {
     // if (item.status === 'rejected') return false; // 已移除，由后端权限控制
     
     // 如果选中了“All”，则不过滤标签
     if (selectedTags.includes('All')) return true;
 
     // 检查文章的标签是否包含在选中的标签列表中（只要有一个匹配就显示）
-    // 修复：增加 tags 类型检查，防止旧数据 tags 为 undefined/null 导致页面崩溃
-    const tags = Array.isArray(item.tags) ? item.tags : [];
-    return tags.some(tag => selectedTags.includes(tag));
+    // 假设 item.tags 是 string[]
+    return item.tags.some(tag => selectedTags.includes(tag));
   });
+
+  // 新增：分页计算逻辑
+  const totalPages = Math.ceil(filteredItems.length / PAGE_SIZE);
+  const paginatedItems = filteredItems.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // 翻页处理函数
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <div className="max-w-2xl mx-auto px-4 pb-32">
@@ -144,61 +160,89 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
              <p className="text-[#8C918C]">知识库里空空如也，来点“芝士”吧！</p>
            </div>
         ) : (
-          filteredItems.map(item => (
-            <Card 
-              key={item.id} 
-              onClick={() => onNavigate(Page.DETAIL, item.id)}
-              className="group"
-            >
-              <div className="flex justify-between items-start mb-3">
-                <h3 className="text-xl font-normal text-[#E6E6E6] group-hover:text-[#7DA3A1] transition-colors line-clamp-1">{item.title}</h3>
-                
-                {/* 状态标签：Pending 和 Rejected */}
-                <div className="flex gap-2">
-                  {item.status === 'pending' && (
-                    <span className="bg-[#FFD8E4] text-[#31111D] text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wide">
-                        Review
-                    </span>
-                  )}
-                  {item.status === 'rejected' && (
-                    <span className="bg-[#CF6679] text-[#37000B] text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wide">
-                        Needs Revision
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* 修改点：线索摘要改为2行限制，且优化图标排版 */}
-              {/* 修复：增加 content 判空，防止旧数据缺少 content 字段导致崩溃 */}
-              <p className={`text-sm line-clamp-2 mb-4 leading-relaxed font-sans ${item.aiClues ? 'text-[#D0BCFF] italic' : 'text-[#C7C7CC]'}`}>
-                {item.aiClues ? (
-                   <>
-                     {/* 将图标改为 inline-block 以完美适配文字流 */}
-                     <span className="material-symbols-rounded text-[14px] mr-1 translate-y-[2px] inline-block select-none">auto_awesome</span>
-                     {item.aiClues}
-                   </>
-                ) : (
-                   (item.content || '').replace(/[#*`]/g, '')
-                )}
-              </p>
-              
-              <div className="flex items-center gap-3 mt-auto pt-4 border-t border-[#333]">
-                {/* 修复：增加 author 判空保护 */}
-                <Avatar name={item.author?.name || 'Unknown'} src={item.author?.avatar} size="sm" />
-                <div className="flex flex-col">
-                  <span className="text-xs font-medium text-[#E6E6E6]">{item.author?.name || 'Unknown'}</span>
-                  {/* 修复：增加日期判空保护 */}
-                  <span className="text-[10px] text-[#8C918C]">{new Date(item.createdAt || Date.now()).toLocaleDateString()}</span>
-                </div>
-                {item.aiClues && (
-                  <div className="ml-auto px-3 py-1 bg-[#D0BCFF]/10 rounded-full text-[10px] text-[#D0BCFF] flex items-center gap-1 border border-[#D0BCFF]/20">
-                    <span className="material-symbols-rounded text-[12px]">auto_awesome</span>
-                    Enhanced
+          <>
+            {paginatedItems.map(item => (
+              <Card 
+                key={item.id} 
+                onClick={() => onNavigate(Page.DETAIL, item.id)}
+                className="group"
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <h3 className="text-xl font-normal text-[#E6E6E6] group-hover:text-[#7DA3A1] transition-colors line-clamp-1">{item.title}</h3>
+                  
+                  {/* 状态标签：Pending 和 Rejected */}
+                  <div className="flex gap-2">
+                    {item.status === 'pending' && (
+                      <span className="bg-[#FFD8E4] text-[#31111D] text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wide">
+                          Review
+                      </span>
+                    )}
+                    {item.status === 'rejected' && (
+                      <span className="bg-[#CF6679] text-[#37000B] text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wide">
+                          Needs Revision
+                      </span>
+                    )}
                   </div>
-                )}
+                </div>
+
+                {/* 修改点：线索摘要改为2行限制，且优化图标排版 */}
+                <p className={`text-sm line-clamp-2 mb-4 leading-relaxed font-sans ${item.aiClues ? 'text-[#D0BCFF] italic' : 'text-[#C7C7CC]'}`}>
+                  {item.aiClues ? (
+                     <>
+                       {/* 将图标改为 inline-block 以完美适配文字流 */}
+                       <span className="material-symbols-rounded text-[14px] mr-1 translate-y-[2px] inline-block select-none">auto_awesome</span>
+                       {item.aiClues}
+                     </>
+                  ) : (
+                     item.content.replace(/[#*`]/g, '')
+                  )}
+                </p>
+                
+                <div className="flex items-center gap-3 mt-auto pt-4 border-t border-[#333]">
+                  <Avatar name={item.author.name} src={item.author.avatar} size="sm" />
+                  <div className="flex flex-col">
+                    <span className="text-xs font-medium text-[#E6E6E6]">{item.author.name}</span>
+                    <span className="text-[10px] text-[#8C918C]">{new Date(item.createdAt).toLocaleDateString()}</span>
+                  </div>
+                  {item.aiClues && (
+                    <div className="ml-auto px-3 py-1 bg-[#D0BCFF]/10 rounded-full text-[10px] text-[#D0BCFF] flex items-center gap-1 border border-[#D0BCFF]/20">
+                      <span className="material-symbols-rounded text-[12px]">auto_awesome</span>
+                      Enhanced
+                    </div>
+                  )}
+                </div>
+              </Card>
+            ))}
+
+            {/* 新增：分页控件 */}
+            {totalPages > 1 && (
+              <div className="flex justify-center items-center gap-4 mt-8">
+                 <button 
+                   onClick={() => handlePageChange(Math.max(1, page - 1))}
+                   disabled={page === 1}
+                   className={`
+                     px-4 py-2 rounded-full text-sm font-medium transition-colors 
+                     ${page === 1 ? 'text-[#444] cursor-not-allowed' : 'bg-[#252529] text-[#E6E6E6] hover:bg-[#333]'}
+                   `}
+                 >
+                   上一页
+                 </button>
+                 <span className="text-[#8C918C] text-sm font-mono">
+                   {page} / {totalPages}
+                 </span>
+                 <button 
+                   onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
+                   disabled={page === totalPages}
+                   className={`
+                     px-4 py-2 rounded-full text-sm font-medium transition-colors 
+                     ${page === totalPages ? 'text-[#444] cursor-not-allowed' : 'bg-[#252529] text-[#E6E6E6] hover:bg-[#333]'}
+                   `}
+                 >
+                   下一页
+                 </button>
               </div>
-            </Card>
-          ))
+            )}
+          </>
         )}
       </div>
 
