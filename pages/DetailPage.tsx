@@ -197,11 +197,14 @@ const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | nul
                <span className="material-symbols-rounded text-6xl text-[#D0BCFF]">auto_awesome</span>
            </div>
            <span className="text-[#D0BCFF] text-xs font-bold uppercase tracking-widest mb-2 block">Grimoire Insight</span>
-           <p className="text-[#E6E1E5] text-sm italic leading-relaxed relative z-10">
-             "{item.aiClues}"
+           
+           {/* 修改点：添加 whitespace-pre-wrap 以支持换行显示 */}
+           <p className="text-[#E6E1E5] text-sm italic leading-relaxed relative z-10 whitespace-pre-wrap font-sans">
+             {item.aiClues}
            </p>
          </div>
        )}
+
 
        <Dialog 
          open={deleteDialogOpen} 
