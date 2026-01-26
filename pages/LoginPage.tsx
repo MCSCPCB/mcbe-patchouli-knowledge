@@ -81,7 +81,7 @@ const LoginPage: React.FC<LoginProps> = ({ onLogin }) => {
         {/* Header */}
         <div className="flex flex-col items-center mb-8">
           <div className="w-16 h-16 bg-[#2C2C2C] rounded-[20px] flex items-center justify-center mb-4 shadow-inner">
-             <img src="/logo.png" alt="Logo" className="w-10 h-10 object-contain" />
+             <img src="/logo.png" alt="Logo" className="w-16 h-16 object-contain" />
           </div>
           <h1 className="text-3xl font-normal tracking-tight text-[#E3E3E3]">帕秋莉</h1>
           <p className="text-sm text-[#C4C7C5] mt-1 tracking-wide">基岩版开发知识库</p>
