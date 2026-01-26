@@ -350,7 +350,7 @@ export const uploadFile = async (file: File): Promise<string> => {
   return publicUrl;
 };
 
-export const uploadImage = async (file: File, folderName：string): Promise<string> => {
+export const uploadImage = async (file: File, folderName: string): Promise<string> => {
   try {
     const originalFile = file;
     const base64Content = await new Promise<string>((resolve, reject) => {
