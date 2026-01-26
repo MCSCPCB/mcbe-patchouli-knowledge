@@ -34,7 +34,6 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
   }, [searchTerm, searchMode, setItems]);
 
   const filteredItems = items.filter(item => {
-    if (item.status === 'rejected') return false;
     if (filterTag !== 'All' && !item.tags.includes(filterTag)) return false;
     return true; 
   });
