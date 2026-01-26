@@ -6,7 +6,6 @@ import { generateSearchClues, createPost, updatePost, getRecentPosts, uploadFile
 
 const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) => {
   const { items, setItems, currentUser, selectedItemId, refreshData } = useContext(AppContext);
-  
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [tags, setTags] = useState<string[]>([]);
@@ -14,7 +13,6 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
   const [isGenerating, setIsGenerating] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isSaving, setIsSaving] = useState(false);
-
   // === 修改点 3: 统一弹窗状态管理 ===
   const [videoDialogOpen, setVideoDialogOpen] = useState(false);
   const [videoUrlInput, setVideoUrlInput] = useState('');
@@ -33,12 +31,12 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
         setAttachments(existingItem.attachments || []);
         initializedIdRef.current = selectedItemId;
       }
+  
     }
   }, [selectedItemId, items]);
 
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
   const handleTagChange = (tag: string) => {
     if (!tags.includes(tag)) {
         setTags([...tags, tag]);
@@ -61,13 +59,11 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
       setIsGenerating(false);
     }
   };
-
   // 点击插入视频按钮，打开弹窗
   const handleTriggerVideo = () => {
       setVideoUrlInput('');
       setVideoDialogOpen(true);
   };
-
   // 确认插入视频
   const handleConfirmVideoInsert = () => {
       const url = videoUrlInput.trim();
@@ -77,7 +73,6 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
       }
 
       let insertCode = '';
-
       if (url.includes('b23.tv')) {
         handleError("请提供完整的 Bilibili 视频链接（以 www.bilibili.com/video/BV... 开头）以确保最佳兼容性");
         return;
@@ -92,7 +87,6 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
         let videoId = '';
         if (url.includes('v=')) videoId = url.split('v=')[1]?.split('&')[0];
         else if (url.includes('youtu.be/')) videoId = url.split('youtu.be/')[1];
-        
         if (videoId) {
             insertCode = `\n<iframe src="https://www.youtube.com/embed/${videoId}" class="w-full aspect-video rounded-xl my-2" frameborder="0" allowfullscreen></iframe>\n`;
         }
@@ -114,7 +108,7 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
       }
 
       if (type === 'image' && imageInputRef.current) {
-          imageInputRef.current.value = ''; 
+          imageInputRef.current.value = '';
           imageInputRef.current.click();
       } else if (type === 'file' && fileInputRef.current) {
           fileInputRef.current.value = '';
@@ -148,7 +142,6 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
   const handleSubmit = async () => {
     if (!title || !content || !currentUser) return;
     setIsSaving(true);
-    
     try {
         const payload = { title, content, tags, aiClues, attachments };
         if (selectedItemId) {
@@ -167,15 +160,16 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
         setIsSaving(false);
     }
   };
-
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 pb-24 animate-[fadeIn_0.3s_ease-out]">
       {/* Top App Bar */}
-      <div className="flex items-center justify-between mb-8 sticky top-4 z-40 bg-[#121212]/80 backdrop-blur-xl rounded-full px-4 py-2 border border-[#2C2C2C] shadow-xl">
+      {/* 修复：将 top-4 改为 top-20，避免与顶栏重叠 */}
+      <div className="flex items-center justify-between mb-8 sticky top-20 z-40 bg-[#121212]/80 backdrop-blur-xl rounded-full px-4 py-2 border border-[#2C2C2C] shadow-xl">
         <IconButton icon="arrow_back" onClick={() => onNavigate(Page.HOME)} className="!w-10 !h-10" />
         <span className="text-sm font-medium text-[#C7C7CC] uppercase tracking-wider">
             {selectedItemId ? '修改知识' : '创建新知识'}
         </span>
+      
         <Button 
             label={isSaving ? "正在保存..." : "保存"} 
             onClick={handleSubmit} 
@@ -200,7 +194,8 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
         <div className="space-y-3">
            <label className="text-xs text-[#8C918C] ml-1 uppercase tracking-wide">分类</label>
            <div className="flex flex-wrap gap-2 items-center min-h-[48px]">
-             {tags.map(tag => (
+       
+              {tags.map(tag => (
                <Chip key={tag} label={tag} onDelete={() => setTags(tags.filter(t => t !== tag))} selected />
              ))}
              <div className="relative">
@@ -234,12 +229,15 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
                     <span className="text-xs font-bold text-[#8C918C] uppercase tracking-wider">附件 ({attachments.length})</span>
                 </div>
                 <div className="divide-y divide-[#2C2C2C]">
-                    {attachments.map(att => (
+          
+                     {attachments.map(att => (
                         <div key={att.id} className="flex items-center gap-4 p-3 hover:bg-[#2C2C2C] transition-colors group">
                             <div className="w-8 h-8 rounded bg-[#333] flex items-center justify-center text-[#E6E6E6]">
-                                <span className="material-symbols-rounded text-lg">description</span>
+                    
+                             <span className="material-symbols-rounded text-lg">description</span>
                             </div>
                             <span className="text-sm text-[#E6E6E6] flex-1 truncate">{att.name}</span>
+                          
                             <button 
                                 onClick={() => setAttachments(attachments.filter(a => a.id !== att.id))}
                                 className="w-8 h-8 rounded-full flex items-center justify-center text-[#CF6679] hover:bg-[#CF6679]/10 opacity-0 group-hover:opacity-100 transition-all"
@@ -247,7 +245,8 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
                                 <span className="material-symbols-rounded text-lg">delete</span>
                             </button>
                         </div>
-                    ))}
+   
+                     ))}
                 </div>
             </div>
         )}
@@ -255,13 +254,15 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
         {/* AI Insight Generator */}
         <div className="relative overflow-hidden rounded-[24px] bg-[#D0BCFF]/5 border border-[#D0BCFF]/10 p-6 transition-all hover:border-[#D0BCFF]/30">
           <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-               <span className="material-symbols-rounded text-[120px] text-[#D0BCFF]">auto_awesome</span>
+  
+              <span className="material-symbols-rounded text-[120px] text-[#D0BCFF]">auto_awesome</span>
           </div>
           
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2 text-[#D0BCFF]">
-                    <span className="material-symbols-rounded">auto_awesome</span>
+                
+                     <span className="material-symbols-rounded">auto_awesome</span>
                     <h3 className="font-medium text-sm">检索线索</h3>
                 </div>
                 <Button 
@@ -282,7 +283,8 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
                 placeholder="描述该知识可能会用于什么场景，可以帮助AI更容易找到这个芝士哦！"
             />
           </div>
-        </div>
+       
+         </div>
       </div>
       
       {/* 独立的 Inputs */}
@@ -322,7 +324,8 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
                 onChange={(e) => setVideoUrlInput(e.target.value)}
                 placeholder="https://..."
             />
-        </div>
+      
+         </div>
       </Dialog>
 
       {/* Error Dialog */}
@@ -334,10 +337,9 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
             <Button variant="text" label="OK" onClick={() => setErrorDialog({ ...errorDialog, open: false })} />
         }
       >
-        <p className="text-[#E6E6E6]">{errorDialog.message}</p>
+         <p className="text-[#E6E6E6]">{errorDialog.message}</p>
       </Dialog>
     </div>
   );
 };
-
 export default EditorPage;
