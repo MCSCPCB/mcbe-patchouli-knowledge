@@ -99,7 +99,7 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
           )}
         </div>
 
-        <div className="mt-3 flex items-center gap-2 overflow-x-auto no-scrollbar py-1 mask-linear-fade">
+        <div className="mt-3 flex items-center gap-2 overflow-x-auto py-1 mask-linear-fade">
            <Chip 
                label="AI" 
                icon="auto_awesome"
