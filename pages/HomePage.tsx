@@ -88,7 +88,7 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
              <div className="w-24 h-24 bg-[#1E1E1E] rounded-full flex items-center justify-center mb-4">
                 <span className="material-symbols-rounded text-[40px] text-[#444]">content_paste_off</span>
              </div>
-             <p className="text-[#8C918C]">No knowledge found in the archives.</p>
+             <p className="text-[#8C918C]">知识库里空空如也，来点“芝士”吧！</p>
            </div>
         ) : (
           filteredItems.map(item => (
