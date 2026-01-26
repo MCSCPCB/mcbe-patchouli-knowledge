@@ -200,14 +200,55 @@ export const rejectPost = async (postId: string) => {
   if (error) throw error;
 };
 
+// <file: knowledgeService.ts>
+
+// ... 保持前面的 import 不变 ...
+
+/**
+ * 彻底删除文章（增强版：级联删除附件 + 权限检查）
+ */
 export const deletePost = async (postId: string) => {
-  const { error } = await supabase
+  // 1. 先查询这篇文章有哪些附件，准备清理
+  //    注意：这一步也起到了“预检查”的作用，如果没权限读，这里可能就会报错或拿不到数据
+  const { data: post } = await supabase
     .from('knowledge_posts')
-    .delete()
+    .select('attachments')
+    .eq('id', postId)
+    .single();
+
+  // 2. 清理 Supabase Storage 中的附件文件
+  if (post?.attachments && Array.isArray(post.attachments)) {
+    const filesToRemove: string[] = [];
+    
+    post.attachments.forEach((att: any) => {
+      // 解析文件路径：假设 url 是 .../kb-assets/Timestamp_Name.ext
+      if (att.url && att.url.includes('kb-assets')) {
+        // 提取最后的文件名部分
+        const fileName = att.url.split('/').pop(); 
+        if (fileName) filesToRemove.push(fileName);
+      }
+    });
+
+    if (filesToRemove.length > 0) {
+      // 这里的 remove 即使失败（比如文件早就不在了）通常也不影响后续删文章，可以加 try-catch 或忽略错误
+      await supabase.storage.from('kb-assets').remove(filesToRemove);
+    }
+  }
+
+  // 3. 核心修改：删除数据库记录并检查 count
+  const { error, count } = await supabase
+    .from('knowledge_posts')
+    .delete({ count: 'exact' }) // <--- 关键点：请求返回受影响行数
     .eq('id', postId);
 
   if (error) throw error;
+  
+  // 4. 如果受影响行数为 0，说明权限不足或文章已被删除，手动抛错中断前端逻辑
+  if (count === 0) {
+     throw new Error('Deletion failed. Permission denied (RLS policy) or post not found.');
+  }
 };
+
 
 export const getAllUsers = async (): Promise<User[]> => {
   const { data, error } = await supabase
