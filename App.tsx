@@ -173,7 +173,7 @@ const App: React.FC = () => {
              <div className="flex items-center gap-4 cursor-pointer group" onClick={() => goTo(Page.HOME)}>
                {/* Animated Menu Icon/Logo */}
                <div className="w-10 h-10 rounded-full bg-[#2D3635] flex items-center justify-center group-hover:bg-[#7DA3A1] transition-colors duration-300">
-                   <span className="material-symbols-rounded text-[#7DA3A1] group-hover:text-[#0F1D13]">menu_book</span>
+                   <img src="/logo.png" alt="Logo" className="w-6 h-6 object-contain" />
                </div>
                <span className="text-xl font-normal tracking-tight text-[#E6E6E6]">Patchouli</span>
              </div>
