@@ -62,15 +62,22 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
   };
 
   // 修改：根据多标签筛选逻辑
-  const filteredItems = items.filter(item => {
+  // 修复：确保 items 是数组，防止 Context 未就绪时 crash
+  const safeItems = Array.isArray(items) ? items : [];
+
+  const filteredItems = safeItems.filter(item => {
+    // 增加数据完整性检查
+    if (!item) return false;
+
     // if (item.status === 'rejected') return false; // 已移除，由后端权限控制
     
     // 如果选中了“All”，则不过滤标签
     if (selectedTags.includes('All')) return true;
 
     // 检查文章的标签是否包含在选中的标签列表中（只要有一个匹配就显示）
-    // 假设 item.tags 是 string[]
-    return item.tags.some(tag => selectedTags.includes(tag));
+    // 修复：增加 tags 类型检查，防止旧数据 tags 为 undefined/null 导致页面崩溃
+    const tags = Array.isArray(item.tags) ? item.tags : [];
+    return tags.some(tag => selectedTags.includes(tag));
   });
 
   return (
@@ -162,6 +169,7 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
               </div>
 
               {/* 修改点：线索摘要改为2行限制，且优化图标排版 */}
+              {/* 修复：增加 content 判空，防止旧数据缺少 content 字段导致崩溃 */}
               <p className={`text-sm line-clamp-2 mb-4 leading-relaxed font-sans ${item.aiClues ? 'text-[#D0BCFF] italic' : 'text-[#C7C7CC]'}`}>
                 {item.aiClues ? (
                    <>
@@ -170,15 +178,17 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
                      {item.aiClues}
                    </>
                 ) : (
-                   item.content.replace(/[#*`]/g, '')
+                   (item.content || '').replace(/[#*`]/g, '')
                 )}
               </p>
               
               <div className="flex items-center gap-3 mt-auto pt-4 border-t border-[#333]">
-                <Avatar name={item.author.name} src={item.author.avatar} size="sm" />
+                {/* 修复：增加 author 判空保护 */}
+                <Avatar name={item.author?.name || 'Unknown'} src={item.author?.avatar} size="sm" />
                 <div className="flex flex-col">
-                  <span className="text-xs font-medium text-[#E6E6E6]">{item.author.name}</span>
-                  <span className="text-[10px] text-[#8C918C]">{new Date(item.createdAt).toLocaleDateString()}</span>
+                  <span className="text-xs font-medium text-[#E6E6E6]">{item.author?.name || 'Unknown'}</span>
+                  {/* 修复：增加日期判空保护 */}
+                  <span className="text-[10px] text-[#8C918C]">{new Date(item.createdAt || Date.now()).toLocaleDateString()}</span>
                 </div>
                 {item.aiClues && (
                   <div className="ml-auto px-3 py-1 bg-[#D0BCFF]/10 rounded-full text-[10px] text-[#D0BCFF] flex items-center gap-1 border border-[#D0BCFF]/20">
