@@ -200,54 +200,73 @@ export const rejectPost = async (postId: string) => {
   if (error) throw error;
 };
 
-// <file: knowledgeService.ts>
-
-// ... 保持前面的 import 不变 ...
 
 /**
- * 彻底删除文章（增强版：级联删除附件 + 权限检查）
+ * 彻底删除文章（级联删除 Supabase 附件）
+ * 注意：GitHub 图片由于权限和安全性原因，不在此处自动删除，建议定期手动清理或忽略。
  */
 export const deletePost = async (postId: string) => {
-  // 1. 先查询这篇文章有哪些附件，准备清理
-  //    注意：这一步也起到了“预检查”的作用，如果没权限读，这里可能就会报错或拿不到数据
-  const { data: post } = await supabase
+  // 1. 获取文章详情 (我们需要 attachments 字段)
+  const { data: post, error: fetchError } = await supabase
     .from('knowledge_posts')
     .select('attachments')
     .eq('id', postId)
     .single();
 
-  // 2. 清理 Supabase Storage 中的附件文件
+  if (fetchError) {
+    // 如果连文章都找不到，直接抛错，别往下走了
+    throw new Error('Post not found or permission denied.');
+  }
+
+  // 2. 清理 Supabase Storage 附件
   if (post?.attachments && Array.isArray(post.attachments)) {
     const filesToRemove: string[] = [];
     
     post.attachments.forEach((att: any) => {
-      // 解析文件路径：假设 url 是 .../kb-assets/Timestamp_Name.ext
-      if (att.url && att.url.includes('kb-assets')) {
-        // 提取最后的文件名部分
-        const fileName = att.url.split('/').pop(); 
-        if (fileName) filesToRemove.push(fileName);
+      if (att.url) {
+        // 核心修正：精准提取文件名
+        // 假设 URL 是: https://proj.supabase.co/storage/v1/object/public/kb-assets/171569_test.txt
+        // 或者相对路径: 171569_test.txt
+        
+        // 方法：先解码 URL (处理空格等特殊字符)，然后取最后一段
+        try {
+            const decodedUrl = decodeURIComponent(att.url);
+            const fileName = decodedUrl.split('/').pop(); 
+            
+            // 只有当文件名看起来像我们上传的格式 (时间戳_名字) 时才删，防止误删
+            if (fileName && fileName.includes('_')) {
+                filesToRemove.push(fileName);
+            }
+        } catch (e) {
+            console.warn('Failed to parse attachment URL:', att.url);
+        }
       }
     });
 
     if (filesToRemove.length > 0) {
-      // 这里的 remove 即使失败（比如文件早就不在了）通常也不影响后续删文章，可以加 try-catch 或忽略错误
-      await supabase.storage.from('kb-assets').remove(filesToRemove);
+      // 不等待结果，后台执行删除，以免阻塞用户体验
+      // 即使删除失败也没关系，因为是孤儿文件
+      supabase.storage.from('kb-assets').remove(filesToRemove)
+        .then(({ error }) => {
+            if (error) console.error('Failed to cleanup files:', error);
+            else console.log('Cleaned up files:', filesToRemove);
+        });
     }
   }
 
-  // 3. 核心修改：删除数据库记录并检查 count
+  // 3. 删除数据库记录
   const { error, count } = await supabase
     .from('knowledge_posts')
-    .delete({ count: 'exact' }) // <--- 关键点：请求返回受影响行数
+    .delete({ count: 'exact' })
     .eq('id', postId);
 
   if (error) throw error;
   
-  // 4. 如果受影响行数为 0，说明权限不足或文章已被删除，手动抛错中断前端逻辑
   if (count === 0) {
-     throw new Error('Deletion failed. Permission denied (RLS policy) or post not found.');
+     throw new Error('Deletion failed. Permission denied or post already deleted.');
   }
 };
+
 
 
 export const getAllUsers = async (): Promise<User[]> => {
