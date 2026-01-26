@@ -95,29 +95,44 @@ export const searchKnowledge = async (query: string, mode: 'keyword' | 'ai' = 'k
 
   // === 关键词/降级检索 ===
   
-  // 1. 全文检索
-  let { data, error } = await supabase
+  // 1. 基础字段检索 (标题, 内容, 线索)
+  const { data: postsData, error: postsError } = await supabase
     .from('knowledge_posts')
     .select(`*, profiles ( github_id, avatar_url )`)
-    .textSearch('search_clues', searchTerms, {
-      type: 'websearch',
-      config: 'simple' 
-    });
+    .eq('status', 'published')
+    .or(`title.ilike.%${searchTerms}%,content.ilike.%${searchTerms}%,search_clues.ilike.%${searchTerms}%`);
+  
+  if (postsError) throw postsError;
 
-  // 2. 模糊匹配降级
-  if (!data || data.length === 0) {
-    const fallback = await supabase
-      .from('knowledge_posts')
-      .select(`*, profiles ( github_id, avatar_url )`)
-      .eq('status', 'published')
-      .or(`title.ilike.%${query}%,content.ilike.%${query}%,search_clues.ilike.%${query}%`);
-    
-    data = fallback.data;
-    error = fallback.error;
-  }
+  // 2. 用户名检索 (关联表)
+  const { data: usersData, error: usersError } = await supabase
+    .from('knowledge_posts')
+    .select(`*, profiles!inner ( github_id, avatar_url )`)
+    .eq('status', 'published')
+    .ilike('profiles.github_id', `%${searchTerms}%`);
 
-  if (error) throw error;
-  return (data as DBPost[] || []).map(mapDBToItem);
+  if (usersError) throw usersError;
+
+  // 3. 合并去重
+  const allPosts = [...(postsData || []), ...(usersData || [])];
+  const uniquePostsMap = new Map();
+  allPosts.forEach((p: any) => uniquePostsMap.set(p.id, p));
+  const uniquePosts = Array.from(uniquePostsMap.values());
+
+  // 4. 优先级排序: 标题 > 内容 > 线索 > 用户名
+  uniquePosts.sort((a: any, b: any) => {
+    const getScore = (post: any) => {
+      const term = searchTerms.toLowerCase();
+      if (post.title?.toLowerCase().includes(term)) return 4;
+      if (post.content?.toLowerCase().includes(term)) return 3;
+      if (post.search_clues?.toLowerCase().includes(term)) return 2;
+      if (post.profiles?.github_id?.toLowerCase().includes(term)) return 1;
+      return 0;
+    };
+    return getScore(b) - getScore(a);
+  });
+
+  return (uniquePosts as DBPost[]).map(mapDBToItem);
 };
 
 // === CRUD 功能 ===
@@ -126,8 +141,8 @@ export const getRecentPosts = async (): Promise<KnowledgeItem[]> => {
   const { data, error } = await supabase
     .from('knowledge_posts')
     .select(`*, profiles ( github_id, avatar_url )`)
-    .order('created_at', { ascending: false })
-    .limit(20);
+    .order('created_at', { ascending: false });
+    
 
   if (error) throw error;
   return (data as DBPost[]).map(mapDBToItem);
