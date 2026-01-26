@@ -212,8 +212,8 @@ const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | nul
          onClose={() => setDeleteDialogOpen(false)}
          actions={
            <>
-             <Button variant="text" label="Cancel" onClick={() => setDeleteDialogOpen(false)} />
-             <Button variant="filled" className="!bg-[#CF6679] !text-[#37000B]" label="Delete" onClick={handleDelete} />
+             <Button variant="text" label="取消" onClick={() => setDeleteDialogOpen(false)} />
+             <Button variant="filled" className="!bg-[#CF6679] !text-[#37000B]" label="删除" onClick={handleDelete} />
            </>
          }
        >
