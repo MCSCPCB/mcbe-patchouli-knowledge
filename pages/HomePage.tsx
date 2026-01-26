@@ -1,14 +1,17 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { AppContext } from '../App';
 import { Page, PREDEFINED_TAGS } from '../types';
-import { FAB, Chip, Card, Avatar } from '../components/M3Components'; // 移除了未使用的 Select
+import { FAB, Chip, Card, Avatar } from '../components/M3Components';
+// 移除了未使用的 Select
 import { searchKnowledge } from '../services/knowledgeService';
 
 const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ onNavigate }) => {
   const { items, setItems, refreshData } = useContext(AppContext);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchMode, setSearchMode] = useState<'keyword' | 'ai'>('keyword');
-  const [filterTag, setFilterTag] = useState<string>('All');
+  
+  // 修改：将单选状态改为数组，默认包含 "全部"
+  const [selectedTags, setSelectedTags] = useState<string[]>(['全部']);
   const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
@@ -33,11 +36,41 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
     return () => clearTimeout(timeoutId);
   }, [searchTerm, searchMode, setItems]);
 
-  // 修改：允许显示 rejected 状态的文章（由 RLS 策略控制可见性）
+  // 新增：标签切换处理函数
+  const toggleTag = (tag: string) => {
+    if (tag === '全部') {
+      setSelectedTags(['全部']);
+      return;
+    }
+
+    setSelectedTags(prev => {
+      // 如果当前是“全部”状态，点击新标签则清除“全部”，只选新标签
+      if (prev.includes('全部')) {
+        return [tag];
+      }
+
+      // 如果已经选中，则移除
+      if (prev.includes(tag)) {
+        const newTags = prev.filter(t => t !== tag);
+        // 如果移除后为空，自动回退到“全部”
+        return newTags.length === 0 ? ['全部'] : newTags;
+      } else {
+        // 否则添加到选中列表
+        return [...prev, tag];
+      }
+    });
+  };
+
+  // 修改：根据多标签筛选逻辑
   const filteredItems = items.filter(item => {
     // if (item.status === 'rejected') return false; // 已移除，由后端权限控制
-    if (filterTag !== 'All' && !item.tags.includes(filterTag)) return false;
-    return true; 
+    
+    // 如果选中了“全部”，则不过滤标签
+    if (selectedTags.includes('全部')) return true;
+
+    // 检查文章的标签是否包含在选中的标签列表中（只要有一个匹配就显示）
+    // 假设 item.tags 是 string[]
+    return item.tags.some(tag => selectedTags.includes(tag));
   });
 
   return (
@@ -74,9 +107,22 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
                onClick={() => setSearchMode(searchMode === 'ai' ? 'keyword' : 'ai')}
            />
            <div className="w-[1px] h-6 bg-[#333] mx-1"></div>
-           <Chip label="All" selected={filterTag === 'All'} onClick={() => setFilterTag('All')} />
+           
+           {/* 修改：渲染“全部”标签 */}
+           <Chip 
+             label="全部" 
+             selected={selectedTags.includes('全部')} 
+             onClick={() => toggleTag('全部')} 
+           />
+           
+           {/* 修改：渲染预定义标签，支持多选状态判定 */}
            {PREDEFINED_TAGS.map(tag => (
-               <Chip key={tag} label={tag} selected={filterTag === tag} onClick={() => setFilterTag(tag)} />
+               <Chip 
+                 key={tag} 
+                 label={tag} 
+                 selected={selectedTags.includes(tag)} 
+                 onClick={() => toggleTag(tag)} 
+               />
            ))}
         </div>
       </div>
@@ -102,16 +148,16 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
                 
                 {/* 状态标签：Pending 和 Rejected */}
                 <div className="flex gap-2">
-                    {item.status === 'pending' && (
+                  {item.status === 'pending' && (
                     <span className="bg-[#FFD8E4] text-[#31111D] text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wide">
                         Review
                     </span>
-                    )}
-                    {item.status === 'rejected' && (
+                  )}
+                  {item.status === 'rejected' && (
                     <span className="bg-[#CF6679] text-[#37000B] text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wide">
                         Needs Revision
                     </span>
-                    )}
+                  )}
                 </div>
               </div>
 
