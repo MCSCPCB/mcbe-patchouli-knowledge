@@ -7,7 +7,7 @@ interface Env {
 export const onRequestPost: PagesFunction<Env> = async (context) => {
   const { request, env } = context;
 
-  [span_3](start_span)// 1. 检查环境变量[span_3](end_span)
+  // 1. 检查环境变量
   if (!env.GITHUB_TOKEN || !env.GITHUB_USERNAME || !env.GITHUB_REPO) {
     return new Response(JSON.stringify({ error: 'Config Error', details: 'Missing Env Vars' }), { 
       status: 500, 
@@ -16,23 +16,16 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   }
 
   try {
-    [span_4](start_span)// 修改点：从请求中额外获取 folderName[span_4](end_span)
-    const { content, fileName, folderName } = await request.json() as { 
-      content: string; 
-      fileName: string; 
-      folderName: string; 
-    };
+    const { content, fileName } = await request.json() as { content: string; fileName: string };
 
-    [span_5](start_span)// 修改点：验证 folderName 必须存在[span_5](end_span)
-    if (!content || !fileName || !folderName) {
-      return new Response(JSON.stringify({ error: 'Missing content, fileName or folderName' }), { status: 400 });
+    if (!content || !fileName) {
+      return new Response(JSON.stringify({ error: 'Missing content or fileName' }), { status: 400 });
     }
 
     // 2. 上传到 GitHub
-    [span_6](start_span)// 修改点：路径修改为 images/文件夹名/文件名[span_6](end_span)
-    const path = `images/${folderName}/${fileName}`;
+    const path = `images/${fileName}`;
     const githubUrl = `https://api.github.com/repos/${env.GITHUB_USERNAME}/${env.GITHUB_REPO}/contents/${path}`;
-    
+
     const githubRes = await fetch(githubUrl, {
       method: 'PUT',
       headers: {
@@ -41,7 +34,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         'User-Agent': 'KB-App'
       },
       body: JSON.stringify({
-        message: `Upload ${fileName} to ${folderName}`,
+        message: `Upload ${fileName}`,
         content: content
       })
     });
@@ -54,12 +47,14 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       });
     }
 
-    [span_7](start_span)// 3. 返回 CDN 链接[span_7](end_span)
+    // 3. 返回 CDN 链接
     const cdnUrl = `https://cdn.jsdelivr.net/gh/${env.GITHUB_USERNAME}/${env.GITHUB_REPO}@main/${path}`;
+    
     return new Response(JSON.stringify({ url: cdnUrl }), { 
       status: 200, 
       headers: { 'Content-Type': 'application/json' } 
     });
+
   } catch (e: any) {
     return new Response(JSON.stringify({ error: e.message }), { status: 500 });
   }
