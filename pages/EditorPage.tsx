@@ -166,7 +166,9 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
             // 修复：在光标处插入图片链接
             insertTextAtSavedPosition(`\n![${file.name}](${optimizedUrl})\n`);
         } else {
-            const url = await uploadFile(file);
+            const folderName = title.trim().replace(/[\\\/:*?"<>|]/g, "_") || 'default';
+            const url = await uploadImage(file, folderName);
+
             setAttachments(prev => [...prev, {
                 id: Date.now().toString(),
                 name: file.name,
