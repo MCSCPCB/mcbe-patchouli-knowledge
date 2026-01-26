@@ -10,8 +10,8 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
   const [searchTerm, setSearchTerm] = useState('');
   const [searchMode, setSearchMode] = useState<'keyword' | 'ai'>('keyword');
   
-  // 修改：将单选状态改为数组，默认包含 "全部"
-  const [selectedTags, setSelectedTags] = useState<string[]>(['全部']);
+  // 修改：将单选状态改为数组，默认包含 "All"
+  const [selectedTags, setSelectedTags] = useState<string[]>(['All']);
   const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
@@ -38,22 +38,22 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
 
   // 新增：标签切换处理函数
   const toggleTag = (tag: string) => {
-    if (tag === '全部') {
-      setSelectedTags(['全部']);
+    if (tag === 'All') {
+      setSelectedTags(['All']);
       return;
     }
 
     setSelectedTags(prev => {
-      // 如果当前是“全部”状态，点击新标签则清除“全部”，只选新标签
-      if (prev.includes('全部')) {
+      // 如果当前是“All”状态，点击新标签则清除“All”，只选新标签
+      if (prev.includes('All')) {
         return [tag];
       }
 
       // 如果已经选中，则移除
       if (prev.includes(tag)) {
         const newTags = prev.filter(t => t !== tag);
-        // 如果移除后为空，自动回退到“全部”
-        return newTags.length === 0 ? ['全部'] : newTags;
+        // 如果移除后为空，自动回退到“All”
+        return newTags.length === 0 ? ['All'] : newTags;
       } else {
         // 否则添加到选中列表
         return [...prev, tag];
@@ -65,8 +65,8 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
   const filteredItems = items.filter(item => {
     // if (item.status === 'rejected') return false; // 已移除，由后端权限控制
     
-    // 如果选中了“全部”，则不过滤标签
-    if (selectedTags.includes('全部')) return true;
+    // 如果选中了“All”，则不过滤标签
+    if (selectedTags.includes('All')) return true;
 
     // 检查文章的标签是否包含在选中的标签列表中（只要有一个匹配就显示）
     // 假设 item.tags 是 string[]
@@ -108,11 +108,11 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
            />
            <div className="w-[1px] h-6 bg-[#333] mx-1"></div>
            
-           {/* 修改：渲染“全部”标签 */}
+           {/* 修改：渲染“All”标签 */}
            <Chip 
-             label="全部" 
-             selected={selectedTags.includes('全部')} 
-             onClick={() => toggleTag('全部')} 
+             label="All" 
+             selected={selectedTags.includes('All')} 
+             onClick={() => toggleTag('All')} 
            />
            
            {/* 修改：渲染预定义标签，支持多选状态判定 */}
