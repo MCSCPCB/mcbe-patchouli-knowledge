@@ -1,0 +1,9 @@
+@font-face {
+  font-family: 'Ming-Bold'; /* 自定义字体名称 */
+  src: url('/fonts/LXGWWenKai-Bold.ttf'); /* 字体文件路径 */
+}
+
+@font-face {
+  font-family: 'other'; /* 自定义字体名称 */
+  src: url('/fonts/other.ttf'); /* 字体文件路径 */
+}
