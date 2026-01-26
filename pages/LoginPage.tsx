@@ -105,7 +105,7 @@ const LoginPage: React.FC<LoginProps> = ({ onLogin }) => {
                 htmlFor="name"
                 className="absolute left-4 top-4 z-10 origin-[0] -translate-y-3 scale-75 text-[#C4C7C5] duration-200 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:-translate-y-3 peer-focus:scale-75 peer-focus:text-[#D0BCFF]"
               >
-                Display Name
+                显示名称
               </label>
             </div>
           )}
