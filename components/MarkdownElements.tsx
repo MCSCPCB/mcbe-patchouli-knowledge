@@ -279,7 +279,7 @@ const generateZaoziHtml = (info: { mode: string, p1: string, p2: string }) => {
   if (mode === 'surround') {
     return `<span class="inline-grid place-items-center w-[1em] h-[1em] align-middle mx-0.5 leading-none select-none" title="${p1}+${p2}">
       <span class="col-start-1 row-start-1 text-[1em] z-0">${p1}</span>
-      <span class="col-start-1 row-start-1 text-[0.7em] z-10 pt-[0.3em] pl-[0.3em]">${p2}</span>
+      <span class="col-start-1 row-start-1 text-[0.7em] z-10 pt-[0.4em] pl-[0.3em]">${p2}</span>
     </span>`;
   }
   
