@@ -54,8 +54,8 @@ const AdminPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) 
          <div className="flex items-center gap-3 mb-6 md:mb-10">
             <IconButton icon="arrow_back" onClick={() => onNavigate(Page.HOME)} className="md:hidden" />
             <div className="flex flex-col">
-                <h2 className="text-2xl font-normal text-[#E6E6E6]">Admin</h2>
-                <span className="text-xs text-[#8C918C] uppercase tracking-widest">Control Panel</span>
+                <h2 className="text-2xl font-normal text-[#E6E6E6]">管理员</h2>
+                <span className="text-xs text-[#8C918C] uppercase tracking-widest">控制面板</span>
             </div>
          </div>
          
@@ -66,13 +66,13 @@ const AdminPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) 
                 onClick={() => setActiveTab('audit')} 
                 className={`flex-1 py-2 rounded-full text-sm font-medium transition-all ${activeTab === 'audit' ? 'bg-[#7DA3A1] text-[#0F1D13] shadow-sm' : 'text-[#C7C7CC]'}`}
             >
-                Audit
+                审核
             </button>
             <button 
                 onClick={() => setActiveTab('users')} 
                 className={`flex-1 py-2 rounded-full text-sm font-medium transition-all ${activeTab === 'users' ? 'bg-[#7DA3A1] text-[#0F1D13] shadow-sm' : 'text-[#C7C7CC]'}`}
             >
-                Users
+                成员
             </button>
          </div>
 
@@ -85,7 +85,7 @@ const AdminPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) 
                 `}
             >
                 <span className="material-symbols-rounded">gavel</span>
-                Audit Queue
+                审核队列
                 {pendingItems.length > 0 && (
                     <span className="ml-auto bg-[#CF6679] text-[#37000B] text-xs font-bold px-2 py-0.5 rounded-full">
                         {pendingItems.length}
@@ -100,7 +100,7 @@ const AdminPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) 
                 `}
             >
                 <span className="material-symbols-rounded">group</span>
-                User Management
+                成员管理
             </button>
          </div>
 
@@ -122,13 +122,13 @@ const AdminPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) 
           <div className="space-y-6 animate-[slideUp_0.3s_ease-out]">
              <h3 className="text-xl text-[#E6E6E6] mb-4 flex items-center gap-2">
                 <span className="material-symbols-rounded text-[#7DA3A1]">pending_actions</span>
-                Pending Review
+                待审阅
              </h3>
              
              {pendingItems.length === 0 ? (
                <div className="flex flex-col items-center justify-center py-20 bg-[#1E1E1E] rounded-[24px] border border-[#2C2C2C]">
                  <span className="material-symbols-rounded text-5xl text-[#333] mb-4">task_alt</span>
-                 <span className="text-[#8C918C]">All caught up. No pending items.</span>
+                 <span className="text-[#8C918C]">待审队列空空如也 (●ˇ∀ˇ●)</span>
                </div>
              ) : (
                pendingItems.map(item => (
@@ -151,14 +151,14 @@ const AdminPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) 
                     <div className="flex gap-3 justify-end pt-2">
                        <Button 
                             variant="outlined" 
-                            label="Reject" 
+                            label="拒绝" 
                             icon="close"
                             className="!border-[#CF6679] !text-[#CF6679] hover:!bg-[#CF6679]/10"
                             onClick={() => handleReject(item.id)} 
                        />
                        <Button 
                             variant="filled" 
-                            label="Approve" 
+                            label="批准" 
                             icon="check"
                             onClick={() => handleApprove(item.id)} 
                        />
@@ -173,7 +173,7 @@ const AdminPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) 
           <div className="space-y-4 animate-[slideUp_0.3s_ease-out]">
             <h3 className="text-xl text-[#E6E6E6] mb-4 flex items-center gap-2">
                 <span className="material-symbols-rounded text-[#7DA3A1]">manage_accounts</span>
-                All Users
+                所有成员
             </h3>
             
             <div className="bg-[#1E1E1E] rounded-[24px] overflow-hidden border border-[#2C2C2C]">
@@ -185,7 +185,7 @@ const AdminPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) 
                         <div className="font-medium text-[#E6E6E6] flex items-center gap-2">
                             {user.name} 
                             {user.role === 'admin' && (
-                                <span className="bg-[#D0BCFF] text-[#381E72] text-[10px] px-2 py-0.5 rounded-full font-bold">Admin</span>
+                                <span className="bg-[#D0BCFF] text-[#381E72] text-[10px] px-2 py-0.5 rounded-full font-bold">管理员</span>
                             )}
                         </div>
                         <div className="text-[10px] text-[#707070] font-mono">ID: {user.id.substring(0, 8)}...</div>
@@ -195,7 +195,7 @@ const AdminPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) 
                     {user.role !== 'admin' && (
                     <div className="flex items-center gap-4">
                         <span className={`text-xs font-medium uppercase tracking-wider ${user.banned ? 'text-[#CF6679]' : 'text-[#8FBC8F]'}`}>
-                        {user.banned ? 'Banned' : 'Active'}
+                        {user.banned ? '已封禁' : '活跃中'}
                         </span>
                         <Switch checked={!!user.banned} onChange={() => toggleBan(user.id)} />
                     </div>
