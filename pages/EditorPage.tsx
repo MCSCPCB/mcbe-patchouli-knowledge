@@ -164,7 +164,7 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
     <div className="max-w-3xl mx-auto px-4 py-6 pb-24 animate-[fadeIn_0.3s_ease-out]">
       {/* Top App Bar */}
       {/* 修复：将 top-4 改为 top-20，避免与顶栏重叠 */}
-      <div className="flex items-center justify-between mb-8 sticky top-20 z-40 bg-[#121212]/80 backdrop-blur-xl rounded-full px-4 py-2 border border-[#2C2C2C] shadow-xl">
+      <div className="flex items-center justify-between mb-8 sticky top-20 z-10 bg-[#121212]/80 backdrop-blur-xl rounded-full px-4 py-2 border border-[#2C2C2C] shadow-xl">
         <IconButton icon="arrow_back" onClick={() => onNavigate(Page.HOME)} className="!w-10 !h-10" />
         <span className="text-sm font-medium text-[#C7C7CC] uppercase tracking-wider">
             {selectedItemId ? '修改知识' : '创建新知识'}
