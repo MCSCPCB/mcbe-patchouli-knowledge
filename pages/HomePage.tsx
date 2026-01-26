@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { AppContext } from '../App';
 import { Page, PREDEFINED_TAGS } from '../types';
-import { FAB, Chip, Card, Avatar, Select } from '../components/M3Components';
+import { FAB, Chip, Card, Avatar } from '../components/M3Components'; // 移除了未使用的 Select
 import { searchKnowledge } from '../services/knowledgeService';
 
 const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ onNavigate }) => {
@@ -33,7 +33,9 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
     return () => clearTimeout(timeoutId);
   }, [searchTerm, searchMode, setItems]);
 
+  // 修改：允许显示 rejected 状态的文章（由 RLS 策略控制可见性）
   const filteredItems = items.filter(item => {
+    // if (item.status === 'rejected') return false; // 已移除，由后端权限控制
     if (filterTag !== 'All' && !item.tags.includes(filterTag)) return false;
     return true; 
   });
@@ -41,9 +43,8 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
   return (
     <div className="max-w-2xl mx-auto px-4 pb-32">
       
-      {/* Search Header - Sticky with Blur */}
+      {/* Search Header */}
       <div className="sticky top-[64px] bg-[#121212]/90 backdrop-blur-xl z-30 pt-4 pb-2 -mx-4 px-4 border-b border-[#2C2C2C] transition-all">
-        {/* M3 Search Bar */}
         <div className={`
           relative flex items-center w-full h-[52px] bg-[#252529] rounded-full transition-all duration-300 group
           ${searchMode === 'ai' ? 'ring-2 ring-[#D0BCFF]/50 bg-[#2B2930]' : 'focus-within:bg-[#303035]'}
@@ -65,7 +66,6 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
           )}
         </div>
 
-        {/* Filter Row */}
         <div className="mt-3 flex items-center gap-2 overflow-x-auto no-scrollbar py-1 mask-linear-fade">
            <Chip 
                label="AI" 
@@ -99,26 +99,30 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
             >
               <div className="flex justify-between items-start mb-3">
                 <h3 className="text-xl font-normal text-[#E6E6E6] group-hover:text-[#7DA3A1] transition-colors line-clamp-1">{item.title}</h3>
-                {item.status === 'pending' && (
-                  <span className="bg-[#FFD8E4] text-[#31111D] text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wide">
-                    Review
-                  </span>
-                )}
-                {item.status === 'rejected' && (
-                  <span className="bg-[#CF6679] text-[#37000B] text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wide">
-                    Needs Revision
-                  </span>
-                )}
-
+                
+                {/* 状态标签：Pending 和 Rejected */}
+                <div className="flex gap-2">
+                    {item.status === 'pending' && (
+                    <span className="bg-[#FFD8E4] text-[#31111D] text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wide">
+                        Review
+                    </span>
+                    )}
+                    {item.status === 'rejected' && (
+                    <span className="bg-[#CF6679] text-[#37000B] text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wide">
+                        Needs Revision
+                    </span>
+                    )}
+                </div>
               </div>
 
-              {/* 修改点 1: 优先显示 AI Clues，如果没有则显示原文摘要 */}
-              <p className={`text-sm line-clamp-3 mb-4 leading-relaxed font-sans ${item.aiClues ? 'text-[#D0BCFF] italic' : 'text-[#C7C7CC]'}`}>
+              {/* 修改点：线索摘要改为2行限制，且优化图标排版 */}
+              <p className={`text-sm line-clamp-2 mb-4 leading-relaxed font-sans ${item.aiClues ? 'text-[#D0BCFF] italic' : 'text-[#C7C7CC]'}`}>
                 {item.aiClues ? (
-                   <span className="flex gap-1">
-                     <span className="material-symbols-rounded text-[14px] mt-0.5">auto_awesome</span>
+                   <>
+                     {/* 将图标改为 inline-block 以完美适配文字流 */}
+                     <span className="material-symbols-rounded text-[14px] mr-1 translate-y-[2px] inline-block select-none">auto_awesome</span>
                      {item.aiClues}
-                   </span>
+                   </>
                 ) : (
                    item.content.replace(/[#*`]/g, '')
                 )}
