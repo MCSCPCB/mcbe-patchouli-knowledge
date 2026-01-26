@@ -217,7 +217,8 @@ const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | nul
            </>
          }
        >
-         你真的要删除这个知识吗？ <strong className="text-white">{item.title}</strong> 将会永远消失！（真的很久！）.
+         你真的要删除这个知识吗？
+         <div><strong className="text-white">{item.title}</strong> 将会永远消失！</div>
        </Dialog>
     </div>
   );
