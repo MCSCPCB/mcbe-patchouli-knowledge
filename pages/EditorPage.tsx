@@ -161,7 +161,13 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
 
     try {
         if (type === 'image') {
-            const url = await uploadImage(file);
+            if (!title.trim()) {
+                handleError("请先填写知识标题，以便对图片进行分类归档。");
+                // 清空 input 允许再次选择
+                if (imageInputRef.current) imageInputRef.current.value = '';
+                return;
+            }
+            const url = await uploadImage(file,title);
             const optimizedUrl = `https://wsrv.nl/?url=${encodeURIComponent(url)}&q=80`;
             // 修复：在光标处插入图片链接
             insertTextAtSavedPosition(`\n![${file.name}](${optimizedUrl})\n`);
