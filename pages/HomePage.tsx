@@ -104,6 +104,12 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
                     Review
                   </span>
                 )}
+                {item.status === 'rejected' && (
+                  <span className="bg-[#CF6679] text-[#37000B] text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wide">
+                    Needs Revision
+                  </span>
+                )}
+
               </div>
 
               {/* 修改点 1: 优先显示 AI Clues，如果没有则显示原文摘要 */}
