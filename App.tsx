@@ -175,7 +175,7 @@ const App: React.FC = () => {
             div className = "min-h-screen flex items-center justify-center bg-[#121212] flex-col gap-6" >
             <
             div className = "w-16 h-16 border-4 border-[#7DA3A1] border-t-transparent animate-spin rounded-full opacity-80" > < /div> <
-            div className = "text-[#A0A0A0] text-sm tracking-widest uppercase fade-in" > 海内存知己... < /div> <
+            div className = "text-[#A0A0A0] text-sm tracking-widest uppercase fade-in" > 海内存知己，天涯若比邻... < /div> <
             /div>
         );
 
