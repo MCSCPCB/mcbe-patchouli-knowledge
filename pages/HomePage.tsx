@@ -149,7 +149,7 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
       <FAB 
         icon="edit" 
         onClick={() => onNavigate(Page.CREATE)} 
-        label="Compose"
+        label="撰写知识"
         extended={true}
       />
     </div>
