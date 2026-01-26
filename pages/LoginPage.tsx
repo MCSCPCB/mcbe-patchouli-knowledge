@@ -162,7 +162,7 @@ const LoginPage: React.FC<LoginProps> = ({ onLogin }) => {
             disabled={loading}
             className="mt-2 h-12 w-full rounded-full bg-[#D0BCFF] text-[#381E72] text-sm font-medium hover:bg-[#E8DEF8] hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
           >
-            {loading ? 'Processing...' : (isSignUp ? '注册' : '登录')}
+            {loading ? '运作中...' : (isSignUp ? '注册' : '登录')}
           </button>
         </form>
 
