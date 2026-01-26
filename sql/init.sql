@@ -1,6 +1,6 @@
 -- ==========================================
 -- MCBE Knowledge Base - Full Init Schema
--- Updated for Vector Search & Chinese Support
+-- Updated: Vector Search, Chinese Support, Rejected Workflow
 -- ==========================================
 
 -- 0. [新增] 启用必要的扩展 (必须最先执行)
@@ -50,8 +50,16 @@ create policy "Only admins can update profiles"
   );
 
 -- Knowledge Posts 策略
-create policy "Anyone can read posts"
-  on public.knowledge_posts for select using ( true );
+
+-- [修改] 查看策略: Rejected 仅作者/管理员可见
+create policy "Visibility policy"
+  on public.knowledge_posts for select using (
+    status in ('published', 'pending') 
+    or 
+    auth.uid() = author_id
+    or
+    exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
+  );
 
 create policy "Authenticated non-banned users can insert"
   on public.knowledge_posts for insert with check (
@@ -59,17 +67,17 @@ create policy "Authenticated non-banned users can insert"
     exists ( select 1 from public.profiles where id = auth.uid() and is_banned = false )
   );
 
--- 删除策略：作者删 Pending，管理员删所有
+-- 删除策略：作者删 Pending/Rejected，管理员删所有
 create policy "Delete policy"
   on public.knowledge_posts for delete using (
-    (auth.uid() = author_id and status = 'pending') or
+    (auth.uid() = author_id and status in ('pending', 'rejected')) or
     (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'))
   );
 
--- 更新策略：作者改 Pending，管理员改所有
+-- [修改] 更新策略：作者改 Pending/Rejected，管理员改所有
 create policy "Update policy"
   on public.knowledge_posts for update using (
-    (auth.uid() = author_id and status = 'pending') or
+    (auth.uid() = author_id and status in ('pending', 'rejected')) or
     (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'))
   );
 
@@ -102,7 +110,6 @@ create index idx_tags on public.knowledge_posts using GIN (tags);
 -- [新增] 向量索引: 使用 HNSW 算法加速相似度查询
 create index idx_embedding on public.knowledge_posts using hnsw (embedding vector_l2_ops);
 
-
 -- 7. [新增] 向量匹配函数 (核心检索逻辑)
 create or replace function match_knowledge (
   query_embedding vector(1024),
@@ -121,7 +128,6 @@ begin
   limit match_count;
 end;
 $$;
-
 
 -- 8. 存储系统配置 (自动创建 Bucket + 策略)
 insert into storage.buckets (id, name, public)
