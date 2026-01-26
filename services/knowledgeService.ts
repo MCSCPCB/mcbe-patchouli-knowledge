@@ -378,6 +378,13 @@ export const updatePost = async (id: string, updates: Partial<KnowledgeItem>) =>
   if (updates.tags) dbUpdates.tags = updates.tags;
   if (updates.aiClues) dbUpdates.search_clues = updates.aiClues;
   if (updates.attachments) dbUpdates.attachments = updates.attachments;
+
+  const { data: currentPost } = await supabase.from('knowledge_posts').select('status').eq('id', id).single();
+  
+  if (currentPost?.status === 'rejected') {
+      dbUpdates.status = 'pending'; // <--- 关键！被打回后修改，自动重新变成待审核
+  }
+
   
   if (updates.title || updates.content) {
       const textToEmbed = `${updates.title || ''}\n${updates.content || ''}`;
