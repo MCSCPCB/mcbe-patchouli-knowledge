@@ -52,7 +52,7 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
           <span className="material-symbols-rounded text-[#C7C7CC] ml-4">search</span>
           <input 
             className="flex-1 bg-transparent outline-none text-[#E6E6E6] text-lg placeholder:text-[#8C918C] px-3"
-            placeholder={searchMode === 'ai' ? "Ask the Grimoire..." : "Search knowledge..."}
+            placeholder={searchMode === 'ai' ? "问问魔導書..." : "寻找芝士..."}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
