@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import hljs from 'highlight.js';
 import 'highlight.js/styles/atom-one-dark.css';
 
@@ -14,11 +14,11 @@ hljs.registerLanguage('mcfunction', (hljs) => ({
   contains: [
     { className: 'keyword', begin: /^\s*\/?(execute|scoreboard|data|give|summon|kill|tp|teleport|say|tellraw|title|advancement|recipe|function|schedule|tag|team|bossbar|effect|enchant|experience|fill|fillbiome|gamemode|gamerule|help|item|kick|list|locate|loot|msg|particle|place|playsound|publish|reload|ride|save-all|save-off|save-on|seed|setblock|setidletimeout|setworldspawn|spawnpoint|spectate|spreadplayers|stop|stopsound|teammsg|time|tm|trigger|w|weather|worldborder|xp|damage|inputpermission|jfr|perf)\b/ },
     { className: 'built_in', begin: /\b(run|as|at|align|anchored|if|unless|store|result|success|matches|facing|rotated|positioned|in|dimension)\b/ },
-    { className: 'variable', begin: /@[aeprs](\[[^\]]*\])?/ },
-    { className: 'symbol', begin: /\b(minecraft:[a-z0-9_]+)\b/ },
-    { className: 'number', begin: /[~^]-?(\d+(\.\d+)?)?|\b\d+(\.\d+)?[bdfilsw]?\b/ },
-    { className: 'string', begin: /"[^"]*"/ },
-    { className: 'string', begin: /'[^']*'/ },
+    { className: 'variable', begin: /@[aeprs](\[[^\]]*\])?/ }, // 选择器 @a[tag=s]
+    { className: 'symbol', begin: /\b(minecraft:[a-z0-9_]+)\b/ }, // 命名空间 ID
+    { className: 'number', begin: /[~^]-?(\d+(\.\d+)?)?|\b\d+(\.\d+)?[bdfilsw]?\b/ }, // 坐标与数字
+    { className: 'string', begin: /"[^"]*"/ }, // 字符串
+    { className: 'string', begin: /'[^']*'/ }, // 单引号字符串 (JSON text)
     { className: 'comment', begin: /#.*/ }
   ]
 }));
@@ -29,12 +29,12 @@ hljs.registerLanguage('molang', (hljs) => ({
   aliases: ['mo', 'molang'],
   case_insensitive: true,
   contains: [
-    { className: 'built_in', begin: /\b(query|math|variable|texture|temp|geometry|material|array|c|q|v|t)\.[a-zA-Z0-9_]+\b/ },
+    { className: 'built_in', begin: /\b(query|math|variable|texture|temp|geometry|material|array|c|q|v|t)\.[a-zA-Z0-9_]+\b/ }, // query.anim_time
     { className: 'keyword', begin: /\b(return|loop|for_each|break|continue)\b/ },
     { className: 'number', begin: /\b\d+(\.\d+)?\b/ },
     { className: 'operator', begin: /[\+\-\*\/=<>&|!?:]+/ },
     { className: 'string', begin: /'[^']*'/ },
-    { className: 'comment', begin: /\/\/.*/ }
+    { className: 'comment', begin: /\/\/.*/ } // Molang 注释
   ]
 }));
 
@@ -43,29 +43,31 @@ hljs.registerLanguage('mclang', (hljs) => ({
   name: 'Minecraft Lang',
   aliases: ['lang', 'properties'],
   contains: [
-    { className: 'attr', begin: /^[^#=\n]+/, end: /=/, excludeEnd: true },
-    { className: 'string', begin: /=.*/, excludeBegin: true },
+    { className: 'attr', begin: /^[^#=\n]+/, end: /=/, excludeEnd: true }, // Key
+    { className: 'string', begin: /=.*/, excludeBegin: true }, // Value
     { className: 'comment', begin: /#.*/ }
   ]
 }));
 
 // --- D. Bedrock JSON (JSON with Molang inside strings) ---
+// 解决 "不要把包含molang的json识别成molang" 的问题，同时提供高亮支持
 hljs.registerLanguage('json-molang', (hljs) => ({
   name: 'Bedrock JSON',
   aliases: ['bedrock', 'jsonm'],
   contains: [
     {
       className: 'attr',
-      begin: /"(\\[\\"\"]|[^\\\"\n])*"(?=\s*:)/,
+      begin: /"(\\[\\"\"]|[^\\\"\n])*"(?=\s*:)/, // JSON Key
     },
     {
       className: 'string',
       begin: /"/, end: /"/,
       contains: [
         hljs.BACKSLASH_ESCAPE,
+        // 在字符串内部尝试使用 Molang 高亮
         {
           subLanguage: 'molang',
-          begin: /[^\"]+/, 
+          begin: /[^\"]+/, // 匹配字符串内容
         }
       ]
     },
@@ -78,82 +80,7 @@ hljs.registerLanguage('json-molang', (hljs) => ({
 
 
 // ==========================================
-// 2. 格式化工具函数 (The Formatter Core)
-// ==========================================
-
-/**
- * 通用代码格式化器 (模拟 VS Code 的缩进逻辑)
- * 适用于 JS, TS, CSS, Molang, McFunction 等基于块结构的语言
- */
-const formatGenericCode = (code: string) => {
-  const lines = code.split('\n');
-  let indentLevel = 0;
-  const indentString = '  '; // 2 spaces indentation
-  const formattedLines = [];
-
-  for (let i = 0; i < lines.length; i++) {
-    const rawLine = lines[i].trim();
-    if (!rawLine) continue; // Skip empty lines
-
-    // 检查是否是结束块 (}, ], ))
-    // 如果这行以结束符号开头，先减少缩进
-    const isClosingBlock = /^[\}\]\)]/.test(rawLine);
-    if (isClosingBlock && indentLevel > 0) {
-      indentLevel--;
-    }
-
-    // 应用缩进
-    formattedLines.push(indentString.repeat(indentLevel) + rawLine);
-
-    // 检查是否是开始块 ({, [, ()
-    // 简单的启发式：行尾是打开符号，或者包含未闭合的打开符号
-    // 这里做一个简化的行尾检查，覆盖 90% 的情况
-    const hasOpening = /[\{\[\(]$/.test(rawLine);
-    
-    // 特殊情况处理：如果是单行同时包含开闭 (e.g. "{ ... }")，则不改变层级
-    // 只有当这一行单纯是开启块时才增加缩进
-    if (hasOpening && !isClosingBlock) {
-       indentLevel++;
-    }
-  }
-  return formattedLines.join('\n');
-};
-
-/**
- * HTML/XML 格式化器
- */
-const formatXML = (xml: string) => {
-  let formatted = '';
-  let reg = /(>)(<)(\/*)/g;
-  xml = xml.replace(reg, '$1\r\n$2$3');
-  let pad = 0;
-  xml.split('\r\n').forEach((node) => {
-      let indent = 0;
-      if (node.match(/.+<\/\w[^>]*>$/)) {
-          indent = 0;
-      } else if (node.match(/^<\/\w/)) {
-          if (pad !== 0) {
-              pad -= 1;
-          }
-      } else if (node.match(/^<\w[^>]*[^\/]>.*$/)) {
-          indent = 1;
-      } else {
-          indent = 0;
-      }
-
-      let padding = '';
-      for (let i = 0; i < pad; i++) {
-          padding += '  ';
-      }
-
-      formatted += padding + node + '\r\n';
-      pad += indent;
-  });
-  return formatted.trim();
-};
-
-// ==========================================
-// 3. 智能代码块组件 (Mac Style + Auto Detect + Power Format)
+// 2. 智能代码块组件 (Mac Style + Auto Detect + Format)
 // ==========================================
 interface CodeBlockProps {
   language: string;
@@ -164,35 +91,38 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
   const [copied, setCopied] = useState(false);
   const [detectedLang, setDetectedLang] = useState('text');
   const [highlightedHtml, setHighlightedHtml] = useState('');
-  const [displayCode, setDisplayCode] = useState(code); 
-  const [statusMsg, setStatusMsg] = useState<'formatted' | 'error' | null>(null);
+  const [displayCode, setDisplayCode] = useState(code); // 本地状态，用于支持格式化后的代码显示
+  const [isFormatted, setIsFormatted] = useState(false);
 
-  // 1. 初始化与语言检测
   useEffect(() => {
+    // 重置代码显示（当 props.code 变化时）
     setDisplayCode(code);
-    setStatusMsg(null);
+    setIsFormatted(false);
   }, [code]);
 
   useEffect(() => {
     let langToUse = language;
     const trimmed = displayCode.trim();
 
-    // 智能语言纠正
+    // 1. 智能语言纠正 (Precision Language Detection)
+    // 如果没有指定语言，或者指定了但需要检查是否为 JSON (防止被识别为 Molang)
     if (!langToUse) {
       const autoResult = hljs.highlightAuto(trimmed);
       langToUse = autoResult.language || 'plaintext';
-      
-      // Bedrock JSON 纠错逻辑
+
+      // 纠正逻辑：如果代码以 { 或 [ 开头，即使 autoDetect 认为是 molang，也强制视为 json-molang
+      // 这样既能正确显示 JSON 结构，又能高亮内部的 Molang
       if ((trimmed.startsWith('{') || trimmed.startsWith('[')) && (langToUse === 'molang' || langToUse === 'plaintext')) {
         langToUse = 'json-molang';
       }
     } else if (langToUse === 'json') {
+       // 如果用户明确写了 json，我们也优先使用 bedrock json 以支持 molang 高亮
        langToUse = 'json-molang';
     }
 
     setDetectedLang(langToUse);
 
-    // 高亮处理
+    // 2. 代码高亮
     let result;
     if (langToUse && hljs.getLanguage(langToUse)) {
       result = hljs.highlight(trimmed, { language: langToUse });
@@ -201,14 +131,13 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
     }
     setHighlightedHtml(result.value);
 
-    // 自动格式化：仅针对看起来像压缩后的 JSON
-    if (langToUse === 'json-molang' && !trimmed.includes('\n') && trimmed.length > 50) {
-        // 使用 setTimeout 避免渲染阻塞
-        const timer = setTimeout(() => handleFormat(langToUse, true), 100);
-        return () => clearTimeout(timer);
+    // 3. 自动格式化 (Auto Formatting)
+    // 如果是 JSON 且看起来是压缩过的（没有换行），尝试自动格式化
+    if (!isFormatted && (langToUse === 'json' || langToUse === 'json-molang') && !trimmed.includes('\n') && trimmed.length > 2) {
+       handleFormat(langToUse);
     }
 
-  }, [displayCode, language]); // Dependency removed: handleFormat to avoid loop
+  }, [displayCode, language, isFormatted]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(displayCode);
@@ -216,48 +145,21 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  /**
-   * 核心格式化逻辑
-   * @param lang 语言
-   * @param silent 是否静默（不显示成功/失败状态）
-   */
-  const handleFormat = (lang = detectedLang, silent = false) => {
-    const original = displayCode;
-    let formatted = original;
-    let success = false;
-
-    try {
-      if (lang === 'json' || lang === 'json-molang') {
-        // 尝试标准 JSON 格式化
-        const obj = JSON.parse(original);
-        formatted = JSON.stringify(obj, null, 2);
-        success = true;
-      } else if (lang === 'xml' || lang === 'html' || lang === 'svg') {
-        // XML/HTML 格式化
-        formatted = formatXML(original);
-        success = true;
-      } else {
-        // 其他语言 (JS, TS, CSS, McFunction, Molang) 使用通用缩进算法
-        formatted = formatGenericCode(original);
-        success = true;
-      }
-      
-      if (success) {
+  const handleFormat = (lang = detectedLang) => {
+    if (lang === 'json' || lang === 'json-molang') {
+      try {
+        const obj = JSON.parse(displayCode);
+        const formatted = JSON.stringify(obj, null, 2);
         setDisplayCode(formatted);
-        if (!silent) {
-            setStatusMsg('formatted');
-            setTimeout(() => setStatusMsg(null), 2000);
-        }
-      }
-    } catch (e) {
-      console.warn('Format failed', e);
-      if (!silent) {
-          setStatusMsg('error');
-          setTimeout(() => setStatusMsg(null), 2000);
+        setIsFormatted(true);
+      } catch (e) {
+        // 解析失败，不做处理
+        console.warn('Auto format failed', e);
       }
     }
   };
 
+  // 显示在右上角的语言标签映射
   const displayLangLabel = (lang: string) => {
     const map: Record<string, string> = {
       'mcfunction': 'MC COMMAND',
@@ -267,21 +169,19 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
       'json-molang': 'BEDROCK JSON',
       'javascript': 'JS',
       'typescript': 'TS',
-      'xml': 'XML',
-      'html': 'HTML',
       'plaintext': 'TEXT'
     };
     return map[lang] || lang.toUpperCase();
   };
 
   return (
-    <div className="relative group my-6 rounded-xl overflow-hidden bg-[#1e2024] border border-[#333] shadow-xl transition-all duration-300 hover:shadow-2xl hover:border-[#444]">
+    <div className="relative group my-6 rounded-xl overflow-hidden bg-[#1e2024] border border-[#333] shadow-xl">
       {/* Mac Window Header */}
       <div className="flex items-center justify-between px-4 py-2 bg-[#252526] border-b border-[#333]">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-[#FF5F56] hover:bg-[#FF4040] transition-colors" /> 
-          <div className="w-3 h-3 rounded-full bg-[#FFBD2E] hover:bg-[#FFAD10] transition-colors" /> 
-          <div className="w-3 h-3 rounded-full bg-[#27C93F] hover:bg-[#20A030] transition-colors" /> 
+          <div className="w-3 h-3 rounded-full bg-[#FF5F56]" /> 
+          <div className="w-3 h-3 rounded-full bg-[#FFBD2E]" /> 
+          <div className="w-3 h-3 rounded-full bg-[#27C93F]" /> 
         </div>
         
         <div className="flex items-center gap-4">
@@ -291,34 +191,25 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
           </div>
           
           {/* Action Buttons */}
-          <div className="flex items-center gap-1 bg-[#1a1a1a] rounded-lg p-0.5 border border-[#333]">
-            {/* Format Button - Available for ALL languages now */}
-            <button 
-              onClick={() => handleFormat(detectedLang, false)}
-              className={`
-                relative flex items-center justify-center w-8 h-8 rounded-md transition-all
-                ${statusMsg === 'error' ? 'text-red-400 bg-red-400/10' : ''}
-                ${statusMsg === 'formatted' ? 'text-green-400 bg-green-400/10' : 'text-[#888] hover:text-white hover:bg-[#333]'}
-              `}
-              title="Format Code (Prettify)"
-            >
-              <span className="material-symbols-rounded text-[18px]">
-                {statusMsg === 'formatted' ? 'check' : statusMsg === 'error' ? 'error' : 'data_object'}
-              </span>
-            </button>
-
-            <div className="w-[1px] h-4 bg-[#333] mx-0.5"></div>
+          <div className="flex items-center gap-2">
+            {/* Format Button (Only for JSON-like) */}
+            {(detectedLang === 'json' || detectedLang === 'json-molang') && (
+              <button 
+                onClick={() => handleFormat()}
+                className="text-[#666] hover:text-white transition-colors"
+                title="Format JSON"
+              >
+                <span className="material-symbols-rounded text-base">data_object</span>
+              </button>
+            )}
 
             {/* Copy Button */}
             <button 
               onClick={handleCopy}
-              className={`
-                flex items-center justify-center w-8 h-8 rounded-md transition-all
-                ${copied ? 'text-green-400 bg-green-400/10' : 'text-[#888] hover:text-white hover:bg-[#333]'}
-              `}
+              className="text-[#666] hover:text-white transition-colors flex items-center"
               title="Copy Code"
             >
-              <span className="material-symbols-rounded text-[18px]">
+              <span className="material-symbols-rounded text-base">
                 {copied ? 'check' : 'content_copy'}
               </span>
             </button>
@@ -331,7 +222,6 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
         <pre className="p-4 m-0">
           <code 
             className={`font-mono text-sm leading-relaxed whitespace-pre language-${detectedLang}`}
-            style={{ fontFamily: "'Fira Code', 'Cascadia Code', Consolas, monospace" }} // 强制等宽字体
             dangerouslySetInnerHTML={{ __html: highlightedHtml }}
           />
         </pre>
@@ -341,27 +231,134 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
 };
 
 // ==========================================
-// 4. 核心渲染器 (保持原有增强功能)
+// 3. 核心渲染器 (修复视频渲染 + 增加趣味文本 + 汉字造字)
 // ==========================================
+
+// --- Zaozi Helper ---
+const parseZaoziInfo = (desc: string) => {
+  desc = desc.trim();
+  let mode = 'lr'; // default to left-right
+  let p1 = '?'; 
+  let p2 = '?';
+
+  // 清理：去掉 "字头", "字旁" 等干扰词，只取单字
+  const clean = (s: string) => s.replace(/字(头|框|底|旁|儿)/g, '').trim();
+
+  // 1. 显式结构: 包围(A, B)
+  const funcMatch = desc.match(/^([^\(（]+)[\(（](.*?)[\,，](.*?)[\)）]$/);
+  
+  if (funcMatch) {
+    const type = funcMatch[1].trim().toLowerCase();
+    p1 = clean(funcMatch[2]);
+    p2 = clean(funcMatch[3]);
+    
+    if (['包围', 'surround', 'bw', 'inside', '全包', '半包'].includes(type)) mode = 'surround';
+    else if (['上下', 'tb', 'sx', 'updown'].includes(type)) mode = 'tb';
+    else if (['左右', 'lr', 'zy', 'leftright'].includes(type)) mode = 'lr';
+  } else if (desc.includes('+')) {
+    // 2. 自动推断: A + B
+    const parts = desc.split('+');
+    p1 = clean(parts[0]);
+    p2 = clean(parts[1]);
+    
+    // 包围结构启发式列表
+    const SURROUND_SET = new Set([
+      '风', '囗', '门', '辶', '走', '疒', '尸', '广', '厂', '气', '弋', '戈', '户', 
+      '匚', '冂', '凵', '勹', '几', '框'
+    ]);
+    if (SURROUND_SET.has(p1)) mode = 'surround';
+  }
+  
+  return { mode, p1, p2 };
+};
+
+// 生成汉字的 HTML 结构
+const generateZaoziHtml = (info: { mode: string, p1: string, p2: string }) => {
+  const { mode, p1, p2 } = info;
+  
+  if (mode === 'surround') {
+    return `<span class="inline-grid place-items-center w-[1em] h-[1em] align-middle mx-0.5 leading-none select-none" title="${p1}+${p2}">
+      <span class="col-start-1 row-start-1 text-[1em] z-0">${p1}</span>
+      <span class="col-start-1 row-start-1 text-[0.6em] z-10 pt-[0.1em]">${p2}</span>
+    </span>`;
+  }
+  
+  if (mode === 'tb') { // Top-Bottom
+    return `<span class="inline-flex flex-col w-[1em] h-[1em] align-middle mx-0.5 leading-none align-text-bottom select-none" title="${p1}+${p2}">
+      <span class="flex-1 w-full flex items-center justify-center overflow-hidden text-[0.7em] -mb-[0.15em] scale-y-[0.85]">${p1}</span>
+      <span class="flex-1 w-full flex items-center justify-center overflow-hidden text-[0.7em] -mt-[0.15em] scale-y-[0.85]">${p2}</span>
+    </span>`;
+  }
+  
+  // Default: Left-Right
+  return `<span class="inline-flex flex-row w-[1em] h-[1em] align-middle mx-0.5 leading-none select-none" title="${p1}+${p2}">
+    <span class="flex-1 h-full flex items-center justify-center overflow-hidden text-[0.7em] -mr-[0.1em] scale-x-[0.85]">${p1}</span>
+    <span class="flex-1 h-full flex items-center justify-center overflow-hidden text-[0.7em] -ml-[0.1em] scale-x-[0.85]">${p2}</span>
+  </span>`;
+};
+
 export const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
   
+  // 1. 预处理：扫描全文构建造字注册表
+  const zaoziRegistry = useMemo(() => {
+    const registry: Record<string, string> = {};
+    const regex = /\[(?:造字|zaozi)\s*[:：]\s*([a-zA-Z0-9]+)\s*[|｜]\s*(.*?)\]/gi;
+    let match;
+    while ((match = regex.exec(content)) !== null) {
+      const pinyin = match[1];
+      const desc = match[2];
+      const info = parseZaoziInfo(desc);
+      registry[pinyin] = generateZaoziHtml(info);
+    }
+    return registry;
+  }, [content]);
+
   const renderInline = (text: string) => {
-    return text
+    let res = text
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      // Inline Code
       .replace(/`([^`]+)`/g, '<code class="bg-[#2D2D2D] text-[#A5C9A1] px-1.5 py-0.5 rounded text-sm font-mono border border-[#444] mx-1">$1</code>')
+      // Images
       .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" class="rounded-xl my-4 w-full shadow-lg border border-[#333]"/>')
+      // Bold
       .replace(/\*\*(.*?)\*\*/g, '<strong class="text-[#E6E6E6] font-semibold">$1</strong>')
+      // Italic
       .replace(/\*(.*?)\*/g, '<em class="text-[#B0B0B0] font-serif">$1</em>')
+      // Strikethrough
       .replace(/~~(.*?)~~/g, '<del class="text-[#888] decoration-[#888] opacity-70 decoration-1">$1</del>')
-      // Highlighting, Spoiler, Keys, etc.
+      // ----------------- 新增好玩的功能 -----------------
+      // Highlight
       .replace(/==(.*?)==/g, '<mark class="bg-[#FCD34D] text-black px-1 rounded font-medium shadow-sm mx-0.5">$1</mark>')
+      // Spoiler
       .replace(/\|\|(.*?)\|\|/g, '<span class="filter blur-[5px] hover:blur-0 transition-all duration-300 cursor-pointer select-none bg-white/10 px-1 rounded" title="Reveal Spoiler">$1</span>')
+      // Keyboard Keys
       .replace(/\[\[(.*?)\]\]/g, '<kbd class="bg-[#333] border border-[#555] border-b-[3px] rounded-md px-1.5 py-0.5 text-xs font-mono text-gray-200 mx-1 min-w-[20px] inline-block text-center shadow-sm">$1</kbd>')
+      // Custom Font
       .replace(/%%(.*?)\|(.*?)%%/g, '<span style="font-family: \'$1\';">$2</span>')
+      // ----------------- 造字功能渲染 -----------------
+      // 1. 显示定义徽章: [造字: fx | ...]
+      .replace(/\[(?:造字|zaozi)\s*[:：]\s*([a-zA-Z0-9]+)\s*[|｜]\s*(.*?)\]/gi, (match, pinyin, desc) => {
+         return `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-mono select-none cursor-help" title="定义: ${desc}">
+           <span class="material-symbols-rounded text-[10px]">brush</span>
+           ${pinyin}
+         </span>`;
+      })
+      // 2. 渲染已注册的字: :pinyin:
+      .replace(/:([a-zA-Z0-9]+):/g, (match, pinyin) => {
+         if (zaoziRegistry[pinyin]) {
+           return zaoziRegistry[pinyin];
+         }
+         return match; // 未找到则不处理
+      })
+      // ---------------------------------------------------
+      // Links
       .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener" class="text-[#7DA3A1] hover:underline decoration-2 underline-offset-2 break-all">$1</a>');
+      
+    return res;
   };
 
   const elements = [];
+  // 修复：扩展 Regex 以捕获 video 和 iframe
   const regex = /(```(\w+)?\s*[\s\S]*?```|<(?:video|iframe)[\s\S]*?(?:<\/(?:video|iframe)>|\/>))/g;
   
   let lastIndex = 0;
