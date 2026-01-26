@@ -208,7 +208,7 @@ const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | nul
 
        <Dialog 
          open={deleteDialogOpen} 
-         title="Delete Article" 
+         title="删除知识" 
          onClose={() => setDeleteDialogOpen(false)}
          actions={
            <>
@@ -217,7 +217,7 @@ const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | nul
            </>
          }
        >
-         This action will permanently remove <strong className="text-white">{item.title}</strong> from the knowledge base.
+         你真的要删除这个知识吗？ <strong className="text-white">{item.title}</strong> 将会永远消失！（真的很久！）.
        </Dialog>
     </div>
   );
