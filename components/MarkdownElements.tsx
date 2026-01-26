@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import hljs from 'highlight.js';
 import 'highlight.js/styles/atom-one-dark.css';
@@ -58,7 +57,7 @@ hljs.registerLanguage('json-molang', (hljs) => ({
   contains: [
     {
       className: 'attr',
-      begin: /"(\\[\\"]|[^\\"\n])*"(?=\s*:)/, // JSON Key
+      begin: /"(\\[\\"\"]|[^\\\"\n])*"(?=\s*:)/, // JSON Key
     },
     {
       className: 'string',
@@ -257,6 +256,8 @@ export const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => 
       .replace(/\|\|(.*?)\|\|/g, '<span class="filter blur-[5px] hover:blur-0 transition-all duration-300 cursor-pointer select-none bg-white/10 px-1 rounded" title="Reveal Spoiler">$1</span>')
       // 3. Keyboard Keys (按键) [[Ctrl]]
       .replace(/\[\[(.*?)\]\]/g, '<kbd class="bg-[#333] border border-[#555] border-b-[3px] rounded-md px-1.5 py-0.5 text-xs font-mono text-gray-200 mx-1 min-w-[20px] inline-block text-center shadow-sm">$1</kbd>')
+      // 4. Custom Font (自定义字体) %%FontFamily|Text%%
+      .replace(/%%(.*?)\|(.*?)%%/g, '<span style="font-family: \'$1\';">$2</span>')
       // ---------------------------------------------------
       // Links
       .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener" class="text-[#7DA3A1] hover:underline decoration-2 underline-offset-2 break-all">$1</a>');
