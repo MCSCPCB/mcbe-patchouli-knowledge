@@ -145,7 +145,7 @@ const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | nul
                 <Avatar name={item.author.name} src={item.author.avatar} size="md" />
                 <div>
                     <div className="font-medium text-[#E6E6E6]">{item.author.name}</div>
-                    <div className="text-[#8C918C] text-xs">Updated {new Date(item.createdAt).toLocaleDateString()}</div>
+                    <div className="text-[#8C918C] text-xs">更新于 {new Date(item.createdAt).toLocaleDateString()}</div>
                 </div>
                 {item.status === 'pending' && (
                     <span className="ml-auto bg-[#FFD8E4] text-[#31111D] px-3 py-1 rounded-full text-xs font-bold">Pending Approval</span>
@@ -165,7 +165,7 @@ const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | nul
            <div className="mt-12 pt-6 border-t border-[#2C2C2C]">
                <h3 className="text-sm font-bold text-[#8C918C] uppercase tracking-wider mb-4 flex items-center gap-2">
                    <span className="material-symbols-rounded">attachment</span>
-                   Resources
+                   附件
                </h3>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                    {item.attachments.map(att => (
@@ -196,7 +196,7 @@ const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | nul
            <div className="absolute top-0 right-0 p-4 opacity-10">
                <span className="material-symbols-rounded text-6xl text-[#D0BCFF]">auto_awesome</span>
            </div>
-           <span className="text-[#D0BCFF] text-xs font-bold uppercase tracking-widest mb-2 block">Grimoire Insight</span>
+           <span className="text-[#D0BCFF] text-xs font-bold uppercase tracking-widest mb-2 block">检索线索</span>
            
            {/* 修改点：添加 whitespace-pre-wrap 以支持换行显示 */}
            <p className="text-[#E6E1E5] text-sm italic leading-relaxed relative z-10 whitespace-pre-wrap font-sans">
