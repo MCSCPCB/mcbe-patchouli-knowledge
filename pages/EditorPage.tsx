@@ -79,7 +79,7 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
       let insertCode = '';
 
       if (url.includes('b23.tv')) {
-        handleError("Please use the full Bilibili URL (starting with www.bilibili.com/video/BV...) for best compatibility.");
+        handleError("请提供完整的 Bilibili 视频链接（以 www.bilibili.com/video/BV... 开头）以确保最佳兼容性");
         return;
       }
 
@@ -174,10 +174,10 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
       <div className="flex items-center justify-between mb-8 sticky top-4 z-40 bg-[#121212]/80 backdrop-blur-xl rounded-full px-4 py-2 border border-[#2C2C2C] shadow-xl">
         <IconButton icon="arrow_back" onClick={() => onNavigate(Page.HOME)} className="!w-10 !h-10" />
         <span className="text-sm font-medium text-[#C7C7CC] uppercase tracking-wider">
-            {selectedItemId ? 'Edit Manuscript' : 'New Entry'}
+            {selectedItemId ? '修改知识' : '创建新知识'}
         </span>
         <Button 
-            label={isSaving ? "Saving..." : "Save"} 
+            label={isSaving ? "正在保存..." : "保存"} 
             onClick={handleSubmit} 
             disabled={!title || !content || isSaving}
             className={`!h-9 !rounded-full !px-6 ${isSaving ? 'opacity-50' : ''}`}
@@ -188,7 +188,7 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
         {/* Title Input */}
         <div className="space-y-1">
              <TextField 
-                label="Title" 
+                label="标题" 
                 value={title} 
                 onChange={(e) => setTitle(e.target.value)} 
                 placeholder="Ex: Diamond Mining Logic"
@@ -198,7 +198,7 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
 
         {/* Tag Selection */}
         <div className="space-y-3">
-           <label className="text-xs text-[#8C918C] ml-1 uppercase tracking-wide">Classification</label>
+           <label className="text-xs text-[#8C918C] ml-1 uppercase tracking-wide">分类</label>
            <div className="flex flex-wrap gap-2 items-center min-h-[48px]">
              {tags.map(tag => (
                <Chip key={tag} label={tag} onDelete={() => setTags(tags.filter(t => t !== tag))} selected />
@@ -209,7 +209,7 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
                     options={PREDEFINED_TAGS}
                     value=""
                     onChange={handleTagChange}
-                    placeholder="+ Add Tag"
+                    placeholder="+ 添加标签"
                     className="w-32 !mb-0"
                 />
              </div>
@@ -218,7 +218,7 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
 
         {/* Editor */}
         <RichMarkdownEditor 
-          label="Content" 
+          label="内容" 
           value={content} 
           onChange={setContent}
           onAddAttachment={() => handleTriggerUpload('file')}
@@ -231,7 +231,7 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
             <div className="bg-[#1E1E1E] rounded-2xl border border-[#2C2C2C] overflow-hidden">
                 <div className="px-4 py-3 bg-[#252529] border-b border-[#2C2C2C] flex items-center gap-2">
                     <span className="material-symbols-rounded text-[#7DA3A1] text-sm">attachment</span>
-                    <span className="text-xs font-bold text-[#8C918C] uppercase tracking-wider">Attachments ({attachments.length})</span>
+                    <span className="text-xs font-bold text-[#8C918C] uppercase tracking-wider">附件 ({attachments.length})</span>
                 </div>
                 <div className="divide-y divide-[#2C2C2C]">
                     {attachments.map(att => (
@@ -262,11 +262,11 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2 text-[#D0BCFF]">
                     <span className="material-symbols-rounded">auto_awesome</span>
-                    <h3 className="font-medium text-sm">AI Enhancement</h3>
+                    <h3 className="font-medium text-sm">检索线索</h3>
                 </div>
                 <Button 
                     variant="tonal" 
-                    label={isGenerating ? "Analyzing..." : "Generate Insights"} 
+                    label={isGenerating ? "少女祈祷中..." : "帮我想想！"} 
                     icon={!isGenerating ? "refresh" : undefined}
                     onClick={handleGenerateClues}
                     disabled={isGenerating || !content}
@@ -279,7 +279,7 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
                 rows={3}
                 value={aiClues}
                 onChange={(e) => setAiClues(e.target.value)}
-                placeholder="AI generated context and search clues will appear here..."
+                placeholder="描述该知识可能会用于什么场景，可以帮助AI更容易找到这个芝士哦！"
             />
           </div>
         </div>
@@ -305,19 +305,19 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
       {/* Insert Video Dialog */}
       <Dialog
         open={videoDialogOpen}
-        title="Insert Video"
+        title="插入视频"
         onClose={() => setVideoDialogOpen(false)}
         actions={
             <>
-              <Button variant="text" label="Cancel" onClick={() => setVideoDialogOpen(false)} />
-              <Button variant="filled" label="Insert" onClick={handleConfirmVideoInsert} />
+              <Button variant="text" label="取消" onClick={() => setVideoDialogOpen(false)} />
+              <Button variant="filled" label="插入" onClick={handleConfirmVideoInsert} />
             </>
         }
       >
         <div className="pt-2 pb-4">
-            <p className="text-[#C7C7CC] text-sm mb-4">Support: Bilibili (BV...), YouTube, or .mp4 links.</p>
+            <p className="text-[#C7C7CC] text-sm mb-4">支持：Bilibili、YouTube 或 .mp4 链接</p>
             <TextField 
-                label="Video URL" 
+                label="视频 URL" 
                 value={videoUrlInput}
                 onChange={(e) => setVideoUrlInput(e.target.value)}
                 placeholder="https://..."
@@ -328,7 +328,7 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
       {/* Error Dialog */}
       <Dialog
         open={errorDialog.open}
-        title="Notice"
+        title="注意"
         onClose={() => setErrorDialog({ ...errorDialog, open: false })}
         actions={
             <Button variant="text" label="OK" onClick={() => setErrorDialog({ ...errorDialog, open: false })} />
