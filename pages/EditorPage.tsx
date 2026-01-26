@@ -162,7 +162,7 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
     try {
         if (type === 'image') {
             if (!title.trim()) {
-                handleError("请先填写知识标题，以便对图片进行分类归档。");
+                handleError("先给知识起一个标题吧 ੭ ˙ᗜ˙ ੭");
                 // 清空 input 允许再次选择
                 if (imageInputRef.current) imageInputRef.current.value = '';
                 return;
