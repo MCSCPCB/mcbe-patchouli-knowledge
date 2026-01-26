@@ -237,7 +237,7 @@ export const RichMarkdownEditor: React.FC<RichEditorProps> = ({ label, value, on
               className="w-full bg-[#1E1E1E] outline-none text-[#E6E6E6] resize-none min-h-[300px] font-mono p-4 text-sm leading-relaxed"
               value={value}
               onChange={(e) => onChange(e.target.value)}
-              placeholder="Start typing your knowledge..."
+              placeholder="写点啥好呢..."
             />
          </div>
       </div>
