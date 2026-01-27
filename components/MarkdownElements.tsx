@@ -3,18 +3,33 @@ import hljs from 'highlight.js';
 import 'highlight.js/styles/atom-one-dark.css';
 
 // ==========================================
-// 1. Minecraft 深度语法支持 (Enhanced)
+// 1. Minecraft 深度语法支持 (Ultimate Edition)
 // ==========================================
 
 // --- Shared Molang Rules ---
 const MOLANG_RULES = [
+  // Scoped Access (query.life_time)
   { className: 'built_in', begin: /\b(query|math|variable|texture|temp|geometry|material|array|context|c|q|v|t)\.[a-zA-Z0-9_]+/ },
+  // Keywords
   { className: 'keyword', begin: /\b(return|loop|for_each|break|continue|this)\b/ },
+  // Numbers
   { className: 'number', begin: /\b\d+(\.\d+)?\b/ },
+  // Operators
   { className: 'operator', begin: /[\+\-\*\/=<>&|!?:]+/ },
 ];
 
-// --- A. Minecraft Commands (McFunction) ---
+// --- A. Text with Molang Fallback (New!) ---
+hljs.registerLanguage('plaintext-molang', (hljs) => ({
+  name: 'Text (Molang)',
+  aliases: ['text', 'txt', 'plaintext'],
+  disableAutodetect: true, // Used as manual fallback
+  contains: [
+    ...MOLANG_RULES,
+    // Allow everything else as standard text
+  ]
+}));
+
+// --- B. Minecraft Commands (McFunction) ---
 hljs.registerLanguage('mcfunction', (hljs) => ({
   name: 'Minecraft Commands',
   aliases: ['mc', 'minecraft', 'cmd', 'mcfunction'],
@@ -37,83 +52,104 @@ hljs.registerLanguage('mcfunction', (hljs) => ({
   ]
 }));
 
-// --- B. Minecraft Molang (Standalone) ---
-hljs.registerLanguage('molang', (hljs) => ({
-  name: 'Molang',
-  aliases: ['mo', 'bedrock-script'],
-  case_insensitive: true,
-  contains: [
-    hljs.C_NUMBER_MODE,
-    { className: 'string', begin: /'/, end: /'/ },
-    ...MOLANG_RULES,
-    {
-      className: 'built_in',
-      begin: /\b(query|math|variable|texture|temp|geometry|material|array|context|c|q|v|t)(?=\.)/
-    },
-    { className: 'property', begin: /(?<=\.)[a-zA-Z0-9_]+/ },
-  ]
-}));
-
-// --- C. Bedrock JSON (Extreme Highlighting) ---
+// --- C. Bedrock JSON (Ultra Detailed) ---
 hljs.registerLanguage('json-bedrock', (hljs) => ({
   name: 'Bedrock JSON',
   aliases: ['json', 'bedrock', 'jsonui', 'ui'],
   contains: [
-    // 1. Special Keys (Purple)
+    // 1. Punctuation (Gray) - NEW
+    {
+      className: 'punctuation',
+      begin: /[\{\}\[\],:]/,
+      relevance: 0
+    },
+    // 2. Namespaced Keys (Purple) - e.g. "minecraft:component"
     {
       className: 'keyword', 
-      begin: /"(format_version|minecraft:[a-z0-9_.-]+|components|description|events|component_groups|states|permutations|bones|cubes|locators|poly_mesh|physics|texture_meshes)"(?=\s*:)/
+      begin: /"(minecraft:[a-z0-9_.-]+|format_version)"(?=\s*:)/
     },
-    // 2. UI Keys (Blue/Purple)
+    // 3. UI/Special Keys (Blue)
     {
       className: 'keyword',
-      begin: /"(type|controls|bindings|visible|texture|offset|size|layer|alpha|anchor_from|anchor_to|text|font_type|font_scale|color|ignored|variables|modifications)"(?=\s*:)/
+      begin: /"(type|controls|bindings|visible|texture|offset|size|layer|alpha|anchor_from|anchor_to|text|font_type|font_scale|color|ignored|variables|modifications|components|description|events)"(?=\s*:)/
     },
-    // 3. Standard Keys (Red/Orange)
+    // 4. Standard Keys (Red/Orange)
     {
       className: 'attr', 
       begin: /"(\\[\\"\"]|[^\\\"\n])*"(?=\s*:)/,
     },
-    // 4. Resource Location Values (Cyan/Symbol) - e.g. "minecraft:apple"
+    // 5. Resource Location Values (Cyan)
     {
         className: 'symbol',
         begin: /"minecraft:[a-z0-9_.-]+"/
     },
-    // 5. Values with Molang Injection
+    // 6. Values with Molang
     {
       className: 'string',
       begin: /"/, end: /"/,
       contains: [
         hljs.BACKSLASH_ESCAPE,
-        {
-          subLanguage: 'molang',
-          begin: /[^\"]+/,
-          relevance: 0 
-        }
+        { subLanguage: 'molang', begin: /[^\"]+/, relevance: 0 }
       ]
     },
     hljs.C_NUMBER_MODE,
     hljs.C_BLOCK_COMMENT_MODE,
     hljs.C_LINE_COMMENT_MODE,
     { className: 'literal', begin: /\b(true|false|null)\b/ },
-    { className: 'punctuation', begin: /[\{\[\}\],:]/ }
   ]
 }));
 
-// --- D. Lang File ---
-hljs.registerLanguage('lang', (hljs) => ({
-  name: 'Minecraft Lang',
-  aliases: ['lang', 'properties'],
+// --- D. Bedrock JavaScript (API Aware) ---
+// Custom definitions to ensure 'world.afterEvents' etc. are highlighted
+hljs.registerLanguage('javascript-bedrock', (hljs) => ({
+  name: 'Bedrock JS',
+  aliases: ['js', 'ts', 'javascript', 'typescript', 'mj'],
+  keywords: {
+    keyword: 'const let var function return if else for while switch case break continue new class extends export import from await async try catch throw delete typeof void instanceof this super interface type',
+    literal: 'true false null undefined NaN Infinity',
+    built_in: 'console Math JSON Promise Map Set Array Object String Number Boolean RegExp Date Error Symbol world system BlockPermutation ItemStack Dimension EntityType BlockType GameMode'
+  },
   contains: [
-    hljs.COMMENT(/#/, /$/),
-    { className: 'variable', begin: /^[a-zA-Z0-9_.-]+(?==)/ },
-    { className: 'string', begin: /=/, end: /$/, excludeBegin: true }
+    hljs.APOS_STRING_MODE,
+    hljs.QUOTE_STRING_MODE,
+    hljs.C_LINE_COMMENT_MODE,
+    hljs.C_BLOCK_COMMENT_MODE,
+    hljs.C_NUMBER_MODE,
+    // 1. Minecraft API Built-ins (Objects)
+    {
+      className: 'built_in',
+      begin: /\b(world|system)(?=\.)/
+    },
+    // 2. Property Chains (Deep highlighting)
+    // Matches .something after an object or previous property
+    {
+      className: 'property',
+      begin: /(?<=\.)[a-zA-Z0-9_]+/,
+      relevance: 0
+    },
+    // 3. Function Calls
+    {
+      className: 'function',
+      begin: /\w+(?=\()/,
+      relevance: 0
+    },
+    { className: 'operator', begin: /=>/ }
   ]
+}));
+
+// --- E. Lang & Molang ---
+hljs.registerLanguage('molang', (hljs) => ({
+    name: 'Molang', aliases: ['mo'], contains: [
+        hljs.C_NUMBER_MODE, { className: 'string', begin: /'/, end: /'/ }, ...MOLANG_RULES
+    ]
+}));
+hljs.registerLanguage('lang', (hljs) => ({
+    name: 'Lang', contains: [ hljs.COMMENT(/#/, /$/), { className: 'variable', begin: /^[a-zA-Z0-9_.-]+/ }, { className: 'string', begin: /=/, end: /$/ } ]
 }));
 
 
 // ==========================================
-// 2. 智能代码块组件 (Smart Code Block)
+// 2. 智能代码块组件
 // ==========================================
 interface CodeBlockProps {
   language: string;
@@ -123,19 +159,20 @@ interface CodeBlockProps {
 const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
   const [copied, setCopied] = useState(false);
   const [formattedCode, setFormattedCode] = useState(code);
-  const [detectedLang, setDetectedLang] = useState('plaintext');
+  const [detectedLang, setDetectedLang] = useState('plaintext-molang');
   const [highlightedHtml, setHighlightedHtml] = useState('');
 
   const normalizeLang = (lang: string) => {
     const lower = lang?.toLowerCase() || '';
     const map: Record<string, string> = {
-        'js': 'javascript', 'ts': 'typescript', 'jsx': 'javascript', 'tsx': 'typescript',
+        'js': 'javascript-bedrock', 'ts': 'javascript-bedrock', 
+        'jsx': 'javascript-bedrock', 'tsx': 'javascript-bedrock',
         'json': 'json-bedrock', 'jsonui': 'json-bedrock',
         'mc': 'mcfunction', 'cmd': 'mcfunction',
         'mo': 'molang', 'molang': 'molang',
-        'lang': 'lang'
+        'lang': 'lang', 'txt': 'plaintext-molang', 'text': 'plaintext-molang'
     };
-    return map[lower] || lower || 'plaintext';
+    return map[lower] || lower || 'plaintext-molang';
   };
 
   const getDisplayLabel = (lang: string) => {
@@ -143,10 +180,9 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
       'mcfunction': 'McFunction',
       'molang': 'Molang',
       'json-bedrock': 'JSON',
-      'javascript': 'JavaScript',
-      'typescript': 'TypeScript',
+      'javascript-bedrock': 'JavaScript (MC)',
       'lang': 'Lang',
-      'plaintext': 'Text',
+      'plaintext-molang': 'Text',
     };
     return map[lang] || lang.toUpperCase();
   };
@@ -155,23 +191,22 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
   const detectLanguage = (codeSnippet: string) => {
     const c = codeSnippet.trim();
     
-    // 1. JSON (Block OR Snippet like "key": value)
+    // JSON
     if (c.startsWith('{') || c.startsWith('[')) return 'json-bedrock';
     if (/^"[\w\d_]+" *:/.test(c)) return 'json-bedrock';
     
-    // 2. JS/TS (Keywords)
-    if (/\b(const|let|var|function|import|export|return|class|interface|=>)\b/.test(c)) {
-        if (c.includes('interface') || c.includes('type ')) return 'typescript';
-        return 'javascript';
+    // JS/TS (Strict)
+    if (/\b(const|let|var|function|import|export|class|interface|=>|await world|system\.)\b/.test(c)) {
+        return 'javascript-bedrock';
     }
 
-    // 3. McFunction (Commands)
+    // McFunction
     if (/^\s*\/?(execute|scoreboard|data|give|summon|tag|function|fill|setblock|say|title)\b/m.test(c)) return 'mcfunction';
     
-    // 4. Molang (STRICT)
+    // Molang (Strict)
     if (/\b(query|math|variable)\.[a-zA-Z0-9_]+/.test(c)) return 'molang';
     
-    // 5. Lang File
+    // Lang
     if (/^[\w\.]+=[^\n]+$/m.test(c) && !c.includes(';') && !c.includes('{')) return 'lang';
 
     return null;
@@ -192,16 +227,14 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
     }
 
     // Auto-detection
-    if (finalLang === 'plaintext') {
+    if (finalLang === 'plaintext-molang') {
         const heuristic = detectLanguage(codeToRender);
         if (heuristic) {
             finalLang = heuristic;
         } else {
-            const auto = hljs.highlightAuto(codeToRender);
-            if (auto.language && auto.language !== 'molang') { // Prevent Molang bias
-                if (auto.language === 'json') finalLang = 'json-bedrock';
-                else finalLang = auto.language;
-            }
+            // Default to plaintext-molang if auto-detect fails, 
+            // ensuring Molang in text is always highlighted.
+            finalLang = 'plaintext-molang'; 
         }
     }
 
@@ -212,10 +245,10 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
         if (hljs.getLanguage(finalLang)) {
             setHighlightedHtml(hljs.highlight(codeToRender, { language: finalLang }).value);
         } else {
-            setHighlightedHtml(hljs.highlightAuto(codeToRender).value);
+            setHighlightedHtml(hljs.highlight(codeToRender, { language: 'plaintext-molang' }).value);
         }
     } catch (e) {
-        setHighlightedHtml(hljs.highlightAuto(codeToRender).value);
+        setHighlightedHtml(hljs.highlight(codeToRender, { language: 'plaintext-molang' }).value);
     }
 
   }, [code, language]);
@@ -227,7 +260,6 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
   };
 
   return (
-    // Mac Style - Bluish Dark Theme
     <div className="relative group my-5 rounded-xl overflow-hidden bg-[#23272e] border border-[#3b4252] shadow-2xl font-sans">
       <div className="flex items-center justify-between px-4 py-3 bg-[#282c34] border-b border-[#3b4252]">
         <div className="flex items-center gap-2">
@@ -324,11 +356,10 @@ export const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => 
   const renderInline = (text: string) => {
     return text
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-      // Fixed: Markdown styling using neutral/bright colors, NOT code syntax colors
       .replace(/`([^`]+)`/g, '<code class="bg-[#2c313a] text-[#98c379] px-1.5 py-0.5 rounded text-sm font-mono border border-[#3e4451] mx-1">$1</code>')
       .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" class="rounded-xl my-4 w-full shadow-lg border border-[#3e4451]"/>')
-      .replace(/\*\*(.*?)\*\*/g, '<strong class="text-[#FFFFFF] font-bold">$1</strong>') // White for bold
-      .replace(/\*(.*?)\*/g, '<em class="text-[#BBBBBB] italic font-serif">$1</em>') // Light Grey for italic
+      .replace(/\*\*(.*?)\*\*/g, '<strong class="text-[#FFFFFF] font-bold">$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em class="text-[#BBBBBB] italic font-serif">$1</em>')
       .replace(/~~(.*?)~~/g, '<del class="text-[#666] decoration-1">$1</del>')
       .replace(/%%(.*?)\|(.*?)%%/g, '<span style="font-family: \'$1\', sans-serif;">$2</span>')
       .replace(/\[(?:造字|zaozi)\s*[:：]\s*([a-zA-Z0-9]+)\s*[|｜]\s*(.*?)\]/gi, '') 
@@ -367,11 +398,9 @@ const renderTextBlocks = (text: string, inlineParser: (s: string) => string) => 
   return text.split('\n').map((line, idx) => {
     const trimmed = line.trim();
     if (!trimmed) return <div key={idx} className="h-2" />;
-    // Fixed: Headers use White/Grey scale, no code colors
     if (trimmed.startsWith('# ')) return <h1 key={idx} className="text-3xl font-bold text-[#FFFFFF] mt-8 mb-4 pb-2 border-b border-[#3e4451]" dangerouslySetInnerHTML={{__html: inlineParser(trimmed.slice(2))}} />;
     if (trimmed.startsWith('## ')) return <h2 key={idx} className="text-2xl font-semibold text-[#EEEEEE] mt-6 mb-3" dangerouslySetInnerHTML={{__html: inlineParser(trimmed.slice(3))}} />;
     if (trimmed.startsWith('### ')) return <h3 key={idx} className="text-xl font-medium text-[#DDDDDD] mt-4 mb-2" dangerouslySetInnerHTML={{__html: inlineParser(trimmed.slice(4))}} />;
-    // Fixed: Blockquote uses standard grey
     if (trimmed.startsWith('> ')) return <blockquote key={idx} className="border-l-4 border-[#5c6370] bg-[#2c313a]/50 pl-4 py-2 my-2 rounded-r italic text-[#BBBBBB]"><span dangerouslySetInnerHTML={{__html: inlineParser(trimmed.slice(2))}} /></blockquote>;
     if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) return <div key={idx} className="flex gap-2 ml-2 my-1"><span className="text-[#61afef] font-bold">•</span><span className="flex-1 break-words leading-7" dangerouslySetInnerHTML={{__html: inlineParser(trimmed.slice(2))}} /></div>;
     const orderedMatch = trimmed.match(/^(\d+)\.\s+(.*)/);
