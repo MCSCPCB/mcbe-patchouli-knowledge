@@ -41,7 +41,7 @@ hljs.registerLanguage('mcfunction', (hljs) => ({
   contains: [
     hljs.HASH_COMMENT_MODE,
     { 
-      // Main Commands
+      // Main Commands (Ultimate Collection)
       className: 'keyword', 
       begin: /^\s*\/?\b(execute|scoreboard|data|give|summon|kill|tp|teleport|say|tellraw|title|advancement|recipe|function|schedule|tag|team|bossbar|effect|enchant|experience|fill|fillbiome|gamemode|gamerule|help|item|kick|list|locate|loot|msg|particle|place|playsound|publish|reload|ride|save-all|save-off|save-on|seed|setblock|setidletimeout|setworldspawn|spawnpoint|spectate|spreadplayers|stop|stopsound|teammsg|time|tm|trigger|w|weather|worldborder|xp|damage|inputpermission|jfr|perf|camera|dialogue|event|fog|mobevent|music|playanimation|structure|tickingarea|volumearea|return|transfer|random)\b/ 
     },
@@ -107,9 +107,10 @@ hljs.registerLanguage('json-bedrock', (hljs) => ({
     hljs.C_BLOCK_COMMENT_MODE,
     
     // 1. Top Level & Structural Keys (Purple/Magenta)
+    // Added: geometry, textures, materials, identifier
     {
       className: 'keyword', 
-      begin: /"(format_version|minecraft:[a-z0-9_.-]+|components|description|events|component_groups|states|permutations|bones|cubes|locators|poly_mesh|physics|texture_meshes|scripts|render_controllers|animations|animation_controllers)"(?=\s*:)/
+      begin: /"(format_version|minecraft:[a-z0-9_.-]+|components|description|events|component_groups|states|permutations|bones|cubes|locators|poly_mesh|physics|texture_meshes|scripts|render_controllers|animations|animation_controllers|geometry|textures|materials|identifier|identifiers)"(?=\s*:)/
     },
     
     // 2. UI & Functional Keys (Blue/Cyan - via 'built_in')
@@ -119,14 +120,14 @@ hljs.registerLanguage('json-bedrock', (hljs) => ({
     },
     
     // 3. Standard Keys (Red/Orange - via 'attr')
-    // IMPROVED: Handles escaped characters correctly
+    // Correctly handles escaped quotes inside keys
     {
       className: 'attr', 
       begin: /"(?:[^\\"\n]|\\.)*"(?=\s*:)/,
     },
     
-    // 4. Resource Location Values (Cyan - via 'symbol') - e.g. "minecraft:apple" or "addon:item"
-    // IMPROVED: Supports any namespaced identifier
+    // 4. Resource Location Values (Cyan - via 'symbol')
+    // Supports custom namespaces (e.g. "sny:default")
     {
         className: 'symbol',
         begin: /"[a-z0-9_.-]+:[a-z0-9_./-]+"/
@@ -138,12 +139,12 @@ hljs.registerLanguage('json-bedrock', (hljs) => ({
       begin: /"/, end: /"/,
       contains: [
         hljs.BACKSLASH_ESCAPE,
-        // Detect Molang Patterns inside strings
+        // Detect Molang Patterns inside strings (e.g. "t.anim = ...")
         {
           subLanguage: 'molang',
           begin: /\b(query|math|variable|t|c|q|v)\./,
           end: /"/, // Stop at the closing quote of the string
-          returnEnd: true, // Don't consume the quote
+          returnEnd: true, 
           excludeEnd: true
         }
       ]
@@ -216,30 +217,32 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
 
   // Improved Detection Logic
   const detectLanguage = (codeSnippet: string) => {
-    const c = codeSnippet.trim();
+    // 0. Clean comments (inline // or block /* */) from start to identify structure
+    // This allows detecting JSON that starts with a comment header
+    const clean = codeSnippet.replace(/^(\s*(\/\/.*|\/\*[\s\S]*?\*\/))*/, '').trim();
     
     // 1. JSON (Block OR Snippet like "key": value)
-    if (c.startsWith('{') || c.startsWith('[')) return 'json-bedrock';
-    // IMPROVED: Matches any quoted key followed by colon (supports namespaces like "minecraft:shooter")
-    if (/^"(?:[^"\\]|\\.)*"\s*:/.test(c)) return 'json-bedrock';
+    if (clean.startsWith('{') || clean.startsWith('[')) return 'json-bedrock';
+    if (/^"(?:[^"\\]|\\.)*"\s*:/.test(clean)) return 'json-bedrock';
     
     // 2. JS/TS (Keywords)
-    if (/\b(const|let|var|function|import|export|return|class|interface|=>)\b/.test(c)) {
-        if (c.includes('interface') || c.includes('type ')) return 'typescript';
+    if (/\b(const|let|var|function|import|export|return|class|interface|=>)\b/.test(codeSnippet)) {
+        if (codeSnippet.includes('interface') || codeSnippet.includes('type ')) return 'typescript';
         return 'javascript';
     }
 
-    // 3. McFunction (Expanded Commands to Ultimate List)
-    if (/^\s*\/?(execute|scoreboard|data|give|summon|kill|tp|teleport|say|tellraw|title|advancement|recipe|function|schedule|tag|team|bossbar|effect|enchant|experience|fill|fillbiome|gamemode|gamerule|help|item|kick|list|locate|loot|msg|particle|place|playsound|publish|reload|ride|save-all|save-off|save-on|seed|setblock|setidletimeout|setworldspawn|spawnpoint|spectate|spreadplayers|stop|stopsound|teammsg|time|tm|trigger|w|weather|worldborder|xp|damage|inputpermission|jfr|perf|camera|dialogue|event|fog|mobevent|music|playanimation|structure|tickingarea|volumearea|return|transfer|random)\b/m.test(c)) return 'mcfunction';
+    // 3. McFunction (Expanded Commands)
+    if (/^\s*\/?(execute|scoreboard|data|give|summon|kill|tp|teleport|say|tellraw|title|advancement|recipe|function|schedule|tag|team|bossbar|effect|enchant|experience|fill|fillbiome|gamemode|gamerule|help|item|kick|list|locate|loot|msg|particle|place|playsound|publish|reload|ride|save-all|save-off|save-on|seed|setblock|setidletimeout|setworldspawn|spawnpoint|spectate|spreadplayers|stop|stopsound|teammsg|time|tm|trigger|w|weather|worldborder|xp|damage|inputpermission|jfr|perf|camera|dialogue|event|fog|mobevent|music|playanimation|structure|tickingarea|volumearea|return|transfer|random)\b/m.test(codeSnippet)) return 'mcfunction';
     
     // 4. Molang (STRICT)
-    if (/\b(query|math|variable|geometry|texture)\.[a-zA-Z0-9_]+/.test(c)) return 'molang';
-    if (c.includes('v.') || c.includes('q.') || c.includes('t.')) {
-        if (c.includes('?') && c.includes(':')) return 'molang'; // ternary check
+    // Only detect if it matches Molang keywords AND isn't identified as JSON
+    if (/\b(query|math|variable|geometry|texture)\.[a-zA-Z0-9_]+/.test(codeSnippet)) return 'molang';
+    if (codeSnippet.includes('v.') || codeSnippet.includes('q.') || codeSnippet.includes('t.')) {
+        if (codeSnippet.includes('?') && codeSnippet.includes(':')) return 'molang';
     }
     
     // 5. Lang File
-    if (/^[\w\.]+=[^\n]+$/m.test(c) && !c.includes(';') && !c.includes('{')) return 'lang';
+    if (/^[\w\.]+=[^\n]+$/m.test(codeSnippet) && !codeSnippet.includes(';') && !codeSnippet.includes('{')) return 'lang';
 
     return null;
   };
@@ -251,8 +254,12 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
     // Auto Format JSON
     if (finalLang === 'json-bedrock') {
         try {
-            if ((code.startsWith('{') || code.startsWith('[')) && !code.includes('\n')) {
-                const parsed = JSON.parse(code);
+            // Only auto-format if it looks like a minified or raw JSON object block
+            const clean = code.replace(/^(\s*(\/\/.*|\/\*[\s\S]*?\*\/))*/, '').trim();
+            if ((clean.startsWith('{') || clean.startsWith('[')) && !code.includes('\n')) {
+                const parsed = JSON.parse(code); // parse original code (assuming comments are valid in Bedrock but maybe not for JSON.parse)
+                // Note: Standard JSON.parse fails on comments. 
+                // We leave it as is if it fails, assuming user wants raw view.
                 codeToRender = JSON.stringify(parsed, null, 2);
             }
         } catch (e) { /* ignore */ }
