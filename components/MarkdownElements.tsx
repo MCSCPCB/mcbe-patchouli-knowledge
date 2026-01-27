@@ -6,7 +6,7 @@ import 'highlight.js/styles/atom-one-dark.css';
 // 1. Minecraft 深度语法支持 (Enhanced)
 // ==========================================
 
-// --- Shared Molang Rules (Reuse across languages) ---
+// --- Shared Molang Rules ---
 const MOLANG_RULES = [
   { className: 'built_in', begin: /\b(query|math|variable|texture|temp|geometry|material|array|context|c|q|v|t)\.[a-zA-Z0-9_]+/ },
   { className: 'keyword', begin: /\b(return|loop|for_each|break|continue|this)\b/ },
@@ -21,24 +21,18 @@ hljs.registerLanguage('mcfunction', (hljs) => ({
   case_insensitive: true,
   contains: [
     { className: 'comment', begin: /#.*/ },
-    // Commands
     { 
       className: 'keyword', 
       begin: /^\s*\/?\b(execute|scoreboard|data|give|summon|kill|tp|teleport|say|tellraw|title|advancement|recipe|function|schedule|tag|team|bossbar|effect|enchant|experience|fill|fillbiome|gamemode|gamerule|help|item|kick|list|locate|loot|msg|particle|place|playsound|publish|reload|ride|save-all|save-off|save-on|seed|setblock|setidletimeout|setworldspawn|spawnpoint|spectate|spreadplayers|stop|stopsound|teammsg|time|tm|trigger|w|weather|worldborder|xp|damage|inputpermission|jfr|perf|camera|dialogue|event|fog|mobevent|music|playanimation|structure|tickingarea|volumearea|return|transfer|random)\b/ 
     },
-    // Sub-commands
     { 
       className: 'literal', 
       begin: /\b(run|as|at|align|anchored|if|unless|store|result|success|matches|facing|rotated|positioned|in|dimension|type|name|tags|scores|level|distance|x|y|z|dx|dy|dz|limit|sort|gamemode|nbt|true|false|on|origin)\b/ 
     },
-    // Selectors
     { className: 'variable', begin: /@[aeprs](?:\[([^\]]*)\])?/ }, 
-    // Namespaces
     { className: 'symbol', begin: /\b([a-z0-9_.-]+:[a-z0-9_./-]+)\b/ }, 
-    // Coordinates & Numbers
     { className: 'number', begin: /[~^](-?\d+(\.\d+)?)?|\b-?\d+(\.\d+)?[bdfilsw]?\b/ }, 
     { className: 'string', begin: /"[^"]*"/ },
-    // Inject Molang support (e.g. inside chat or scoreboards)
     ...MOLANG_RULES
   ]
 }));
@@ -52,7 +46,6 @@ hljs.registerLanguage('molang', (hljs) => ({
     hljs.C_NUMBER_MODE,
     { className: 'string', begin: /'/, end: /'/ },
     ...MOLANG_RULES,
-    // Scoped Access explicitly
     {
       className: 'built_in',
       begin: /\b(query|math|variable|texture|temp|geometry|material|array|context|c|q|v|t)(?=\.)/
@@ -66,33 +59,35 @@ hljs.registerLanguage('json-bedrock', (hljs) => ({
   name: 'Bedrock JSON',
   aliases: ['json', 'bedrock', 'jsonui', 'ui'],
   contains: [
-    // 1. Special Keys (Minecraft Keywords) - High Priority
-    // e.g., "format_version", "minecraft:block", "components" -> Purple/Keyword color
+    // 1. Special Keys (Purple)
     {
-      className: 'keyword', // Map to keyword color
+      className: 'keyword', 
       begin: /"(format_version|minecraft:[a-z0-9_.-]+|components|description|events|component_groups|states|permutations|bones|cubes|locators|poly_mesh|physics|texture_meshes)"(?=\s*:)/
     },
-    // 2. UI Keys (JSON UI)
+    // 2. UI Keys (Blue/Purple)
     {
       className: 'keyword',
       begin: /"(type|controls|bindings|visible|texture|offset|size|layer|alpha|anchor_from|anchor_to|text|font_type|font_scale|color|ignored|variables|modifications)"(?=\s*:)/
     },
-    // 3. Standard Keys - Normal Priority
+    // 3. Standard Keys (Red/Orange)
     {
-      className: 'attr', // Map to Attribute color (Red/Orange)
+      className: 'attr', 
       begin: /"(\\[\\"\"]|[^\\\"\n])*"(?=\s*:)/,
     },
-    // 4. Values with Molang Injection
+    // 4. Resource Location Values (Cyan/Symbol) - e.g. "minecraft:apple"
+    {
+        className: 'symbol',
+        begin: /"minecraft:[a-z0-9_.-]+"/
+    },
+    // 5. Values with Molang Injection
     {
       className: 'string',
       begin: /"/, end: /"/,
       contains: [
         hljs.BACKSLASH_ESCAPE,
-        // Inject Molang highlighting inside JSON strings
         {
           subLanguage: 'molang',
           begin: /[^\"]+/,
-          // Only trigger if it looks like Molang
           relevance: 0 
         }
       ]
@@ -100,7 +95,7 @@ hljs.registerLanguage('json-bedrock', (hljs) => ({
     hljs.C_NUMBER_MODE,
     hljs.C_BLOCK_COMMENT_MODE,
     hljs.C_LINE_COMMENT_MODE,
-    { className: 'literal', begin: /\b(true|false|null)\b/ }, // Booleans -> Cyan
+    { className: 'literal', begin: /\b(true|false|null)\b/ },
     { className: 'punctuation', begin: /[\{\[\}\],:]/ }
   ]
 }));
@@ -131,7 +126,6 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
   const [detectedLang, setDetectedLang] = useState('plaintext');
   const [highlightedHtml, setHighlightedHtml] = useState('');
 
-  // Language Normalization
   const normalizeLang = (lang: string) => {
     const lower = lang?.toLowerCase() || '';
     const map: Record<string, string> = {
@@ -161,20 +155,26 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
   const detectLanguage = (codeSnippet: string) => {
     const c = codeSnippet.trim();
     
-    // 1. JSON (Strict starts)
+    // 1. JSON (Block OR Snippet like "key": value)
     if (c.startsWith('{') || c.startsWith('[')) return 'json-bedrock';
+    if (/^"[\w\d_]+" *:/.test(c)) return 'json-bedrock';
     
-    // 2. McFunction (Commands)
-    if (/^\s*\/?(execute|scoreboard|data|give|summon|tag|function|fill|setblock)\b/m.test(c)) return 'mcfunction';
+    // 2. JS/TS (Keywords)
+    if (/\b(const|let|var|function|import|export|return|class|interface|=>)\b/.test(c)) {
+        if (c.includes('interface') || c.includes('type ')) return 'typescript';
+        return 'javascript';
+    }
+
+    // 3. McFunction (Commands)
+    if (/^\s*\/?(execute|scoreboard|data|give|summon|tag|function|fill|setblock|say|title)\b/m.test(c)) return 'mcfunction';
     
-    // 3. Molang (STRICT: Must have query/math/variable namespace)
-    // Avoid detecting "v.x" or "t.y" as Molang in JS files
+    // 4. Molang (STRICT)
     if (/\b(query|math|variable)\.[a-zA-Z0-9_]+/.test(c)) return 'molang';
     
-    // 4. Lang File
+    // 5. Lang File
     if (/^[\w\.]+=[^\n]+$/m.test(c) && !c.includes(';') && !c.includes('{')) return 'lang';
 
-    return null; // Fallback to auto or plaintext
+    return null;
   };
 
   useEffect(() => {
@@ -197,10 +197,8 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
         if (heuristic) {
             finalLang = heuristic;
         } else {
-            // Standard auto-detect
             const auto = hljs.highlightAuto(codeToRender);
-            // Bias: Don't trust 'molang' from standard auto-detect unless we are sure
-            if (auto.language && auto.language !== 'molang') {
+            if (auto.language && auto.language !== 'molang') { // Prevent Molang bias
                 if (auto.language === 'json') finalLang = 'json-bedrock';
                 else finalLang = auto.language;
             }
@@ -229,19 +227,14 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
   };
 
   return (
-    // Mac Style Container - Bluish Dark Theme (One Dark / Nord inspired)
-    // bg-[#23272e] matches the user request for "Bluish" (Atom One Dark background)
-    <div className="relative group my-5 rounded-xl overflow-hidden bg-[#23272e] border border-[#3e4451] shadow-2xl font-sans">
-      {/* Mac Window Header - Slightly Lighter Blue-Grey */}
-      <div className="flex items-center justify-between px-4 py-3 bg-[#282c34] border-b border-[#3e4451]">
-        {/* Left: Mac Dots (Perfected Colors) */}
+    // Mac Style - Bluish Dark Theme
+    <div className="relative group my-5 rounded-xl overflow-hidden bg-[#23272e] border border-[#3b4252] shadow-2xl font-sans">
+      <div className="flex items-center justify-between px-4 py-3 bg-[#282c34] border-b border-[#3b4252]">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-[#FF5F56] border border-[#E0443E] shadow-sm" /> 
-          <div className="w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#DEA123] shadow-sm" /> 
-          <div className="w-3 h-3 rounded-full bg-[#27C93F] border border-[#1AAB29] shadow-sm" /> 
+          <div className="w-3 h-3 rounded-full bg-[#FF5F56] border border-[#E0443E]" /> 
+          <div className="w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#DEA123]" /> 
+          <div className="w-3 h-3 rounded-full bg-[#27C93F] border border-[#1AAB29]" /> 
         </div>
-        
-        {/* Right: Language Label & Copy */}
         <div className="flex items-center gap-3">
           <span className="text-[12px] font-mono text-[#abb2bf] group-hover:text-[#fff] transition-colors select-none">
             {getDisplayLabel(detectedLang)}
@@ -258,15 +251,13 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
           </button>
         </div>
       </div>
-      
-      {/* Code Area - Menlo Font Stack, Bluish Background */}
-      <div className="relative overflow-x-auto scrollbar-thin scrollbar-thumb-[#3e4451] scrollbar-track-transparent">
+      <div className="relative overflow-x-auto scrollbar-thin scrollbar-thumb-[#3b4252] scrollbar-track-transparent">
         <pre className="p-4 m-0">
           <code 
             className={`text-[13px] leading-relaxed whitespace-pre language-${detectedLang}`}
             style={{ 
               fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-              color: '#abb2bf' // One Dark standard text color
+              color: '#abb2bf' 
             }}
             dangerouslySetInnerHTML={{ __html: highlightedHtml }}
           />
@@ -333,11 +324,12 @@ export const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => 
   const renderInline = (text: string) => {
     return text
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      // Fixed: Markdown styling using neutral/bright colors, NOT code syntax colors
       .replace(/`([^`]+)`/g, '<code class="bg-[#2c313a] text-[#98c379] px-1.5 py-0.5 rounded text-sm font-mono border border-[#3e4451] mx-1">$1</code>')
       .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" class="rounded-xl my-4 w-full shadow-lg border border-[#3e4451]"/>')
-      .replace(/\*\*(.*?)\*\*/g, '<strong class="text-[#e5c07b] font-semibold">$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em class="text-[#c678dd] font-serif">$1</em>')
-      .replace(/~~(.*?)~~/g, '<del class="text-[#5c6370] decoration-1">$1</del>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong class="text-[#FFFFFF] font-bold">$1</strong>') // White for bold
+      .replace(/\*(.*?)\*/g, '<em class="text-[#BBBBBB] italic font-serif">$1</em>') // Light Grey for italic
+      .replace(/~~(.*?)~~/g, '<del class="text-[#666] decoration-1">$1</del>')
       .replace(/%%(.*?)\|(.*?)%%/g, '<span style="font-family: \'$1\', sans-serif;">$2</span>')
       .replace(/\[(?:造字|zaozi)\s*[:：]\s*([a-zA-Z0-9]+)\s*[|｜]\s*(.*?)\]/gi, '') 
       .replace(/:([a-zA-Z0-9]+):/g, (match, pinyin) => zaoziRegistry[pinyin] || match)
@@ -375,13 +367,15 @@ const renderTextBlocks = (text: string, inlineParser: (s: string) => string) => 
   return text.split('\n').map((line, idx) => {
     const trimmed = line.trim();
     if (!trimmed) return <div key={idx} className="h-2" />;
-    if (trimmed.startsWith('# ')) return <h1 key={idx} className="text-3xl font-bold text-[#e06c75] mt-8 mb-4 pb-2 border-b border-[#3e4451]" dangerouslySetInnerHTML={{__html: inlineParser(trimmed.slice(2))}} />;
-    if (trimmed.startsWith('## ')) return <h2 key={idx} className="text-2xl font-semibold text-[#e5c07b] mt-6 mb-3" dangerouslySetInnerHTML={{__html: inlineParser(trimmed.slice(3))}} />;
-    if (trimmed.startsWith('### ')) return <h3 key={idx} className="text-xl font-medium text-[#61afef] mt-4 mb-2" dangerouslySetInnerHTML={{__html: inlineParser(trimmed.slice(4))}} />;
-    if (trimmed.startsWith('> ')) return <blockquote key={idx} className="border-l-4 border-[#5c6370] bg-[#2c313a]/50 pl-4 py-2 my-2 rounded-r italic text-[#98c379]"><span dangerouslySetInnerHTML={{__html: inlineParser(trimmed.slice(2))}} /></blockquote>;
-    if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) return <div key={idx} className="flex gap-2 ml-2 my-1"><span className="text-[#56b6c2] font-bold">•</span><span className="flex-1 break-words leading-7" dangerouslySetInnerHTML={{__html: inlineParser(trimmed.slice(2))}} /></div>;
+    // Fixed: Headers use White/Grey scale, no code colors
+    if (trimmed.startsWith('# ')) return <h1 key={idx} className="text-3xl font-bold text-[#FFFFFF] mt-8 mb-4 pb-2 border-b border-[#3e4451]" dangerouslySetInnerHTML={{__html: inlineParser(trimmed.slice(2))}} />;
+    if (trimmed.startsWith('## ')) return <h2 key={idx} className="text-2xl font-semibold text-[#EEEEEE] mt-6 mb-3" dangerouslySetInnerHTML={{__html: inlineParser(trimmed.slice(3))}} />;
+    if (trimmed.startsWith('### ')) return <h3 key={idx} className="text-xl font-medium text-[#DDDDDD] mt-4 mb-2" dangerouslySetInnerHTML={{__html: inlineParser(trimmed.slice(4))}} />;
+    // Fixed: Blockquote uses standard grey
+    if (trimmed.startsWith('> ')) return <blockquote key={idx} className="border-l-4 border-[#5c6370] bg-[#2c313a]/50 pl-4 py-2 my-2 rounded-r italic text-[#BBBBBB]"><span dangerouslySetInnerHTML={{__html: inlineParser(trimmed.slice(2))}} /></blockquote>;
+    if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) return <div key={idx} className="flex gap-2 ml-2 my-1"><span className="text-[#61afef] font-bold">•</span><span className="flex-1 break-words leading-7" dangerouslySetInnerHTML={{__html: inlineParser(trimmed.slice(2))}} /></div>;
     const orderedMatch = trimmed.match(/^(\d+)\.\s+(.*)/);
-    if (orderedMatch) return <div key={idx} className="flex gap-2 ml-2 my-1"><span className="text-[#56b6c2] font-mono font-bold">{orderedMatch[1]}.</span><span className="flex-1 break-words leading-7" dangerouslySetInnerHTML={{__html: inlineParser(orderedMatch[2])}} /></div>;
+    if (orderedMatch) return <div key={idx} className="flex gap-2 ml-2 my-1"><span className="text-[#61afef] font-mono font-bold">{orderedMatch[1]}.</span><span className="flex-1 break-words leading-7" dangerouslySetInnerHTML={{__html: inlineParser(orderedMatch[2])}} /></div>;
     return <p key={idx} className="leading-7 mb-2 break-words text-justify" style={{ overflowWrap: 'anywhere' }} dangerouslySetInnerHTML={{__html: inlineParser(trimmed)}} />;
   });
 };
