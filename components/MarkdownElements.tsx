@@ -617,8 +617,8 @@ const createZaoziHTML = (rawDesc: string) => {
     if (!ast) return rawDesc;
     
     const innerHTML = renderIDSNode(ast);
-    return `<span class="zaozi-container inline-flex items-center justify-center w-[1em] h-[1em] relative mx-0 select-none text-inherit" title="造字：${rawDesc} [${idsString}]" style="vertical-align: -0.12em;">
-      <span class="w-full h-full relative block" style="transform: scale(1.15) translateY(-0.06em); transform-origin: center;">
+    return `<span class="zaozi-container inline-block w-[1em] h-[1em] relative mx-0 select-none text-inherit" title="造字：${rawDesc} [${idsString}]" style="vertical-align: text-bottom;">
+      <span class="w-full h-full relative block" style="transform: scale(1.15) translateY(-0.15em); transform-origin: center;">
         ${innerHTML}
       </span>
     </span>`;
