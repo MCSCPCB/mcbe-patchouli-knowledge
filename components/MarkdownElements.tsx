@@ -546,7 +546,7 @@ const renderIDSNode = (node: IDSNode): string => {
   if (val === '⿴') { 
     return `<span class="relative w-full h-full block">
       <span class="absolute inset-0 flex items-center justify-center scale-[0.9]">${p1}</span>
-      <span class="absolute inset-0 flex items-center justify-center scale-[0.4]">${p2}</span>
+      <span class="absolute inset-0 flex items-center justify-center scale-[0.5]">${p2}</span>
     </span>`;
   }
   
@@ -554,7 +554,7 @@ const renderIDSNode = (node: IDSNode): string => {
   if (val === '⿵') { 
     return `<span class="relative w-full h-full block">
       <span class="absolute inset-0 flex items-start justify-center scale-[0.9] origin-top translate-y-[2px]">${p1}</span>
-      <span class="absolute inset-0 flex items-end justify-center scale-[0.4] origin-bottom pb-[5%]">${p2}</span>
+      <span class="absolute inset-0 flex items-end justify-center scale-[0.5] origin-bottom pb-[6%]">${p2}</span>
     </span>`;
   }
   
@@ -562,7 +562,7 @@ const renderIDSNode = (node: IDSNode): string => {
   if (val === '⿶') { 
     return `<span class="relative w-full h-full block">
       <span class="absolute inset-0 flex items-end justify-center scale-[0.9] origin-bottom translate-y-[-2px]">${p1}</span>
-      <span class="absolute inset-0 flex items-start justify-center scale-[0.4] origin-top pt-[5%]">${p2}</span>
+      <span class="absolute inset-0 flex items-start justify-center scale-[0.5] origin-top pt-[6%]">${p2}</span>
     </span>`;
   }
   
@@ -570,7 +570,7 @@ const renderIDSNode = (node: IDSNode): string => {
   if (val === '⿷') { 
     return `<span class="relative w-full h-full block">
       <span class="absolute inset-0 flex items-center justify-start scale-[0.9] origin-left translate-x-[2px]">${p1}</span>
-      <span class="absolute inset-0 flex items-center justify-center scale-[0.4] translate-x-[15%]">${p2}</span>
+      <span class="absolute inset-0 flex items-center justify-center scale-[0.5] translate-x-[15%]">${p2}</span>
     </span>`;
   }
   
