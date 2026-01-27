@@ -482,91 +482,23 @@ const renderIDSNode = (node: IDSNode): string => {
   // 基础绝对定位容器
   const baseAbs = "absolute inset-0";
 
-  // --- 1. 左右结构 (⿰) ---
-  // 左侧通常较窄 (35-40%)，右侧较宽。使用 flex 挤压而不是硬性 scale，效果更自然
-  if (val === '⿰') {
-    return `<span class="${baseAbs} flex flex-row items-center justify-center">
-      <span class="flex items-center justify-center w-[40%] h-full origin-left scale-[0.9]">${p1}</span>
-      <span class="flex items-center justify-center w-[60%] h-full origin-right scale-[0.95]">${p2}</span>
-    </span>`;
-  }
-
-  // --- 2. 上下结构 (⿱) ---
-  // 上方通常较扁 (35-40%)
-  if (val === '⿱') {
-    return `<span class="${baseAbs} flex flex-col items-center justify-center">
-      <span class="flex items-end justify-center w-full h-[40%] origin-top scale-[0.9] pb-[2%]">${p1}</span>
-      <span class="flex items-start justify-center w-full h-[60%] origin-bottom scale-[0.95] pt-[2%]">${p2}</span>
-    </span>`;
-  }
-
-  // --- 3. 三分结构 ---
+  // --- 三分结构 (Keeping separate as standard doesn't define 3-part logic) ---
   if (val === '⿲') return `<span class="${baseAbs} flex flex-row"><span class="flex-1 h-full scale-x-[0.7]">${p1}</span><span class="flex-1 h-full scale-x-[0.7]">${p2}</span><span class="flex-1 h-full scale-x-[0.7]">${p3}</span></span>`;
   if (val === '⿳') return `<span class="${baseAbs} flex flex-col"><span class="flex-1 w-full scale-y-[0.7]">${p1}</span><span class="flex-1 w-full scale-y-[0.7]">${p2}</span><span class="flex-1 w-full scale-y-[0.7]">${p3}</span></span>`;
 
-  // --- 4. 包围结构 (Smart Overlays) ---
-  
-  // ⿴ 全包 (国) - 外部全大，内部缩小居中
-  if (val === '⿴') { 
+  // --- 统一"病"字渲染标准 (The "Sick" Standard) ---
+  // 强制所有二元结构（左右、上下、各类包围）都使用相同的错位叠加逻辑
+  // 包含: ⿰, ⿱, ⿴, ⿵, ⿶, ⿷, ⿸, ⿹, ⿺, ⿻
+  if (['⿰', '⿱', '⿴', '⿵', '⿶', '⿷', '⿸', '⿹', '⿺', '⿻'].includes(val)) {
     return `<span class="relative w-full h-full block">
-      <span class="absolute inset-0 flex items-center justify-center scale-[1.0]">${p1}</span>
-      <span class="absolute inset-0 flex items-center justify-center scale-[0.55] translate-y-[1px]">${p2}</span>
-    </span>`;
-  }
-  
-  // ⿵ 上三包 (门, 同) - 外部撑满，内部下沉
-  if (val === '⿵') { 
-    return `<span class="relative w-full h-full block">
-      <span class="absolute inset-0 flex items-start justify-center scale-[1.0] pt-[1px]">${p1}</span>
-      <span class="absolute inset-0 flex items-end justify-center scale-[0.55] pb-[10%]">${p2}</span>
-    </span>`;
-  }
-  
-  // ⿶ 下三包 (凶) - 外部撑满，内部上浮
-  if (val === '⿶') { 
-    return `<span class="relative w-full h-full block">
-      <span class="absolute inset-0 flex items-end justify-center scale-[1.0] pb-[1px]">${p1}</span>
-      <span class="absolute inset-0 flex items-start justify-center scale-[0.6] pt-[5%]">${p2}</span>
-    </span>`;
-  }
-  
-  // ⿷ 左三包 (区) - 内容靠右
-  if (val === '⿷') { 
-    return `<span class="relative w-full h-full block">
-      <span class="absolute inset-0 flex items-center justify-start scale-[1.0] ml-[-2px]">${p1}</span>
-      <span class="absolute inset-0 flex items-center justify-center scale-[0.55] translate-x-[20%]">${p2}</span>
-    </span>`;
-  }
-  
-  // ⿸ 左上包 (广, 病) - 关键优化：部首居左上，内容居右下，紧凑堆叠
-  if (val === '⿸') { 
-    return `<span class="relative w-full h-full block">
-      <span class="absolute inset-0 flex items-start justify-start scale-[0.9] origin-top-left translate-x-[2px] translate-y-[2px]">${p1}</span>
-      <span class="absolute right-0 bottom-0 w-full h-full flex items-end justify-end scale-[0.6] origin-bottom-right pr-[5%] pb-[5%]">${p2}</span>
-    </span>`;
-  }
-  
-  // ⿹ 右上包 (气) - 部首居右上，内容居左下
-  if (val === '⿹') { 
-    return `<span class="relative w-full h-full block">
-      <span class="absolute inset-0 flex items-start justify-end scale-[0.9] origin-top-right translate-x-[-2px] translate-y-[2px]">${p1}</span>
-      <span class="absolute left-0 bottom-0 w-full h-full flex items-end justify-start scale-[0.6] origin-bottom-left pl-[5%] pb-[5%]">${p2}</span>
-    </span>`;
-  }
-  
-  // ⿺ 左下包 (辶, 走) - 部首居左下，内容居右上
-  if (val === '⿺') { 
-    return `<span class="relative w-full h-full block">
-      <span class="absolute inset-0 flex items-end justify-start scale-[0.9] origin-bottom-left translate-x-[2px] translate-y-[-2px]">${p1}</span>
-      <span class="absolute right-0 top-0 w-full h-full flex items-start justify-end scale-[0.6] origin-top-right pr-[5%] pt-[10%]">${p2}</span>
-    </span>`;
-  }
-  
-  // ⿻ 镶嵌 (爽) - 居中叠加
-  if (val === '⿻') { 
-    return `<span class="relative w-full h-full block">
-      <span class="absolute inset-0 flex items-center justify-center opacity-70 scale-[1.0]">${p1}</span>
-      <span class="absolute inset-0 flex items-center justify-center scale-[0.7] font-bold">${p2}</span>
+      <!-- Part A: Primary (Radical) - Top Left -->
+      <span class="absolute inset-0 flex items-start justify-start scale-[0.9] origin-top-left translate-x-[2px] translate-y-[2px]">
+        ${p1}
+      </span>
+      <!-- Part B: Secondary (Body) - Bottom Right -->
+      <span class="absolute right-0 bottom-0 w-full h-full flex items-end justify-end scale-[0.6] origin-bottom-right pr-[5%] pb-[5%]">
+        ${p2}
+      </span>
     </span>`;
   }
 
