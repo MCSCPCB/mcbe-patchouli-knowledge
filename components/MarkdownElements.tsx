@@ -545,7 +545,7 @@ const renderIDSNode = (node: IDSNode): string => {
   // ⿴ 全包 (国) - 优化：内部由 0.6 -> 0.5
   if (val === '⿴') { 
     return `<span class="relative w-full h-full block">
-      <span class="absolute inset-0 flex items-center justify-center scale-[0.9]">${p1}</span>
+      <span class="absolute inset-0 flex items-end justify-center scale-[0.9]">${p1}</span>
       <span class="absolute inset-0 flex items-center justify-center scale-[0.5]">${p2}</span>
     </span>`;
   }
@@ -553,7 +553,7 @@ const renderIDSNode = (node: IDSNode): string => {
   // ⿵ 上三包 (门, 同) - 优化：内部由 0.6 -> 0.5
   if (val === '⿵') { 
     return `<span class="relative w-full h-full block">
-      <span class="absolute inset-0 flex items-start justify-center scale-[0.9] origin-top translate-y-[2px]">${p1}</span>
+      <span class="absolute inset-0 flex items-end justify-center scale-[0.9] origin-top translate-y-[2px]">${p1}</span>
       <span class="absolute inset-0 flex items-end justify-center scale-[0.5] origin-bottom pb-[50%]">${p2}</span>
     </span>`;
   }
@@ -569,7 +569,7 @@ const renderIDSNode = (node: IDSNode): string => {
   // ⿷ 左三包 (区) - 优化：内部由 0.6 -> 0.5
   if (val === '⿷') { 
     return `<span class="relative w-full h-full block">
-      <span class="absolute inset-0 flex items-center justify-start scale-[0.9] origin-left translate-x-[2px]">${p1}</span>
+      <span class="absolute inset-0 flex items-end justify-start scale-[0.9] origin-left translate-x-[2px]">${p1}</span>
       <span class="absolute inset-0 flex items-center justify-center scale-[0.5] translate-x-[15%]">${p2}</span>
     </span>`;
   }
