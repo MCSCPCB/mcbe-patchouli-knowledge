@@ -527,7 +527,7 @@ const renderIDSNode = (node: IDSNode): string => {
     // 1. ⿰ 左右结构 - 修复：改为底对齐 (items-end)
   if (val === '⿰') {
     return `<span class="relative w-full h-full block">
-      <span class="absolute left-0 top-0 w-[50%] h-full flex items-end justify-start scale-x-[0.5] scale-y-[0.8] origin-bottom-left translate-x-[1px] translate-y-[2px]">${p1}</span>
+      <span class="absolute left-0 top-0 w-[50%] h-full flex items-end justify-start scale-x-[0.5] scale-y-[0.8] origin-bottom-left translate-x-[1px] translate-y-[-2px]">${p1}</span>
       <span class="absolute right-0 top-0 w-[50%] h-full flex items-end justify-end scale-x-[0.7] scale-y-[0.9] origin-bottom-right translate-x-[-2px] translate-y-[0px]">${p2}</span>
     </span>`;
   }
