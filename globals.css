@@ -1,9 +1,35 @@
 @font-face {
-  font-family: '明朝体'; /* 自定义字体名称 */
-  src: url('/fonts/LXGWWenKai-Bold.ttf'); /* 字体文件路径 */
+  font-family: 'hand_writing_default'; /* 自定义字体名称 */
+  src: url('/fonts/QiushuiShotai.ttf'); /* 字体文件路径 */
 }
 
 @font-face {
-  font-family: 'other'; /* 自定义字体名称 */
-  src: url('/fonts/other.ttf'); /* 字体文件路径 */
+  font-family: 'hand_writing_yuri'; /* 自定义字体名称 */
+  src: url('/fonts/yuri.ttf'); /* 字体文件路径 */
 }
+
+@font-face {
+  font-family: 'hand_writing_sayori'; /* 自定义字体名称 */
+  src: url('/fonts/sayori.ttf'); /* 字体文件路径 */
+}
+
+@font-face {
+  font-family: 'ut_title'; /* 自定义字体名称 */
+  src: url('/fonts/undertale.ttf'); /* 字体文件路径 */
+}
+
+@font-face {
+  font-family: 'ut_icon'; /* 自定义字体名称 */
+  src: url('/fonts/undertalebet.ttf'); /* 字体文件路径 */
+}
+
+@font-face {
+  font-family: 'ut_damage'; /* 自定义字体名称 */
+  src: url('/fonts/999.ttf'); /* 字体文件路径 */
+}
+
+@font-face {
+  font-family: 'ut_gaster'; /* 自定义字体名称 */
+  src: url('/fonts/wingdings.ttf'); /* 字体文件路径 */
+}
+
