@@ -613,14 +613,8 @@ const createZaoziHTML = (rawDesc: string) => {
     if (!ast) return rawDesc;
     
     const innerHTML = renderIDSNode(ast);
-    // 容器样式重构：
-    // 1. inline-block: 允许宽高设置
-    // 2. vertical-align: -0.12em 配合 scale 使得底部对齐基线
-    // 3. w-[1em] h-[1em]: 标准字号宽高
-    // 4. mx-0: 移除外边距，与普通文本无缝衔接
-    // 5. scale(1.15): 整体放大以抵消内部结构的缩放，填满字框
-    return `<span class="zaozi-container inline-block w-[1em] h-[1em] relative mx-0 select-none text-inherit" title="造字：${rawDesc} [${idsString}]" style="vertical-align: -0.12em;">
-      <span class="w-full h-full relative block" style="transform: scale(1.15); transform-origin: center;">
+    return `<span class="zaozi-container inline-flex items-center justify-center w-[1em] h-[1em] relative mx-0 select-none text-inherit" title="造字：${rawDesc} [${idsString}]" style="vertical-align: -0.12em;">
+      <span class="w-full h-full relative block" style="transform: scale(1.15) translateY(-0.06em); transform-origin: center;">
         ${innerHTML}
       </span>
     </span>`;
