@@ -479,13 +479,19 @@ const renderIDSNode = (node: IDSNode): string => {
   const p2 = c[1] ? renderIDSNode(c[1]) : '';
   const p3 = c[2] ? renderIDSNode(c[2]) : '';
 
+  // 智能部首判断：大头 vs 小头
+  const radicalVal = c[0]?.val || '';
+  const isBigHead = ['尸', '户', '气'].includes(radicalVal); 
+  // 大头缩小内字，小头保持完美参数 (0.6)
+  const enclosureScale = isBigHead ? 'scale-[0.5]' : 'scale-[0.6]';
+
   // --- A. 包围结构系列 (Enclosure Series) ---
 
   // 1. ⿸ 左上包 (病字标准 - The Gold Standard)
   if (val === '⿸') { 
     return `<span class="relative w-full h-full block">
       <span class="absolute inset-0 flex items-start justify-start scale-[0.9] origin-top-left translate-x-[2px] translate-y-[2px]">${p1}</span>
-      <span class="absolute right-0 bottom-0 w-full h-full flex items-end justify-end scale-[0.6] origin-bottom-right pr-[5%] pb-[5%]">${p2}</span>
+      <span class="absolute right-0 bottom-0 w-full h-full flex items-end justify-end ${enclosureScale} origin-bottom-right pr-[5%] pb-[5%]">${p2}</span>
     </span>`;
   }
   
@@ -493,7 +499,7 @@ const renderIDSNode = (node: IDSNode): string => {
   if (val === '⿹') { 
     return `<span class="relative w-full h-full block">
       <span class="absolute inset-0 flex items-start justify-end scale-[0.9] origin-top-right translate-x-[-2px] translate-y-[2px]">${p1}</span>
-      <span class="absolute left-0 bottom-0 w-full h-full flex items-end justify-start scale-[0.6] origin-bottom-left pl-[5%] pb-[5%]">${p2}</span>
+      <span class="absolute left-0 bottom-0 w-full h-full flex items-end justify-start ${enclosureScale} origin-bottom-left pl-[5%] pb-[5%]">${p2}</span>
     </span>`;
   }
   
@@ -501,43 +507,43 @@ const renderIDSNode = (node: IDSNode): string => {
   if (val === '⿺') { 
     return `<span class="relative w-full h-full block">
       <span class="absolute inset-0 flex items-end justify-start scale-[0.9] origin-bottom-left translate-x-[2px] translate-y-[-2px]">${p1}</span>
-      <span class="absolute right-0 top-0 w-full h-full flex items-start justify-end scale-[0.6] origin-top-right pr-[5%] pt-[5%]">${p2}</span>
+      <span class="absolute right-0 top-0 w-full h-full flex items-start justify-end ${enclosureScale} origin-top-right pr-[5%] pt-[5%]">${p2}</span>
     </span>`;
   }
 
   // --- B. 线性结构系列 (Linear Series) ---
 
-  // 1. ⿰ 左右结构 - 重构：使用病字 P1 标准 + 对称挤压
+  // 1. ⿰ 左右结构 - 重构：使用病字 P1 标准 + 对称挤压 (压扁)
   if (val === '⿰') {
     return `<span class="relative w-full h-full block">
-      <span class="absolute left-0 top-0 w-[50%] h-full flex items-center justify-start scale-[0.9] origin-left translate-x-[2px]">${p1}</span>
-      <span class="absolute right-0 top-0 w-[50%] h-full flex items-center justify-end scale-[0.9] origin-right translate-x-[-2px]">${p2}</span>
+      <span class="absolute left-0 top-0 w-[50%] h-full flex items-center justify-start scale-x-[0.8] scale-y-[0.9] origin-left translate-x-[2px]">${p1}</span>
+      <span class="absolute right-0 top-0 w-[50%] h-full flex items-center justify-end scale-x-[0.8] scale-y-[0.9] origin-right translate-x-[-2px]">${p2}</span>
     </span>`;
   }
 
-  // 2. ⿱ 上下结构 - 重构：使用病字 P1 标准 + 垂直对称
+  // 2. ⿱ 上下结构 - 重构：使用病字 P1 标准 + 垂直对称 (压扁)
   if (val === '⿱') {
     return `<span class="relative w-full h-full block">
-      <span class="absolute top-0 left-0 w-full h-[50%] flex items-start justify-center scale-[0.9] origin-top translate-y-[2px]">${p1}</span>
-      <span class="absolute bottom-0 left-0 w-full h-[50%] flex items-end justify-center scale-[0.9] origin-bottom translate-y-[-2px]">${p2}</span>
+      <span class="absolute top-0 left-0 w-full h-[50%] flex items-start justify-center scale-x-[0.9] scale-y-[0.8] origin-top translate-y-[2px]">${p1}</span>
+      <span class="absolute bottom-0 left-0 w-full h-[50%] flex items-end justify-center scale-x-[0.9] scale-y-[0.8] origin-bottom translate-y-[-2px]">${p2}</span>
     </span>`;
   }
 
   // --- C. 其他特殊包围 (Special Enclosures) ---
   
-  // ⿴ 全包 (国)
+  // ⿴ 全包 (国) - 内字缩小
   if (val === '⿴') { 
     return `<span class="relative w-full h-full block">
       <span class="absolute inset-0 flex items-center justify-center scale-[0.9]">${p1}</span>
-      <span class="absolute inset-0 flex items-center justify-center scale-[0.6]">${p2}</span>
+      <span class="absolute inset-0 flex items-center justify-center scale-[0.5]">${p2}</span>
     </span>`;
   }
   
-  // ⿵ 上三包 (门, 同)
+  // ⿵ 上三包 (门, 同) - 内字缩小
   if (val === '⿵') { 
     return `<span class="relative w-full h-full block">
       <span class="absolute inset-0 flex items-start justify-center scale-[0.9] origin-top translate-y-[2px]">${p1}</span>
-      <span class="absolute inset-0 flex items-end justify-center scale-[0.6] origin-bottom pb-[5%]">${p2}</span>
+      <span class="absolute inset-0 flex items-end justify-center scale-[0.5] origin-bottom pb-[5%]">${p2}</span>
     </span>`;
   }
   
