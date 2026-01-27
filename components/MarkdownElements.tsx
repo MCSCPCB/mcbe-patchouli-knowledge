@@ -587,18 +587,18 @@ const renderIDSNode = (node: IDSNode): string => {
   // ⿲ (森) - 修复：使用 flex 均分 + 统一缩放，不再散开
   if (val === '⿲') {
     return `<span class="absolute inset-0 flex flex-row items-center justify-center w-full h-full">
-        <span class="w-2/5 h-full flex items-center justify-center"><span class="scale-[0.6] scale-y-[1.0]">${p1}</span></span>
-        <span class="w-1/5 h-full flex items-center justify-center"><span class="scale-[0.6] scale-y-[0.6]">${p2}</span></span>
-        <span class="w-2/5 h-full flex items-center justify-center"><span class="scale-[0.6] scale-y-[1.0]">${p3}</span></span>
+        <span class="w-1/3 h-full flex items-center justify-center"><span class="scale-[0.6] scale-y-[1.0] scale-x-[0.2]">${p1}</span></span>
+        <span class="w-1/3 h-full flex items-center justify-center"><span class="scale-[0.6] scale-y-[0.6]">${p2}</span></span>
+        <span class="w-1/3 h-full flex items-center justify-center"><span class="scale-[0.6] scale-y-[1.0] scale-x-[0.2]">${p3}</span></span>
     </span>`;
   }
 
   // ⿳ (晶) - 修复：使用 flex 均分 + 统一缩放，不再散开
   if (val === '⿳') {
     return `<span class="absolute inset-0 flex flex-col items-center justify-center w-full h-full">
-        <span class="h-2/5 w-full flex items-center justify-center"><span class="scale-[0.6] scale-x-[1.0]">${p1}</span></span>
-        <span class="h-1/5 w-full flex items-center justify-center"><span class="scale-[0.6] scale-x-[0.8]"> ${p2}</span></span>
-        <span class="h-2/5 w-full flex items-center justify-center"><span class="scale-[0.6] scale-x-[1.0]">${p3}</span></span>
+        <span class="h-1/3 w-full flex items-center justify-center"><span class="scale-[0.6] scale-x-[1.0] scale-y-[0.2]">${p1}</span></span>
+        <span class="h-1/3 w-full flex items-center justify-center"><span class="scale-[0.6] scale-x-[0.8]"> ${p2}</span></span>
+        <span class="h-1/3 w-full flex items-center justify-center"><span class="scale-[0.6] scale-x-[1.0] scale-y-[0.2]">${p3}</span></span>
     </span>`;
   }
 
