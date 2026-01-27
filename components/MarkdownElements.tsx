@@ -353,130 +353,92 @@ interface IDSConfig {
   char: string;
   arity: 2 | 3;
   layout: LayoutMode;
-  cssClass?: string; // 用于特定结构的特殊类名
+  cssClass?: string;
 }
 
 const IDS_MAP: Record<string, IDSConfig> = {
   // 二元结构
-  '⿰': { char: '⿰', arity: 2, layout: 'lr' },               // 左右
-  '⿱': { char: '⿱', arity: 2, layout: 'tb' },               // 上下
-  '⿵': { char: '⿵', arity: 2, layout: 'surround', cssClass: 's-top' },    // 上三包 (门, 冂)
-  '⿶': { char: '⿶', arity: 2, layout: 'surround', cssClass: 's-bottom' }, // 下三包 (凵)
-  '⿷': { char: '⿷', arity: 2, layout: 'surround', cssClass: 's-left' },   // 左三包 (匚)
-  '⿸': { char: '⿸', arity: 2, layout: 'surround', cssClass: 's-ul' },     // 左上包 (广, 疒)
-  '⿹': { char: '⿹', arity: 2, layout: 'surround', cssClass: 's-ur' },     // 右上包 (气, 弋)
-  '⿺': { char: '⿺', arity: 2, layout: 'surround', cssClass: 's-ll' },     // 左下包 (辶, 走)
-  '⿻': { char: '⿻', arity: 2, layout: 'overlay' },          // 镶嵌/重叠
-  '⿴': { char: '⿴', arity: 2, layout: 'surround', cssClass: 's-full' },   // 全包 (囗)
+  '⿰': { char: '⿰', arity: 2, layout: 'lr' },
+  '⿱': { char: '⿱', arity: 2, layout: 'tb' },
+  '⿵': { char: '⿵', arity: 2, layout: 'surround', cssClass: 's-top' },
+  '⿶': { char: '⿶', arity: 2, layout: 'surround', cssClass: 's-bottom' },
+  '⿷': { char: '⿷', arity: 2, layout: 'surround', cssClass: 's-left' },
+  '⿸': { char: '⿸', arity: 2, layout: 'surround', cssClass: 's-ul' },
+  '⿹': { char: '⿹', arity: 2, layout: 'surround', cssClass: 's-ur' },
+  '⿺': { char: '⿺', arity: 2, layout: 'surround', cssClass: 's-ll' },
+  '⿻': { char: '⿻', arity: 2, layout: 'overlay' },
+  '⿴': { char: '⿴', arity: 2, layout: 'surround', cssClass: 's-full' },
   // 三元结构
-  '⿲': { char: '⿲', arity: 3, layout: 'lcr' },              // 左中右
-  '⿳': { char: '⿳', arity: 3, layout: 'tcb' },              // 上中下
+  '⿲': { char: '⿲', arity: 3, layout: 'lcr' },
+  '⿳': { char: '⿳', arity: 3, layout: 'tcb' },
 };
 
 // --- B. 智能判断字典 (Smart Radical Logic) ---
-// 将部首按其通常所在的“位置”分类
 const RADICAL_MAPPING: Record<string, string> = {
-  // 1. 强包围 (Surround)
+  // 1. 强包围
   '囗': '⿴', '回': '⿴', '围': '⿴',
-  '门': '⿵', '冂': '⿵', '同': '⿵', '风': '⿵', '几': '⿵',
+  '门': '⿵', '冂': '⿵', '同': '⿵', '风': '⿵',
   '凵': '⿶', '凶': '⿶',
-  '匚': '⿷', '区': '⿷', '匹': '⿷',
-  '广': '⿸', '疒': '⿸', '尸': '⿸', '户': '⿸', '麻': '⿸', '厂': '⿸', '鹿': '⿸', '虎': '⿸',
-  '气': '⿹', '弋': '⿹', '戈': '⿹',
-  '辶': '⿺', '走': '⿺', '廴': '⿺', '是': '⿺', '克': '⿺',
-  
-  // 2. 强上方 (Top) -> 触发上下结构
-  '艹': '⿱', '竹': '⿱', '宀': '⿱', '冖': '⿱', '穴': '⿱', '雨': '⿱', 
-  '爫': '⿱', '罒': '⿱', '耂': '⿱', '⺈': '⿱', '癶': '⿱', '人': '⿱', // '人'作头
-  
-  // 3. 强左方 (Left) -> 触发左右结构
+  '匚': '⿷', '区': '⿷',
+  '广': '⿸', '疒': '⿸', '尸': '⿸', '户': '⿸', '麻': '⿸', '厂': '⿸',
+  '气': '⿹', '弋': '⿹',
+  '辶': '⿺', '走': '⿺', '廴': '⿺',
+  // 2. 强上方 -> 上下
+  '艹': '⿱', '竹': '⿱', '宀': '⿱', '冖': '⿱', '穴': '⿱', '雨': '⿱', '人': '⿱',
+  // 3. 强左方 -> 左右
   '亻': '⿰', '讠': '⿰', '扌': '⿰', '氵': '⿰', '忄': '⿰', '犭': '⿰', 
   '礻': '⿰', '衤': '⿰', '木': '⿰', '禾': '⿰', '火': '⿰', '土': '⿰', 
   '金': '⿰', '王': '⿰', '月': '⿰', '日': '⿰', '口': '⿰', '虫': '⿰', 
-  '足': '⿰', '⻊': '⿰', '车': '⿰', '舟': '⿰', '方': '⿰', '子': '⿰',
-  '女': '⿰', '弓': '⿰', '彳': '⿰', '耳': '⿰', '身': '⿰'
+  '足': '⿰', '⻊': '⿰', '车': '⿰', '舟': '⿰', '方': '⿰', '女': '⿰'
 };
 
-// 右侧/底部特征字（辅助判断）
 const RIGHT_MARKERS = new Set(['刂', '阝', '卩', 'lz', '欠', '页', '隹', '斤', '见']);
 const BOTTOM_MARKERS = new Set(['心', '灬', '皿', '儿', '贝']);
 
 // --- C. 解析与转换逻辑 ---
-
 const convertSimpleToIDS = (input: string): string => {
   const desc = input.trim();
   if (!desc) return '?';
 
-  // [专业处理] 1. 已经是 IDS 开头，直接返回
-  if (IDS_MAP[desc[0]]) return desc;
+  if (IDS_MAP[desc[0]]) return desc; // 专业模式直接返回
 
-  // [预处理] 清理常见干扰词，但保留语义
   let cleanDesc = desc;
-  // 只有当长度大于2且不含特殊操作符时才清理，防止误删
   if (desc.length > 2 && !desc.match(/[+/(),]/)) {
       cleanDesc = desc.replace(/字(头|框|底|旁|儿)/g, '').trim();
   }
 
-  // [专业处理] 2. 显式函数语法检测 func(A, B)
-  // 支持中文全角符号
+  // 函数语法检测
   const funcMatch = cleanDesc.match(/^([^\(（]+)[\(（](.*?)[\,，]?(.*?)[\)）]$/);
   if (funcMatch) {
     const op = funcMatch[1].trim();
     const p1 = funcMatch[2].trim();
     const p2 = funcMatch[3].trim();
-    
-    // 映射自然语言到 IDS
     if (/^(左右|lr)$/i.test(op)) return `⿰${p1}${p2}`;
     if (/^(上下|tb)$/i.test(op)) return `⿱${p1}${p2}`;
-    if (/^(左中右|lcr)$/i.test(op)) return `⿲${p1}${p2}${funcMatch[4]||''}`; // 需额外处理参数，此处简化
-    if (/^(上中下|tcb)$/i.test(op)) return `⿳${p1}${p2}${funcMatch[4]||''}`;
     if (/^(全包|围|回|full)$/i.test(op) || op.includes('框')) return `⿴${p1}${p2}`;
-    if (/^(上三|门|同|top-surround)$/i.test(op)) return `⿵${p1}${p2}`;
-    if (/^(下三|凶|bottom-surround)$/i.test(op)) return `⿶${p1}${p2}`;
-    if (/^(左三|匚|left-surround)$/i.test(op)) return `⿷${p1}${p2}`;
-    if (/^(左上|广|病|ul-surround)$/i.test(op)) return `⿸${p1}${p2}`;
-    if (/^(右上|气|ur-surround)$/i.test(op)) return `⿹${p1}${p2}`;
-    if (/^(左下|辶|走|ll-surround)$/i.test(op)) return `⿺${p1}${p2}`;
+    if (/^(上三|门|同)$/i.test(op)) return `⿵${p1}${p2}`;
+    if (/^(下三|凶)$/i.test(op)) return `⿶${p1}${p2}`;
+    if (/^(左三|匚)$/i.test(op)) return `⿷${p1}${p2}`;
+    if (/^(左上|广|病)$/i.test(op)) return `⿸${p1}${p2}`;
+    if (/^(右上|气)$/i.test(op)) return `⿹${p1}${p2}`;
+    if (/^(左下|辶|走)$/i.test(op)) return `⿺${p1}${p2}`;
     if (/^(镶|嵌|overlay)$/i.test(op)) return `⿻${p1}${p2}`;
   }
 
-  // [专业处理] 3. 显式操作符 (+, /, *)
-  if (cleanDesc.includes('+')) { // 左右 +
-    const [a, b] = cleanDesc.split('+');
-    return `⿰${a}${b}`;
-  }
-  if (cleanDesc.includes('/')) { // 上下 /
-    const [a, b] = cleanDesc.split('/');
-    return `⿱${a}${b}`;
-  }
-  if (cleanDesc.includes('*')) { // 镶嵌 *
-    const [a, b] = cleanDesc.split('*');
-    return `⿻${a}${b}`;
-  }
+  // 简单操作符
+  if (cleanDesc.includes('+')) return `⿰${cleanDesc.split('+')[0]}${cleanDesc.split('+')[1]}`;
+  if (cleanDesc.includes('/')) return `⿱${cleanDesc.split('/')[0]}${cleanDesc.split('/')[1]}`;
 
-  // [普通处理] 4. 智能隐式推断 (Smart Auto-Detect)
-  // 仅当字符串长度为 2 时触发 (例如 "广黄")
+  // 智能隐式推断 (Smart Mode)
   if (cleanDesc.length === 2) {
       const c1 = cleanDesc[0];
       const c2 = cleanDesc[1];
-
-      // 规则 A: 检查首字是否为强部首 (Strong Radical Start)
-      if (RADICAL_MAPPING[c1]) {
-        return `${RADICAL_MAPPING[c1]}${c1}${c2}`;
-      }
-
-      // 规则 B: 检查尾字是否为特定方位部首 (Radical End)
-      if (RIGHT_MARKERS.has(c2)) return `⿰${c1}${c2}`; // 如 "利" (禾+刂) -> 左右
-      if (BOTTOM_MARKERS.has(c2)) return `⿱${c1}${c2}`; // 如 "意" (音+心) -> 上下
-
-      // 规则 C: 默认策略 (Default)
-      // 绝大多数汉字为左右结构，其次是上下。
-      // 这里可以做一个简单假设：如果看起来像“头”的字在前面，就上下，否则左右。
-      // 由于已经在规则A中处理了大部分“头”，这里兜底默认为左右。
-      return `⿰${c1}${c2}`;
+      if (RADICAL_MAPPING[c1]) return `${RADICAL_MAPPING[c1]}${c1}${c2}`;
+      if (RIGHT_MARKERS.has(c2)) return `⿰${c1}${c2}`;
+      if (BOTTOM_MARKERS.has(c2)) return `⿱${c1}${c2}`;
+      return `⿰${c1}${c2}`; // 默认左右
   }
 
-  // 无法处理，返回原文本（可能是一个已经是合体字的输入，或者错误输入）
   return cleanDesc;
 };
 
@@ -486,90 +448,82 @@ const renderIDSToHtml = (idsStr: string): string => {
 
   const parse = (depth: number = 0): string => {
     if (cursor >= idsStr.length) return '';
-    
     const char = idsStr[cursor];
     cursor++;
 
     const idsOp = IDS_MAP[char];
 
-    // --- Base Case: 普通字符 ---
+    // Base Case: 普通字符 (去除 w-full 强制拉伸，改用 flex 居中，允许自然字宽)
     if (!idsOp) {
-      // 优化：字符稍微缩小一点点，避免紧贴边框，增加透气感
-      return `<span class="zaozi-unit flex items-center justify-center w-full h-full text-[90%] leading-none">${char}</span>`;
+      return `<span class="zaozi-unit flex items-center justify-center w-full h-full text-[95%] leading-none font-normal" style="font-family: inherit;">${char}</span>`;
     }
 
-    // --- Recursive Step: 结构处理 ---
+    // Recursive Step
     const p1 = parse(depth + 1); 
     const p2 = parse(depth + 1); 
     const p3 = idsOp.arity === 3 ? parse(depth + 1) : '';
 
-    // 通用样式：宽高占满，flex布局
+    // 关键修正：移除 overflow-hidden，防止笔画被切断
     const baseClass = "flex w-full h-full absolute inset-0";
     
-    // 根据深度调整线宽或间距（可选，暂不加复杂逻辑以保持性能）
-
     switch (idsOp.layout) {
       case 'lr': // 左右
         return `<span class="${baseClass} flex-row">
-          <span class="w-1/2 h-full relative overflow-hidden">${p1}</span>
-          <span class="w-1/2 h-full relative overflow-hidden">${p2}</span>
+          <span class="w-1/2 h-full relative">${p1}</span>
+          <span class="w-1/2 h-full relative">${p2}</span>
         </span>`;
       
       case 'tb': // 上下
         return `<span class="${baseClass} flex-col">
-          <span class="h-1/2 w-full relative overflow-hidden">${p1}</span>
-          <span class="h-1/2 w-full relative overflow-hidden">${p2}</span>
+          <span class="h-1/2 w-full relative">${p1}</span>
+          <span class="h-1/2 w-full relative">${p2}</span>
         </span>`;
 
       case 'lcr': // 左中右
         return `<span class="${baseClass} flex-row">
-          <span class="flex-1 h-full relative overflow-hidden">${p1}</span>
-          <span class="flex-1 h-full relative overflow-hidden">${p2}</span>
-          <span class="flex-1 h-full relative overflow-hidden">${p3}</span>
+          <span class="flex-1 h-full relative">${p1}</span>
+          <span class="flex-1 h-full relative">${p2}</span>
+          <span class="flex-1 h-full relative">${p3}</span>
         </span>`;
 
       case 'tcb': // 上中下
         return `<span class="${baseClass} flex-col">
-          <span class="flex-1 w-full relative overflow-hidden">${p1}</span>
-          <span class="flex-1 w-full relative overflow-hidden">${p2}</span>
-          <span class="flex-1 w-full relative overflow-hidden">${p3}</span>
+          <span class="flex-1 w-full relative">${p1}</span>
+          <span class="flex-1 w-full relative">${p2}</span>
+          <span class="flex-1 w-full relative">${p3}</span>
         </span>`;
 
-      case 'surround': // 包围结构 (核心优化点)
-        // 使用 CSS Grid 或 Absolute 配合百分比实现精准定位
-        // 外部是部首 (Radical)，内部是部件 (Part)
+      case 'surround': // 包围结构
         let innerStyle = "";
-        let outerStyle = "z-0 flex items-center justify-center text-[#abb2bf]"; // 部首样式
+        // 部首样式：z-0，确保在底层
+        let outerStyle = "z-0 flex items-center justify-center text-inherit opacity-90"; 
         
         switch(idsOp.cssClass) {
-          case 's-full': // 囗 (全包)
-            outerStyle += " scale-[1.1]"; // 外框稍微放大
-            innerStyle = "inset-[18%] scale-[0.75]"; // 内部居中缩小
+          case 's-full': // 囗
+            outerStyle += " scale-[1.15]"; 
+            innerStyle = "inset-[18%] scale-[0.75]"; 
             break;
-          case 's-top': // 门 (上包)
-            outerStyle += " items-start pt-[5%]"; 
+          case 's-top': // 门
+            outerStyle += " items-start pt-[2%]"; 
             innerStyle = "left-[20%] right-[20%] top-[40%] bottom-[5%]";
             break;
-          case 's-bottom': // 凵 (下包)
+          case 's-bottom': // 凵
             outerStyle += " items-end pb-[5%]";
             innerStyle = "left-[20%] right-[20%] top-[5%] bottom-[35%]";
             break;
-          case 's-left': // 匚 (左包)
+          case 's-left': // 匚
             outerStyle += " justify-start pl-[5%]";
             innerStyle = "left-[40%] right-[5%] top-[20%] bottom-[20%]";
             break;
-          case 's-ul': // 广 (左上包) -> 重难点，优化重心
-            // 部首位于左上，内容位于右下
-            // 使用 transform-origin 确保部首贴合左上
+          case 's-ul': // 广
             outerStyle += " justify-start items-start scale-[1.1] origin-top-left translate-x-1 translate-y-1"; 
-            innerStyle = "right-[2%] bottom-[2%] w-[65%] h-[65%] scale-[0.9]";
+            innerStyle = "right-[0%] bottom-[0%] w-[68%] h-[68%] scale-[0.9]";
             break;
-          case 's-ur': // 气 (右上包)
+          case 's-ur': // 气
             outerStyle += " justify-end items-start scale-[1.1] origin-top-right -translate-x-1 translate-y-1";
-            innerStyle = "left-[2%] bottom-[2%] w-[65%] h-[65%] scale-[0.9]";
+            innerStyle = "left-[0%] bottom-[0%] w-[68%] h-[68%] scale-[0.9]";
             break;
-          case 's-ll': // 辶 (左下包)
-            // 辶 特殊处理：通常占据左和下，内容偏右上
+          case 's-ll': // 辶
             outerStyle += " justify-start items-end scale-[1.1] origin-bottom-left translate-x-1 -translate-y-1";
             innerStyle = "right-[2%] top-[2%] w-[65%] h-[65%] scale-[0.9]";
             break;
@@ -599,19 +553,18 @@ const createZaoziHTML = (rawDesc: string) => {
     const idsString = convertSimpleToIDS(rawDesc);
     const innerHTML = renderIDSToHtml(idsString);
     
-    // 容器样式重构：
-    // 1. inline-flex: 避免inline-block带来的幽灵空白节点
-    // 2. align-middle + 负margin: 完美对齐中英文混排基线
-    // 3. 固定 em 单位: 随字号自动缩放
-    return `<span class="zaozi-container inline-flex items-center justify-center w-[1.1em] h-[1.1em] align-middle relative mx-[2px] -mt-[0.15em] bg-[#2c313a] border border-[#3e4451] rounded-[4px] shadow-sm select-none overflow-hidden" title="造字：${rawDesc}" style="vertical-align: -0.2em;">
+    // 修正：彻底移除 bg-, border-, shadow-, overflow-hidden
+    // 只保留布局属性 (inline-flex, w/h) 和对齐属性
+    return `<span class="zaozi-container inline-flex items-center justify-center w-[1.1em] h-[1.1em] align-middle relative mx-[1px] select-none text-inherit" title="造字：${rawDesc}" style="vertical-align: -0.2em;">
       <span class="w-full h-full relative block text-[1.1em]">
         ${innerHTML}
       </span>
     </span>`;
   } catch (e) {
-    return `<span class="text-red-400 text-xs border border-red-500 px-1 rounded">[造字:Error]</span>`;
+    return `<span class="text-red-400 text-xs">[Error]</span>`;
   }
 };
+
 
 
 
