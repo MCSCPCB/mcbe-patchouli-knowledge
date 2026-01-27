@@ -126,7 +126,7 @@ hljs.registerLanguage('json-bedrock', (hljs) => ({
     },
     // 5. Values with Molang Injection
     {
-      className: 'string',
+      className: 'string', 
       begin: /"/, end: /"/,
       contains: [
         hljs.BACKSLASH_ESCAPE,
@@ -369,6 +369,7 @@ const SMART_RADICALS: Record<string, string> = {
   '足': '⿰', '⻊': '⿰', '车': '⿰', '舟': '⿰', '方': '⿰', '女': '⿰',
   '米': '⿰', '弓': '⿰', '子': '⿰', '马': '⿰', '身': '⿰', '贝': '⿰'
 };
+
 const RIGHT_MARKERS = new Set(['刂', '阝', '卩', 'lz', '欠', '页', '隹', '斤', '见', '鸟']);
 const BOTTOM_MARKERS = new Set(['心', '灬', '皿', '儿', '贝']);
 
@@ -413,6 +414,7 @@ const convertSimpleToIDS = (input: string): string => {
   // 简单操作符兼容
   if (cleanDesc.includes('+')) return `⿰${cleanDesc.split('+')[0]}${cleanDesc.split('+')[1]}`;
   if (cleanDesc.includes('/')) return `⿱${cleanDesc.split('/')[0]}${cleanDesc.split('/')[1]}`;
+
   // 智能隐式推断 (Smart Mode)
   if (cleanDesc.length >= 2) {
       // 提取首个字符作为部首判断依据
@@ -475,7 +477,6 @@ const renderIDSNode = (node: IDSNode): string => {
 
   const { val, children } = node;
   const c = children || [];
-  
   // 预渲染子节点
   const p1 = c[0] ? renderIDSNode(c[0]) : '';
   const p2 = c[1] ? renderIDSNode(c[1]) : '';
@@ -483,7 +484,7 @@ const renderIDSNode = (node: IDSNode): string => {
 
   // 获取子节点原始值，用于智能大头判断
   const n1Val = c[0]?.val || '';
-  
+
   // --- A. 包围结构系列 (Enclosure Series) ---
 
   // 1. ⿸ 左上包 (病字标准 - The Gold Standard)
@@ -492,7 +493,7 @@ const renderIDSNode = (node: IDSNode): string => {
     const isBigHead = BIG_HEAD_RADICALS.has(n1Val);
     const innerStyle = isBigHead 
         ? "scale-[0.55] scale-y-[0.4] origin-bottom-right pr-[5%] pb-[8%]" // 大头调整
-        : "scale-[0.6] origin-bottom-right pr-[5%] pb-[5%]";              // 小头标准 (病)
+        : "scale-[0.6] origin-bottom-right pr-[5%] pb-[5%]"; // 小头标准 (病)
 
     return `<span class="relative w-full h-full block">
       <span class="absolute inset-0 flex items-start justify-start scale-[0.9] origin-top-left translate-x-[2px] translate-y-[2px]">${p1}</span>
@@ -506,7 +507,6 @@ const renderIDSNode = (node: IDSNode): string => {
     const innerStyle = isBigHead 
         ? "scale-[0.55] scale-y-[0.4] origin-bottom-left pl-[5%] pb-[8%]" 
         : "scale-[0.6] origin-bottom-left pl-[5%] pb-[5%]";
-
     return `<span class="relative w-full h-full block">
       <span class="absolute inset-0 flex items-start justify-end scale-[0.9] origin-top-right translate-x-[-2px] translate-y-[2px]">${p1}</span>
       <span class="absolute left-0 bottom-0 w-full h-full flex items-end justify-start ${innerStyle}">${p2}</span>
@@ -615,10 +615,12 @@ const createZaoziHTML = (rawDesc: string) => {
     const innerHTML = renderIDSNode(ast);
     // 容器样式重构：
     // 1. inline-block: 允许宽高设置
-    // 2. align-middle -> vertical-align: 调整基线，防止造出的字跳动
-    // 3. w-[1.1em]: 略宽一点点防止拥挤
-    return `<span class="zaozi-container inline-block w-[1em] h-[1em] relative mx-[1px] select-none text-inherit" title="造字：${rawDesc} [${idsString}]" style="vertical-align: -0.15em;">
-      <span class="w-full h-full relative block">
+    // 2. vertical-align: -0.12em 配合 scale 使得底部对齐基线
+    // 3. w-[1em] h-[1em]: 标准字号宽高
+    // 4. mx-0: 移除外边距，与普通文本无缝衔接
+    // 5. scale(1.15): 整体放大以抵消内部结构的缩放，填满字框
+    return `<span class="zaozi-container inline-block w-[1em] h-[1em] relative mx-0 select-none text-inherit" title="造字：${rawDesc} [${idsString}]" style="vertical-align: -0.12em;">
+      <span class="w-full h-full relative block" style="transform: scale(1.15); transform-origin: center;">
         ${innerHTML}
       </span>
     </span>`;
@@ -673,7 +675,6 @@ export const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => 
       if (textPart.trim()) elements.push(<div key={`text-${lastIndex}`} className="prose-part">{renderTextBlocks(textPart, renderInline)}</div>);
     }
     const block = match[0];
-
     if (block.startsWith('```')) {
       const codeMatch = block.match(/```(\w+)?\s*([\s\S]*?)```/);
       if (codeMatch) elements.push(<MacCodeBlock key={`code-${match.index}`} language={codeMatch[1] || ''} code={codeMatch[2].trim()} />);
