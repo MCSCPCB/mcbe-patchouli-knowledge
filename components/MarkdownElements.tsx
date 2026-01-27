@@ -699,9 +699,9 @@ const renderTextBlocks = (text: string, inlineParser: (s: string) => string) => 
     if (trimmed.startsWith('### ')) return <h3 key={idx} className="text-xl font-medium text-[#cecece] mt-4 mb-2" dangerouslySetInnerHTML={{__html: inlineParser(trimmed.slice(4))}} />;
     if (trimmed.startsWith('> ')) return <blockquote key={idx} className="border-l-4 border-[#5c6370] bg-[#2c313a]/50 pl-4 py-2 my-2 rounded-r italic text-[#9ca3af]"><span dangerouslySetInnerHTML={{__html: inlineParser(trimmed.slice(2))}} /></blockquote>;
     // List Bullets: Structural Blue allowed, Text is neutral
-    if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) return <div key={idx} className="flex gap-2 ml-2 my-1"><span className="text-[#61afef] font-bold">•</span><span className="flex-1 break-words leading-7 text-[#abb2bf]" dangerouslySetInnerHTML={{__html: inlineParser(trimmed.slice(2))}} /></div>;
+    if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) return <div key={idx} className="flex gap-2 ml-2 my-1"><span className="text-[#abb2bf] font-bold">•</span><span className="flex-1 break-words leading-7 text-[#abb2bf]" dangerouslySetInnerHTML={{__html: inlineParser(trimmed.slice(2))}} /></div>;
     const orderedMatch = trimmed.match(/^(\d+)\.\s+(.*)/);
-    if (orderedMatch) return <div key={idx} className="flex gap-2 ml-2 my-1"><span className="text-[#61afef] font-mono font-bold">{orderedMatch[1]}.</span><span className="flex-1 break-words leading-7 text-[#abb2bf]" dangerouslySetInnerHTML={{__html: inlineParser(orderedMatch[2])}} /></div>;
+    if (orderedMatch) return <div key={idx} className="flex gap-2 ml-2 my-1"><span className="text-[#abb2bf] font-mono font-bold">{orderedMatch[1]}.</span><span className="flex-1 break-words leading-7 text-[#abb2bf]" dangerouslySetInnerHTML={{__html: inlineParser(orderedMatch[2])}} /></div>;
     return <p key={idx} className="leading-7 mb-2 break-words text-justify text-[#abb2bf]" style={{ overflowWrap: 'anywhere' }} dangerouslySetInnerHTML={{__html: inlineParser(trimmed)}} />;
   });
 };
