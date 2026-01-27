@@ -547,7 +547,7 @@ const renderIDSNode = (node: IDSNode): string => {
   if (val === '⿴') { 
     return `<span class="relative w-full h-full block">
       <span class="absolute inset-0 flex items-end justify-center scale-[0.9] origin-bottom translate-y-[0px]">${p1}</span>
-      <span class="absolute inset-0 flex items-center justify-center scale-[0.5] translate-y-[-1px]">${p2}</span>
+      <span class="absolute inset-0 flex items-center justify-center scale-[0.5] translate-y-[1px]">${p2}</span>
     </span>`;
   }
 
@@ -556,7 +556,7 @@ const renderIDSNode = (node: IDSNode): string => {
   if (val === '⿵') { 
     return `<span class="relative w-full h-full block">
       <span class="absolute inset-0 flex items-end justify-center scale-[0.9] origin-bottom translate-y-[0px]">${p1}</span>
-      <span class="absolute inset-0 flex items-end justify-center scale-[0.5] origin-bottom pb-[15%] translate-y-[0px]">${p2}</span>
+      <span class="absolute inset-0 flex items-end justify-center scale-[0.5] origin-bottom pb-[15%] translate-y-[-1px]">${p2}</span>
     </span>`;
   }
 
@@ -565,7 +565,7 @@ const renderIDSNode = (node: IDSNode): string => {
   if (val === '⿶') { 
     return `<span class="relative w-full h-full block">
       <span class="absolute inset-0 flex items-end justify-end scale-[0.9] origin-bottom translate-y-[0px]">${p1}</span>
-      <span class="absolute inset-0 flex items-start justify-center scale-[0.5] origin-top pt-[50%]">${p2}</span>
+      <span class="absolute inset-0 flex items-start justify-center scale-[0.5] origin-top pt-[50%] translate-y-[1px]">${p2}</span>
     </span>`;
   }
   
@@ -573,7 +573,7 @@ const renderIDSNode = (node: IDSNode): string => {
   if (val === '⿷') { 
     return `<span class="relative w-full h-full block">
       <span class="absolute inset-0 flex items-end justify-start scale-[0.9] origin-bottom-left translate-x-[2px] translate-y-[0px]">${p1}</span>
-      <span class="absolute inset-0 flex items-end justify-center scale-[0.5] translate-x-[15%] translate-y-[-20%]">${p2}</span>
+      <span class="absolute inset-0 flex items-end justify-center scale-[0.5] translate-x-[15%] translate-y-[20%]">${p2}</span>
     </span>`;
   }
 
