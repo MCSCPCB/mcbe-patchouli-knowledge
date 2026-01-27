@@ -482,23 +482,92 @@ const renderIDSNode = (node: IDSNode): string => {
   // 基础绝对定位容器
   const baseAbs = "absolute inset-0";
 
-  // --- 三分结构 (Keeping separate as standard doesn't define 3-part logic) ---
+  // --- 1. 渲染预设 B：左右结构 (⿰) ---
+  // 逻辑：左右分治，垂直居中，水平方向各自向内收缩
+  if (val === '⿰') {
+    return `<span class="relative w-full h-full block">
+      <span class="${baseAbs} flex items-center justify-start origin-left scale-[0.85] pl-[2%]">${p1}</span>
+      <span class="${baseAbs} flex items-center justify-end origin-right scale-[0.85] pr-[2%]">${p2}</span>
+    </span>`;
+  }
+
+  // --- 2. 渲染预设 C：上下结构 (⿱) ---
+  // 逻辑：上下分治，水平居中，垂直方向各自向内收缩
+  if (val === '⿱') {
+    return `<span class="relative w-full h-full block">
+      <span class="${baseAbs} flex items-start justify-center origin-top scale-[0.85] pt-[2%]">${p1}</span>
+      <span class="${baseAbs} flex items-end justify-center origin-bottom scale-[0.85] pb-[2%]">${p2}</span>
+    </span>`;
+  }
+
+  // --- 3. 三分结构 ---
   if (val === '⿲') return `<span class="${baseAbs} flex flex-row"><span class="flex-1 h-full scale-x-[0.7]">${p1}</span><span class="flex-1 h-full scale-x-[0.7]">${p2}</span><span class="flex-1 h-full scale-x-[0.7]">${p3}</span></span>`;
   if (val === '⿳') return `<span class="${baseAbs} flex flex-col"><span class="flex-1 w-full scale-y-[0.7]">${p1}</span><span class="flex-1 w-full scale-y-[0.7]">${p2}</span><span class="flex-1 w-full scale-y-[0.7]">${p3}</span></span>`;
 
-  // --- 统一"病"字渲染标准 (The "Sick" Standard) ---
-  // 强制所有二元结构（左右、上下、各类包围）都使用相同的错位叠加逻辑
-  // 包含: ⿰, ⿱, ⿴, ⿵, ⿶, ⿷, ⿸, ⿹, ⿺, ⿻
-  if (['⿰', '⿱', '⿴', '⿵', '⿶', '⿷', '⿸', '⿹', '⿺', '⿻'].includes(val)) {
+  // --- 4. 包围结构 (Smart Overlays) ---
+  
+  // ⿴ 全包 (国) - 外部全大，内部缩小居中
+  if (val === '⿴') { 
     return `<span class="relative w-full h-full block">
-      <!-- Part A: Primary (Radical) - Top Left -->
-      <span class="absolute inset-0 flex items-start justify-start scale-[0.9] origin-top-left translate-x-[2px] translate-y-[2px]">
-        ${p1}
-      </span>
-      <!-- Part B: Secondary (Body) - Bottom Right -->
-      <span class="absolute right-0 bottom-0 w-full h-full flex items-end justify-end scale-[0.6] origin-bottom-right pr-[5%] pb-[5%]">
-        ${p2}
-      </span>
+      <span class="absolute inset-0 flex items-center justify-center scale-[1.0]">${p1}</span>
+      <span class="absolute inset-0 flex items-center justify-center scale-[0.55] translate-y-[1px]">${p2}</span>
+    </span>`;
+  }
+  
+  // ⿵ 上三包 (门, 同) - 外部撑满，内部下沉
+  if (val === '⿵') { 
+    return `<span class="relative w-full h-full block">
+      <span class="absolute inset-0 flex items-start justify-center scale-[1.0] pt-[1px]">${p1}</span>
+      <span class="absolute inset-0 flex items-end justify-center scale-[0.55] pb-[10%]">${p2}</span>
+    </span>`;
+  }
+  
+  // ⿶ 下三包 (凶) - 外部撑满，内部上浮
+  if (val === '⿶') { 
+    return `<span class="relative w-full h-full block">
+      <span class="absolute inset-0 flex items-end justify-center scale-[1.0] pb-[1px]">${p1}</span>
+      <span class="absolute inset-0 flex items-start justify-center scale-[0.6] pt-[5%]">${p2}</span>
+    </span>`;
+  }
+  
+  // ⿷ 左三包 (区) - 内容靠右
+  if (val === '⿷') { 
+    return `<span class="relative w-full h-full block">
+      <span class="absolute inset-0 flex items-center justify-start scale-[1.0] ml-[-2px]">${p1}</span>
+      <span class="absolute inset-0 flex items-center justify-center scale-[0.55] translate-x-[20%]">${p2}</span>
+    </span>`;
+  }
+  
+  // 渲染预设 A：左上包结构 (⿸) (广, 病)
+  // 逻辑：沿用原“病”字标准，主部统领左上，副部避让右下。
+  if (val === '⿸') { 
+    return `<span class="relative w-full h-full block">
+      <span class="${baseAbs} flex items-start justify-start origin-top-left scale-[0.9] translate-x-[2px] translate-y-[2px]">${p1}</span>
+      <span class="${baseAbs} flex items-end justify-end origin-bottom-right scale-[0.6] pr-[5%] pb-[5%]">${p2}</span>
+    </span>`;
+  }
+  
+  // ⿹ 右上包 (气) - 部首居右上，内容居左下
+  if (val === '⿹') { 
+    return `<span class="relative w-full h-full block">
+      <span class="absolute inset-0 flex items-start justify-end scale-[0.9] origin-top-right translate-x-[-2px] translate-y-[2px]">${p1}</span>
+      <span class="absolute left-0 bottom-0 w-full h-full flex items-end justify-start scale-[0.6] origin-bottom-left pl-[5%] pb-[5%]">${p2}</span>
+    </span>`;
+  }
+  
+  // ⿺ 左下包 (辶, 走) - 部首居左下，内容居右上
+  if (val === '⿺') { 
+    return `<span class="relative w-full h-full block">
+      <span class="absolute inset-0 flex items-end justify-start scale-[0.9] origin-bottom-left translate-x-[2px] translate-y-[-2px]">${p1}</span>
+      <span class="absolute right-0 top-0 w-full h-full flex items-start justify-end scale-[0.6] origin-top-right pr-[5%] pt-[10%]">${p2}</span>
+    </span>`;
+  }
+  
+  // ⿻ 镶嵌 (爽) - 居中叠加
+  if (val === '⿻') { 
+    return `<span class="relative w-full h-full block">
+      <span class="absolute inset-0 flex items-center justify-center opacity-70 scale-[1.0]">${p1}</span>
+      <span class="absolute inset-0 flex items-center justify-center scale-[0.7] font-bold">${p2}</span>
     </span>`;
   }
 
