@@ -536,8 +536,8 @@ const renderIDSNode = (node: IDSNode): string => {
   // 2. ⿱ 上下结构 - 优化：增加垂直方向压扁 (scale-y-0.85)，防止过长
   if (val === '⿱') {
     return `<span class="relative w-full h-full block">
-      <span class="absolute top-0 left-0 w-full h-[50%] flex items-start justify-center scale-y-[0.3] scale-x-[0.9] origin-top translate-y-[0px]">${p1}</span>
-      <span class="absolute bottom-0 left-0 w-full h-[50%] flex items-end justify-end scale-y-[0.55] scale-x-[0.9] origin-bottom translate-y-[0px]">${p2}</span>
+      <span class="absolute top-0 left-0 w-full h-[50%] flex items-start justify-center scale-y-[0.3] scale-x-[0.9] origin-top translate-y-[-3px]">${p1}</span>
+      <span class="absolute bottom-0 left-0 w-full h-[50%] flex items-end justify-end scale-y-[0.55] scale-x-[0.9] origin-bottom translate-y-[3px]">${p2}</span>
     </span>`;
   }
 
@@ -572,8 +572,8 @@ const renderIDSNode = (node: IDSNode): string => {
     // ⿷ 左三包 (区) - 修复：改为底对齐
   if (val === '⿷') { 
     return `<span class="relative w-full h-full block">
-      <span class="absolute inset-0 flex items-end justify-start scale-[0.9] origin-bottom-left translate-x-[2px] translate-y-[1px]">${p1}</span>
-      <span class="absolute inset-0 flex items-end justify-center scale-[0.5] translate-x-[15%] translate-y-[1px]">${p2}</span>
+      <span class="absolute inset-0 flex items-end justify-start scale-[0.9] origin-bottom-left translate-x-[2px] translate-y-[0px]">${p1}</span>
+      <span class="absolute inset-0 flex items-end justify-center scale-[0.5] translate-x-[15%] translate-y-[3px]">${p2}</span>
     </span>`;
   }
 
