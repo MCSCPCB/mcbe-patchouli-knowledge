@@ -57,7 +57,7 @@ const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | nul
                 <Avatar name={item.author.name} src={item.author.avatar} size="md" />
                 <div>
                     <div className="font-medium text-[#E6E6E6]">{item.author.name}</div>
-                    <div className="text-[#8C918C] text-xs">更新于 {new Date(item.createdAt).toLocaleDateString()}</div>
+                    <div className="text-[#8C918C] text-xs">发布于 {new Date(item.createdAt).toLocaleDateString()}</div>
                 </div>
                 {item.status === 'pending' && (
                     <span className="ml-auto bg-[#FFD8E4] text-[#31111D] px-3 py-1 rounded-full text-xs font-bold">Pending Approval</span>
@@ -127,7 +127,7 @@ const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | nul
          }
        >
          你真的要删除这个知识吗？
-         <div><strong className="text-white">{item.title}</strong> 将会永远消失！</div>
+         <div><strong className="text-white">{item.title}</strong> 将会永远消失! (真的很久)</div>
        </Dialog>
     </div>
   );
