@@ -3,7 +3,7 @@ import { AppContext } from '../App';
 import { Page } from '../types';
 import { IconButton, Dialog, Button, Avatar } from '../components/M3Components';
 import { deletePost, getRecentPosts } from '../services/knowledgeService';
-import { MarkdownRenderer } from '../components/MarkdownElements'; // 引入新组件
+import { MarkdownRenderer,InlineMarkdown } from '../components/MarkdownElements'; // 引入新组件
 
 const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | null }> = ({ onNavigate, itemId }) => {
   const { items, setItems, currentUser, refreshData } = useContext(AppContext);
@@ -51,8 +51,7 @@ const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | nul
                     <span key={tag} className="text-xs font-medium text-[#7DA3A1] bg-[#7DA3A1]/10 px-2 py-1 rounded-md">#{tag}</span>
                 ))}
             </div>
-            <h1 className="text-4xl md:text-5xl font-medium text-[#E6E6E6] leading-tight mb-6 tracking-tight">{item.title}</h1>
-            
+            <h1 className="text-4xl md:text-5xl font-medium text-[#E6E6E6] leading-tight mb-6 tracking-tight"><InlineMarkdown content={item.title} /></h1>
             <div className="flex items-center gap-4 py-4 border-t border-b border-[#2C2C2C]">
                 <Avatar name={item.author.name} src={item.author.avatar} size="md" />
                 <div>
