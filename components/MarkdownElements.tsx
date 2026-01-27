@@ -583,7 +583,7 @@ const renderIDSNode = (node: IDSNode): string => {
   // ⿻ 镶嵌 (Overlay)
   if (val === '⿻') { 
     return `<span class="relative w-full h-full block">
-      <span class="absolute inset-0 flex items-end justify-center opacity-70 scale-[0.9]">${p1}</span>
+      <span class="absolute inset-0 flex items-end justify-center opacity-100 scale-[0.9]">${p1}</span>
       <span class="absolute inset-0 flex items-center justify-center scale-[0.6] font-bold">${p2}</span>
     </span>`;
   }
