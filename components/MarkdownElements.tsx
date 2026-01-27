@@ -596,9 +596,9 @@ const renderIDSNode = (node: IDSNode): string => {
   // ⿳ (晶) - 修复：使用 flex 均分 + 统一缩放，不再散开
   if (val === '⿳') {
     return `<span class="absolute inset-0 flex flex-col items-center justify-center w-full h-full">
-        <span class="h-1/3 w-full flex items-center justify-center"><span class="scale-[0.6] scale-x-[1.0] scale-y-[0.6]">${p1}</span></span>
-        <span class="h-1/3 w-full flex items-center justify-center"><span class="scale-[0.6] scale-x-[1.0] scale-y-[0.2]"> ${p2}</span></span>
-        <span class="h-1/3 w-full flex items-center justify-center"><span class="scale-[0.6] scale-x-[1.0] scale-y-[0.6]">${p3}</span></span>
+        <span class="h-1/3 w-full flex items-center justify-center"><span class="scale-[0.6] scale-x-[1.0] scale-y-[0.4]">${p1}</span></span>
+        <span class="h-1/3 w-full flex items-center justify-center"><span class="scale-[0.6] scale-x-[0.8] scale-y-[0.2]"> ${p2}</span></span>
+        <span class="h-1/3 w-full flex items-center justify-center"><span class="scale-[0.6] scale-x-[1.0] scale-y-[0.4]">${p3}</span></span>
     </span>`;
   }
 
