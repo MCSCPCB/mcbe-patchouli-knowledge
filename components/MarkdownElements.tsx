@@ -535,7 +535,7 @@ const renderIDSNode = (node: IDSNode): string => {
   // 2. ⿱ 上下结构 - 优化：增加垂直方向压扁 (scale-y-0.85)，防止过长
   if (val === '⿱') {
     return `<span class="relative w-full h-full block">
-      <span class="absolute top-0 left-0 w-full h-[50%] flex items-start justify-center scale-y-[0.4] scale-x-[0.9] origin-top translate-y-[2px]">${p1}</span>
+      <span class="absolute top-0 left-0 w-full h-[50%] flex items-start justify-center scale-y-[0.3] scale-x-[0.9] origin-top translate-y-[2px]">${p1}</span>
       <span class="absolute bottom-0 left-0 w-full h-[50%] flex items-end justify-center scale-y-[0.55] scale-x-[0.9] origin-bottom translate-y-[-2px]">${p2}</span>
     </span>`;
   }
