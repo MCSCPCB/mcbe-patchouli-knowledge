@@ -300,7 +300,7 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
           <code 
             className={`text-[13px] leading-relaxed whitespace-pre language-${detectedLang}`}
             style={{ 
-             fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+              fontFamily: 'Menlo, Monaco, "Courier New", monospace',
               color: '#abb2bf',
               textShadow: '0 1px 2px rgba(0,0,0,0.1)' 
             }}
@@ -350,6 +350,7 @@ const SMART_RADICALS: Record<string, string> = {
   '辶': '⿺', '走': '⿺', '廴': '⿺', '麦': '⿺',
   // 4. 强全包 -> ⿴
   '囗': '⿴', '回': '⿴', '围': '⿴', '圆': '⿴',
+  
   // 5. 强上三包 -> ⿵
   '门': '⿵', '冂': '⿵', '同': '⿵', '风': '⿵', '几': '⿵',
   // 6. 强下三包 -> ⿶
@@ -368,9 +369,12 @@ const SMART_RADICALS: Record<string, string> = {
   '足': '⿰', '⻊': '⿰', '车': '⿰', '舟': '⿰', '方': '⿰', '女': '⿰',
   '米': '⿰', '弓': '⿰', '子': '⿰', '马': '⿰', '身': '⿰', '贝': '⿰'
 };
-
 const RIGHT_MARKERS = new Set(['刂', '阝', '卩', 'lz', '欠', '页', '隹', '斤', '见', '鸟']);
 const BOTTOM_MARKERS = new Set(['心', '灬', '皿', '儿', '贝']);
+
+// 新增：大头部首集合 (Big Head Radicals)
+// 这些部首覆盖面积大，需要内部部件更小更扁以避免重叠
+const BIG_HEAD_RADICALS = new Set(['尸', '户', '麻', '辰', '鹿', '虎', '气', '风']);
 
 // --- C. AST 解析与转换逻辑 ---
 
@@ -409,7 +413,6 @@ const convertSimpleToIDS = (input: string): string => {
   // 简单操作符兼容
   if (cleanDesc.includes('+')) return `⿰${cleanDesc.split('+')[0]}${cleanDesc.split('+')[1]}`;
   if (cleanDesc.includes('/')) return `⿱${cleanDesc.split('/')[0]}${cleanDesc.split('/')[1]}`;
-
   // 智能隐式推断 (Smart Mode)
   if (cleanDesc.length >= 2) {
       // 提取首个字符作为部首判断依据
@@ -455,9 +458,6 @@ const parseIDSString = (str: string): IDSNode | null => {
       }
       return node;
     } else {
-      // 读取直到下一个操作符或结束，支持多字符作为叶子节点 (如 "黄")
-      // 但标准IDS通常是单字。这里简化为单字，因为 convertSimpleToIDS 已经拆分好了结构
-      // 如果遇到特殊输入，暂且当做单字处理
       return { type: 'char', val: char };
     }
   };
@@ -475,63 +475,74 @@ const renderIDSNode = (node: IDSNode): string => {
 
   const { val, children } = node;
   const c = children || [];
+  
+  // 预渲染子节点
   const p1 = c[0] ? renderIDSNode(c[0]) : '';
   const p2 = c[1] ? renderIDSNode(c[1]) : '';
   const p3 = c[2] ? renderIDSNode(c[2]) : '';
 
-  // 智能部首判断：大头 vs 小头
-  const radicalVal = c[0]?.val || '';
-  const isBigHead = ['尸', '户', '气'].includes(radicalVal); 
-  // 大头缩小内字，小头保持完美参数 (0.6)
-  const enclosureScale = isBigHead ? 'scale-[0.5]' : 'scale-[0.6]';
-
+  // 获取子节点原始值，用于智能大头判断
+  const n1Val = c[0]?.val || '';
+  
   // --- A. 包围结构系列 (Enclosure Series) ---
 
   // 1. ⿸ 左上包 (病字标准 - The Gold Standard)
   if (val === '⿸') { 
+    // 智能判断：如果是“大头”部首（如尸），内部部件需要更扁更小
+    const isBigHead = BIG_HEAD_RADICALS.has(n1Val);
+    const innerStyle = isBigHead 
+        ? "scale-[0.55] scale-y-[0.5] origin-bottom-right pr-[5%] pb-[8%]" // 大头调整
+        : "scale-[0.6] origin-bottom-right pr-[5%] pb-[5%]";              // 小头标准 (病)
+
     return `<span class="relative w-full h-full block">
       <span class="absolute inset-0 flex items-start justify-start scale-[0.9] origin-top-left translate-x-[2px] translate-y-[2px]">${p1}</span>
-      <span class="absolute right-0 bottom-0 w-full h-full flex items-end justify-end ${enclosureScale} origin-bottom-right pr-[5%] pb-[5%]">${p2}</span>
+      <span class="absolute right-0 bottom-0 w-full h-full flex items-end justify-end ${innerStyle}">${p2}</span>
     </span>`;
   }
   
   // 2. ⿹ 右上包 (Mirror H)
   if (val === '⿹') { 
+    const isBigHead = BIG_HEAD_RADICALS.has(n1Val);
+    const innerStyle = isBigHead 
+        ? "scale-[0.55] scale-y-[0.5] origin-bottom-left pl-[5%] pb-[8%]" 
+        : "scale-[0.6] origin-bottom-left pl-[5%] pb-[5%]";
+
     return `<span class="relative w-full h-full block">
       <span class="absolute inset-0 flex items-start justify-end scale-[0.9] origin-top-right translate-x-[-2px] translate-y-[2px]">${p1}</span>
-      <span class="absolute left-0 bottom-0 w-full h-full flex items-end justify-start ${enclosureScale} origin-bottom-left pl-[5%] pb-[5%]">${p2}</span>
+      <span class="absolute left-0 bottom-0 w-full h-full flex items-end justify-start ${innerStyle}">${p2}</span>
     </span>`;
   }
   
   // 3. ⿺ 左下包 (Mirror V)
   if (val === '⿺') { 
+     // 左下包通常是大长腿（走、辶），这里沿用标准逻辑，若有大头需求可在此添加
     return `<span class="relative w-full h-full block">
       <span class="absolute inset-0 flex items-end justify-start scale-[0.9] origin-bottom-left translate-x-[2px] translate-y-[-2px]">${p1}</span>
-      <span class="absolute right-0 top-0 w-full h-full flex items-start justify-end ${enclosureScale} origin-top-right pr-[5%] pt-[5%]">${p2}</span>
+      <span class="absolute right-0 top-0 w-full h-full flex items-start justify-end scale-[0.6] origin-top-right pr-[5%] pt-[5%]">${p2}</span>
     </span>`;
   }
 
   // --- B. 线性结构系列 (Linear Series) ---
 
-  // 1. ⿰ 左右结构 - 重构：使用病字 P1 标准 + 对称挤压 (压扁)
+  // 1. ⿰ 左右结构 - 优化：增加水平方向挤压 (scale-x-0.85)，防止松散
   if (val === '⿰') {
     return `<span class="relative w-full h-full block">
-      <span class="absolute left-0 top-0 w-[50%] h-full flex items-center justify-start scale-x-[0.8] scale-y-[0.9] origin-left translate-x-[2px]">${p1}</span>
-      <span class="absolute right-0 top-0 w-[50%] h-full flex items-center justify-end scale-x-[0.8] scale-y-[0.9] origin-right translate-x-[-2px]">${p2}</span>
+      <span class="absolute left-0 top-0 w-[50%] h-full flex items-center justify-start scale-x-[0.85] scale-y-[0.9] origin-left translate-x-[2px]">${p1}</span>
+      <span class="absolute right-0 top-0 w-[50%] h-full flex items-center justify-end scale-x-[0.85] scale-y-[0.9] origin-right translate-x-[-2px]">${p2}</span>
     </span>`;
   }
 
-  // 2. ⿱ 上下结构 - 重构：使用病字 P1 标准 + 垂直对称 (压扁)
+  // 2. ⿱ 上下结构 - 优化：增加垂直方向压扁 (scale-y-0.85)，防止过长
   if (val === '⿱') {
     return `<span class="relative w-full h-full block">
-      <span class="absolute top-0 left-0 w-full h-[50%] flex items-start justify-center scale-x-[0.9] scale-y-[0.8] origin-top translate-y-[2px]">${p1}</span>
-      <span class="absolute bottom-0 left-0 w-full h-[50%] flex items-end justify-center scale-x-[0.9] scale-y-[0.8] origin-bottom translate-y-[-2px]">${p2}</span>
+      <span class="absolute top-0 left-0 w-full h-[50%] flex items-start justify-center scale-y-[0.85] scale-x-[0.9] origin-top translate-y-[2px]">${p1}</span>
+      <span class="absolute bottom-0 left-0 w-full h-[50%] flex items-end justify-center scale-y-[0.85] scale-x-[0.9] origin-bottom translate-y-[-2px]">${p2}</span>
     </span>`;
   }
 
   // --- C. 其他特殊包围 (Special Enclosures) ---
   
-  // ⿴ 全包 (国) - 内字缩小
+  // ⿴ 全包 (国) - 优化：内部由 0.6 -> 0.5
   if (val === '⿴') { 
     return `<span class="relative w-full h-full block">
       <span class="absolute inset-0 flex items-center justify-center scale-[0.9]">${p1}</span>
@@ -539,7 +550,7 @@ const renderIDSNode = (node: IDSNode): string => {
     </span>`;
   }
   
-  // ⿵ 上三包 (门, 同) - 内字缩小
+  // ⿵ 上三包 (门, 同) - 优化：内部由 0.6 -> 0.5
   if (val === '⿵') { 
     return `<span class="relative w-full h-full block">
       <span class="absolute inset-0 flex items-start justify-center scale-[0.9] origin-top translate-y-[2px]">${p1}</span>
@@ -547,25 +558,25 @@ const renderIDSNode = (node: IDSNode): string => {
     </span>`;
   }
   
-  // ⿶ 下三包 (凶)
+  // ⿶ 下三包 (凶) - 优化：内部由 0.6 -> 0.5
   if (val === '⿶') { 
     return `<span class="relative w-full h-full block">
       <span class="absolute inset-0 flex items-end justify-center scale-[0.9] origin-bottom translate-y-[-2px]">${p1}</span>
-      <span class="absolute inset-0 flex items-start justify-center scale-[0.6] origin-top pt-[5%]">${p2}</span>
+      <span class="absolute inset-0 flex items-start justify-center scale-[0.5] origin-top pt-[5%]">${p2}</span>
     </span>`;
   }
   
-  // ⿷ 左三包 (区)
+  // ⿷ 左三包 (区) - 优化：内部由 0.6 -> 0.5
   if (val === '⿷') { 
     return `<span class="relative w-full h-full block">
       <span class="absolute inset-0 flex items-center justify-start scale-[0.9] origin-left translate-x-[2px]">${p1}</span>
-      <span class="absolute inset-0 flex items-center justify-center scale-[0.6] translate-x-[15%]">${p2}</span>
+      <span class="absolute inset-0 flex items-center justify-center scale-[0.5] translate-x-[15%]">${p2}</span>
     </span>`;
   }
   
   // --- 4. 其他结构 (Remaining) ---
 
-  // ⿻ 镶嵌 (Overlay) - Updated to 0.9/0.6 Standard
+  // ⿻ 镶嵌 (Overlay)
   if (val === '⿻') { 
     return `<span class="relative w-full h-full block">
       <span class="absolute inset-0 flex items-center justify-center opacity-70 scale-[0.9]">${p1}</span>
@@ -573,9 +584,23 @@ const renderIDSNode = (node: IDSNode): string => {
     </span>`;
   }
 
-  // ⿲ / ⿳ (Triples) - Keeping 3-part logic distinct
-  if (val === '⿲') return `<span class="absolute inset-0 flex flex-row"><span class="flex-1 h-full scale-x-[0.7]">${p1}</span><span class="flex-1 h-full scale-x-[0.7]">${p2}</span><span class="flex-1 h-full scale-x-[0.7]">${p3}</span></span>`;
-  if (val === '⿳') return `<span class="absolute inset-0 flex flex-col"><span class="flex-1 w-full scale-y-[0.7]">${p1}</span><span class="flex-1 w-full scale-y-[0.7]">${p2}</span><span class="flex-1 w-full scale-y-[0.7]">${p3}</span></span>`;
+  // ⿲ (森) - 修复：使用 flex 均分 + 统一缩放，不再散开
+  if (val === '⿲') {
+    return `<span class="absolute inset-0 flex flex-row items-center justify-center w-full h-full">
+        <span class="w-1/3 h-full flex items-center justify-center"><span class="scale-[0.6]">${p1}</span></span>
+        <span class="w-1/3 h-full flex items-center justify-center"><span class="scale-[0.6]">${p2}</span></span>
+        <span class="w-1/3 h-full flex items-center justify-center"><span class="scale-[0.6]">${p3}</span></span>
+    </span>`;
+  }
+
+  // ⿳ (晶) - 修复：使用 flex 均分 + 统一缩放，不再散开
+  if (val === '⿳') {
+    return `<span class="absolute inset-0 flex flex-col items-center justify-center w-full h-full">
+        <span class="h-1/3 w-full flex items-center justify-center"><span class="scale-[0.6]">${p1}</span></span>
+        <span class="h-1/3 w-full flex items-center justify-center"><span class="scale-[0.6]">${p2}</span></span>
+        <span class="h-1/3 w-full flex items-center justify-center"><span class="scale-[0.6]">${p3}</span></span>
+    </span>`;
+  }
 
   return `${p1}${p2}`;
 };
@@ -648,6 +673,7 @@ export const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => 
       if (textPart.trim()) elements.push(<div key={`text-${lastIndex}`} className="prose-part">{renderTextBlocks(textPart, renderInline)}</div>);
     }
     const block = match[0];
+
     if (block.startsWith('```')) {
       const codeMatch = block.match(/```(\w+)?\s*([\s\S]*?)```/);
       if (codeMatch) elements.push(<MacCodeBlock key={`code-${match.index}`} language={codeMatch[1] || ''} code={codeMatch[2].trim()} />);
