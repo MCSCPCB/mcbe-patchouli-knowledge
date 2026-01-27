@@ -491,7 +491,7 @@ const renderIDSNode = (node: IDSNode): string => {
     // 智能判断：如果是“大头”部首（如尸），内部部件需要更扁更小
     const isBigHead = BIG_HEAD_RADICALS.has(n1Val);
     const innerStyle = isBigHead 
-        ? "scale-[0.5] scale-y-[0.4] origin-bottom-right pr-[5%] pb-[8%]" // 大头调整
+        ? "scale-[0.55] scale-y-[0.4] origin-bottom-right pr-[5%] pb-[8%]" // 大头调整
         : "scale-[0.6] origin-bottom-right pr-[5%] pb-[5%]";              // 小头标准 (病)
 
     return `<span class="relative w-full h-full block">
@@ -504,7 +504,7 @@ const renderIDSNode = (node: IDSNode): string => {
   if (val === '⿹') { 
     const isBigHead = BIG_HEAD_RADICALS.has(n1Val);
     const innerStyle = isBigHead 
-        ? "scale-[0.55] scale-y-[0.5] origin-bottom-left pl-[5%] pb-[8%]" 
+        ? "scale-[0.55] scale-y-[0.4] origin-bottom-left pl-[5%] pb-[8%]" 
         : "scale-[0.6] origin-bottom-left pl-[5%] pb-[5%]";
 
     return `<span class="relative w-full h-full block">
