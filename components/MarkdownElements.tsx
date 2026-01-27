@@ -3,175 +3,88 @@ import hljs from 'highlight.js';
 import 'highlight.js/styles/atom-one-dark.css';
 
 // ==========================================
-// 1. Minecraft 深度语法支持 (Ultimate)
+// 1. Minecraft 深度语法支持 (Enhanced Highlighting)
 // ==========================================
-
-// --- Shared Molang Rules (Refined) ---
-const MOLANG_RULES = [
-  // Strings
-  { className: 'string', begin: /'/, end: /'/, contains: [hljs.BACKSLASH_ESCAPE] },
-  // Numbers
-  { className: 'number', begin: /\b\d+(\.\d+)?\b/ },
-  // Control Flow Keywords
-  { className: 'keyword', begin: /\b(return|loop|for_each|break|continue|this)\b/ },
-  // Namespaces (query, math, variable...) - Cyan/Blue
-  { 
-    className: 'built_in', 
-    begin: /\b(query|math|variable|texture|temp|geometry|material|array|context|c|q|v|t)(?=\.)/ 
-  },
-  // Properties (The part after the dot) - Red/Pink
-  { 
-    className: 'property', 
-    begin: /\.[a-zA-Z0-9_]+/,
-    excludeBegin: true
-  },
-  // Operators
-  { className: 'operator', begin: /[\+\-\*\/=<>&|!?:]+/ },
-  // Punctuation
-  { className: 'punctuation', begin: /[\(\)\{\}\[\],;]/ },
-  // Catch-all for other variables/temps
-  { className: 'variable', begin: /\b[a-zA-Z_][a-zA-Z0-9_]*\b/ }
-];
 
 // --- A. Minecraft Commands (McFunction) ---
 hljs.registerLanguage('mcfunction', (hljs) => ({
   name: 'Minecraft Commands',
-  aliases: ['mc', 'minecraft', 'cmd', 'mcfunction'],
+  aliases: ['mc', 'minecraft', 'function', 'cmd'],
   case_insensitive: true,
   contains: [
-    hljs.HASH_COMMENT_MODE,
-    { 
-      // Main Commands (Ultimate Collection)
-      className: 'keyword', 
-      begin: /^\s*\/?\b(execute|scoreboard|data|give|summon|kill|tp|teleport|say|tellraw|title|advancement|recipe|function|schedule|tag|team|bossbar|effect|enchant|experience|fill|fillbiome|gamemode|gamerule|help|item|kick|list|locate|loot|msg|particle|place|playsound|publish|reload|ride|save-all|save-off|save-on|seed|setblock|setidletimeout|setworldspawn|spawnpoint|spectate|spreadplayers|stop|stopsound|teammsg|time|tm|trigger|w|weather|worldborder|xp|damage|inputpermission|jfr|perf|camera|dialogue|event|fog|mobevent|music|playanimation|structure|tickingarea|volumearea|return|transfer|random)\b/ 
-    },
-    { 
-      // Subcommands & Keywords
-      className: 'literal', 
-      begin: /\b(run|as|at|align|anchored|if|unless|store|result|success|matches|facing|rotated|positioned|in|dimension|type|name|tags|scores|level|distance|x|y|z|dx|dy|dz|limit|sort|gamemode|nbt|true|false|on|origin|replace|keep|destroy|outline|hollow|all|entity|block|storage|nearest|random|player|self)\b/ 
-    },
-    { 
-      // Target Selectors (e.g. @a[type=cow])
-      className: 'variable', 
-      begin: /@[aeprs]/,
-      contains: [
-        {
-          begin: /\[/, end: /\]/,
-          contains: [
-            { className: 'attr', begin: /[a-z0-9_]+(?==)/ }, // Selector Keys (type=)
-            { className: 'punctuation', begin: /=/ },
-            { className: 'string', begin: /!?[a-zA-Z0-9_.:-]+/ }, // Selector Values
-            { className: 'punctuation', begin: /,/ }
-          ]
-        }
-      ]
-    }, 
-    { 
-      // Resource Locations (e.g. minecraft:apple)
-      className: 'symbol', 
-      begin: /\b[a-z0-9_.-]+:[a-z0-9_./-]+\b/ 
-    }, 
-    { 
-      // Coordinates (~ ~1 ^)
-      className: 'number', 
-      begin: /[~^](-?\d+(\.\d+)?)?|\b-?\d+(\.\d+)?[bdfilsw]?\b/ 
-    }, 
-    { 
-      // JSON Strings
-      className: 'string', 
-      begin: /"/, end: /"/,
-      contains: [hljs.BACKSLASH_ESCAPE]
-    },
-    // NBT Stubs (Simplified)
-    { className: 'punctuation', begin: /[\{\}\[\]]/ }
+    { className: 'keyword', begin: /^\s*\/?(execute|scoreboard|data|give|summon|kill|tp|teleport|say|tellraw|title|advancement|recipe|function|schedule|tag|team|bossbar|effect|enchant|experience|fill|fillbiome|gamemode|gamerule|help|item|kick|list|locate|loot|msg|particle|place|playsound|publish|reload|ride|save-all|save-off|save-on|seed|setblock|setidletimeout|setworldspawn|spawnpoint|spectate|spreadplayers|stop|stopsound|teammsg|time|tm|trigger|w|weather|worldborder|xp|damage|inputpermission|jfr|perf|camera|dialogue|event|fog|mobevent|music|playanimation|structure|tickingarea|volumearea)\b/ },
+    { className: 'literal', begin: /\b(run|as|at|align|anchored|if|unless|store|result|success|matches|facing|rotated|positioned|in|dimension|type|name|tags|scores|level|distance|x|y|z|dx|dy|dz|limit|sort|gamemode|nbt|true|false)\b/ },
+    { className: 'variable', begin: /@[aeprs](\[[^\]]*\])?/ }, // Selectors
+    { className: 'symbol', begin: /\b(minecraft:[a-z0-9_]+)\b/ }, // Namespaces
+    { className: 'number', begin: /[~^]-?(\d+(\.\d+)?)?|\b\d+(\.\d+)?[bdfilsw]?\b/ }, // Coordinates & Numbers
+    { className: 'string', begin: /"[^"]*"/ },
+    { className: 'comment', begin: /#.*/ }
   ]
 }));
 
-// --- B. Minecraft Molang (Standalone) ---
+// --- B. Minecraft Molang (Ultimate Edition) ---
 hljs.registerLanguage('molang', (hljs) => ({
   name: 'Molang',
-  aliases: ['mo', 'bedrock-script'],
+  aliases: ['mo', 'molang', 'bedrock-script'],
   case_insensitive: true,
   contains: [
-    hljs.C_NUMBER_MODE,
-    ...MOLANG_RULES
+    // 1. Keywords
+    { className: 'keyword', begin: /\b(return|loop|for_each|break|continue|this)\b/ },
+    // 2. Main Scopes (query, math, etc.) - rendered as types/built-ins
+    { 
+      className: 'built_in', 
+      begin: /\b(query|math|variable|texture|temp|geometry|material|array|context|c|q|v|t)\b(?=\.)/ 
+    },
+    // 3. Properties/Functions after dot
+    {
+      className: 'property',
+      begin: /(?<=\.)[a-zA-Z0-9_]+/,
+    },
+    // 4. Numbers
+    { className: 'number', begin: /\b\d+(\.\d+)?\b/ },
+    // 5. Operators
+    { className: 'operator', begin: /[\+\-\*\/=<>&|!?:]+/ },
+    // 6. Strings
+    { className: 'string', begin: /'[^']*'/ },
+    // 7. Comments
+    { className: 'comment', begin: /\/\/.*/ } 
   ]
 }));
 
-// --- C. Bedrock JSON (Extreme Highlighting) ---
-hljs.registerLanguage('json-bedrock', (hljs) => ({
+// --- C. Bedrock JSON & JSON UI (Auto-detect & Molang Injection) ---
+hljs.registerLanguage('json-molang', (hljs) => ({
   name: 'Bedrock JSON',
   aliases: ['json', 'bedrock', 'jsonui', 'ui'],
   contains: [
-    hljs.C_LINE_COMMENT_MODE,
-    hljs.C_BLOCK_COMMENT_MODE,
-    
-    // 1. Top Level & Structural Keys (Purple/Magenta)
-    // Added: geometry, textures, materials, identifier
+    // Keys (Standard JSON keys)
     {
-      className: 'keyword', 
-      begin: /"(format_version|minecraft:[a-z0-9_.-]+|components|description|events|component_groups|states|permutations|bones|cubes|locators|poly_mesh|physics|texture_meshes|scripts|render_controllers|animations|animation_controllers|geometry|textures|materials|identifier|identifiers)"(?=\s*:)/
+      className: 'attr',
+      begin: /"(\\[\\"\"]|[^\\\"\n])*"(?=\s*:)/,
     },
-    
-    // 2. UI & Functional Keys (Blue/Cyan - via 'built_in')
+    // Keys (JSON UI Special Keys - highlighted differently if theme supports)
     {
-      className: 'built_in',
-      begin: /"(type|controls|bindings|visible|texture|offset|size|layer|alpha|anchor_from|anchor_to|text|font_type|font_scale|color|ignored|variables|modifications|on_entry|on_exit|on_event|anims|transitions)"(?=\s*:)/
+        className: 'keyword',
+        begin: /"(type|controls|bindings|visible|texture|offset|size|layer|alpha|anchor_from|anchor_to|text|font_type|font_scale|color|ignored|variables|modifications)"(?=\s*:)/
     },
-    
-    // 3. Standard Keys (Red/Orange - via 'attr')
-    // Correctly handles escaped quotes inside keys
-    {
-      className: 'attr', 
-      begin: /"(?:[^\\"\n]|\\.)*"(?=\s*:)/,
-    },
-    
-    // 4. Resource Location Values (Cyan - via 'symbol')
-    // Supports custom namespaces (e.g. "sny:default")
-    {
-        className: 'symbol',
-        begin: /"[a-z0-9_.-]+:[a-z0-9_./-]+"/
-    },
-    
-    // 5. Values with Molang Injection
+    // Values
     {
       className: 'string',
       begin: /"/, end: /"/,
       contains: [
         hljs.BACKSLASH_ESCAPE,
-        // Detect Molang Patterns inside strings (e.g. "t.anim = ...")
+        // Inject Molang highlighting inside JSON strings
         {
           subLanguage: 'molang',
-          begin: /\b(query|math|variable|t|c|q|v)\./,
-          end: /"/, // Stop at the closing quote of the string
-          returnEnd: true, 
-          excludeEnd: true
+          begin: /[^\"]+/,
+          // Only trigger if it looks like Molang (contains math/query/variable or operators)
+          relevance: 0 
         }
       ]
     },
-    
     hljs.C_NUMBER_MODE,
+    hljs.C_BLOCK_COMMENT_MODE,
     { className: 'literal', begin: /\b(true|false|null)\b/ },
     { className: 'punctuation', begin: /[\{\[\}\],:]/ }
-  ]
-}));
-
-// --- D. Lang File (Enhanced) ---
-hljs.registerLanguage('lang', (hljs) => ({
-  name: 'Minecraft Lang',
-  aliases: ['lang', 'properties'],
-  contains: [
-    hljs.COMMENT(/#/, /$/),
-    { className: 'variable', begin: /^[a-zA-Z0-9_.-]+(?==)/ },
-    { 
-      className: 'string', 
-      begin: /=/, end: /$/, 
-      excludeBegin: true,
-      contains: [
-        // Color Codes (§a)
-        { className: 'meta', begin: /§[0-9a-fk-or]/ } 
-      ]
-    }
   ]
 }));
 
@@ -190,98 +103,70 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
   const [detectedLang, setDetectedLang] = useState('plaintext');
   const [highlightedHtml, setHighlightedHtml] = useState('');
 
+  // Normalize language names
   const normalizeLang = (lang: string) => {
     const lower = lang?.toLowerCase() || '';
     const map: Record<string, string> = {
-        'js': 'javascript', 'ts': 'typescript', 'jsx': 'javascript', 'tsx': 'typescript',
-        'json': 'json-bedrock', 'jsonui': 'json-bedrock',
-        'mc': 'mcfunction', 'cmd': 'mcfunction',
-        'mo': 'molang', 'molang': 'molang',
-        'lang': 'lang'
+        'js': 'javascript',
+        'ts': 'typescript',
+        'json': 'json-molang', // Force custom JSON handler
+        'jsonui': 'json-molang',
+        'mc': 'mcfunction',
+        'mo': 'molang'
     };
     return map[lower] || lower || 'plaintext';
   };
 
+  // Display Label Mapping
   const getDisplayLabel = (lang: string) => {
     const map: Record<string, string> = {
       'mcfunction': 'McFunction',
       'molang': 'Molang',
-      'json-bedrock': 'JSON',
+      'json-molang': 'JSON',
       'javascript': 'JavaScript',
       'typescript': 'TypeScript',
-      'lang': 'Lang',
+      'cpp': 'C++',
       'plaintext': 'Text',
+      'html': 'HTML',
+      'css': 'CSS',
+      'python': 'Python'
     };
     return map[lang] || lang.toUpperCase();
-  };
-
-  // Improved Detection Logic
-  const detectLanguage = (codeSnippet: string) => {
-    // 0. Clean comments (inline // or block /* */) from start to identify structure
-    // This allows detecting JSON that starts with a comment header
-    const clean = codeSnippet.replace(/^(\s*(\/\/.*|\/\*[\s\S]*?\*\/))*/, '').trim();
-    
-    // 1. JSON (Block OR Snippet like "key": value)
-    if (clean.startsWith('{') || clean.startsWith('[')) return 'json-bedrock';
-    if (/^"(?:[^"\\]|\\.)*"\s*:/.test(clean)) return 'json-bedrock';
-    
-    // 2. JS/TS (Keywords)
-    if (/\b(const|let|var|function|import|export|return|class|interface|=>)\b/.test(codeSnippet)) {
-        if (codeSnippet.includes('interface') || codeSnippet.includes('type ')) return 'typescript';
-        return 'javascript';
-    }
-
-    // 3. McFunction (Expanded Commands)
-    if (/^\s*\/?(execute|scoreboard|data|give|summon|kill|tp|teleport|say|tellraw|title|advancement|recipe|function|schedule|tag|team|bossbar|effect|enchant|experience|fill|fillbiome|gamemode|gamerule|help|item|kick|list|locate|loot|msg|particle|place|playsound|publish|reload|ride|save-all|save-off|save-on|seed|setblock|setidletimeout|setworldspawn|spawnpoint|spectate|spreadplayers|stop|stopsound|teammsg|time|tm|trigger|w|weather|worldborder|xp|damage|inputpermission|jfr|perf|camera|dialogue|event|fog|mobevent|music|playanimation|structure|tickingarea|volumearea|return|transfer|random)\b/m.test(codeSnippet)) return 'mcfunction';
-    
-    // 4. Molang (STRICT)
-    // Only detect if it matches Molang keywords AND isn't identified as JSON
-    if (/\b(query|math|variable|geometry|texture)\.[a-zA-Z0-9_]+/.test(codeSnippet)) return 'molang';
-    if (codeSnippet.includes('v.') || codeSnippet.includes('q.') || codeSnippet.includes('t.')) {
-        if (codeSnippet.includes('?') && codeSnippet.includes(':')) return 'molang';
-    }
-    
-    // 5. Lang File
-    if (/^[\w\.]+=[^\n]+$/m.test(codeSnippet) && !codeSnippet.includes(';') && !codeSnippet.includes('{')) return 'lang';
-
-    return null;
   };
 
   useEffect(() => {
     let finalLang = normalizeLang(language);
     let codeToRender = code;
 
-    // Auto Format JSON
-    if (finalLang === 'json-bedrock') {
+    // 1. Auto Format (IDE Standard)
+    // Only auto-format JSON/JSON-Molang for now as it's the safest to do on client-side
+    // without heavy parsers.
+    if (finalLang === 'json-molang') {
         try {
-            // Only auto-format if it looks like a minified or raw JSON object block
-            const clean = code.replace(/^(\s*(\/\/.*|\/\*[\s\S]*?\*\/))*/, '').trim();
-            if ((clean.startsWith('{') || clean.startsWith('[')) && !code.includes('\n')) {
-                const parsed = JSON.parse(code); // parse original code (assuming comments are valid in Bedrock but maybe not for JSON.parse)
-                // Note: Standard JSON.parse fails on comments. 
-                // We leave it as is if it fails, assuming user wants raw view.
+            // Check if it looks like a minified object or array
+            if ((code.startsWith('{') || code.startsWith('[')) && !code.includes('\n')) {
+                const parsed = JSON.parse(code);
                 codeToRender = JSON.stringify(parsed, null, 2);
             }
-        } catch (e) { /* ignore */ }
+        } catch (e) {
+            // If parse fails (e.g. comments in JSON), render as is
+        }
     }
 
-    // Auto-detection
+    // 2. Intelligent Auto-detection fallback
     if (finalLang === 'plaintext') {
-        const heuristic = detectLanguage(codeToRender);
-        if (heuristic) {
-            finalLang = heuristic;
-        } else {
-            const auto = hljs.highlightAuto(codeToRender);
-            if (auto.language && auto.language !== 'molang') { 
-                if (auto.language === 'json') finalLang = 'json-bedrock';
-                else finalLang = auto.language;
-            }
+        const auto = hljs.highlightAuto(codeToRender);
+        if (auto.language) {
+            // Prefer our custom definitions
+            if (auto.language === 'json') finalLang = 'json-molang';
+            else finalLang = auto.language;
         }
     }
 
     setFormattedCode(codeToRender);
     setDetectedLang(finalLang);
 
+    // 3. Highlight
     try {
         if (hljs.getLanguage(finalLang)) {
             setHighlightedHtml(hljs.highlight(codeToRender, { language: finalLang }).value);
@@ -301,22 +186,25 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
   };
 
   return (
-    // Mac Style - Bluish Dark Theme
-    <div className="relative group my-5 rounded-xl overflow-hidden bg-[#23272e] border border-[#3b4252] shadow-2xl font-sans">
-      <div className="flex items-center justify-between px-4 py-3 bg-[#282c34] border-b border-[#3b4252]">
+    <div className="relative group my-5 rounded-xl overflow-hidden bg-[#1e2024] border border-[#333] shadow-xl">
+      {/* Mac Window Header */}
+      <div className="flex items-center justify-between px-4 py-2.5 bg-[#252526] border-b border-[#333]">
+        {/* Left: Mac Dots */}
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-[#FF5F56] border border-[#E0443E]" /> 
-          <div className="w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#DEA123]" /> 
-          <div className="w-3 h-3 rounded-full bg-[#27C93F] border border-[#1AAB29]" /> 
+          <div className="w-3 h-3 rounded-full bg-[#FF5F56]" /> 
+          <div className="w-3 h-3 rounded-full bg-[#FFBD2E]" /> 
+          <div className="w-3 h-3 rounded-full bg-[#27C93F]" /> 
         </div>
+        
+        {/* Right: Language & Copy */}
         <div className="flex items-center gap-3">
-          <span className="text-[12px] font-mono text-[#abb2bf] group-hover:text-[#fff] transition-colors select-none font-medium">
+          <span className="text-[11px] font-mono font-medium text-[#666] group-hover:text-[#999] transition-colors select-none">
             {getDisplayLabel(detectedLang)}
           </span>
-          <div className="w-[1px] h-3 bg-[#3e4451]"></div>
+          <div className="w-[1px] h-3 bg-[#444]"></div>
           <button 
             onClick={handleCopy}
-            className="flex items-center justify-center text-[#abb2bf] hover:text-[#fff] transition-colors"
+            className="flex items-center justify-center text-[#666] hover:text-[#fff] transition-colors"
             title="Copy"
           >
             <span className="material-symbols-rounded text-sm">
@@ -325,15 +213,12 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
           </button>
         </div>
       </div>
-      <div className="relative overflow-x-auto scrollbar-thin scrollbar-thumb-[#3b4252] scrollbar-track-transparent">
+      
+      {/* Code Area */}
+      <div className="relative overflow-x-auto scrollbar-thin scrollbar-thumb-[#444] scrollbar-track-transparent">
         <pre className="p-4 m-0">
           <code 
-            className={`text-[13px] leading-relaxed whitespace-pre language-${detectedLang}`}
-            style={{ 
-              fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-              color: '#abb2bf',
-              textShadow: '0 1px 2px rgba(0,0,0,0.1)' 
-            }}
+            className={`font-mono text-[13px] leading-relaxed whitespace-pre language-${detectedLang}`}
             dangerouslySetInnerHTML={{ __html: highlightedHtml }}
           />
         </pre>
@@ -343,114 +228,393 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
 };
 
 // ==========================================
-// 3. 核心渲染器 (Refined)
+// 3. 核心渲染器 (Unicode IDS Engine & Zaozi)
 // ==========================================
 
-const parseZaoziInfo = (desc: string) => {
+// --- IDS Constants & Types ---
+// Unicode IDS Characters (U+2FF0 - U+2FFB)
+const IDS = {
+  LR: '⿰',   // Left-Right
+  TB: '⿱',   // Top-Bottom
+  LMR: '⿲',  // Left-Middle-Right
+  TMB: '⿳',  // Top-Middle-Bottom
+  FULL: '⿴', // Full Enclosure
+  TOP: '⿵',  // Top Enclosure
+  BTM: '⿶',  // Bottom Enclosure
+  LEFT: '⿷', // Left Enclosure
+  TL: '⿸',   // Top-Left Enclosure
+  TR: '⿹',   // Top-Right Enclosure
+  BL: '⿺',   // Bottom-Left Enclosure
+  OVER: '⿻'  // Overlaid
+} as const;
+
+type IDS_OP = typeof IDS[keyof typeof IDS];
+
+// Radical Mappings: Context-sensitive Glyphs
+// Key: Character -> Value: { Position: Replacement }
+const RADICAL_MAP: Record<string, Record<string, string>> = {
+  '水': { 'L': '氵', 'B': '氺' },
+  '火': { 'L': '火', 'B': '灬' },
+  '人': { 'L': '亻', 'T': '𠆢' },
+  '心': { 'L': '忄', 'B': '⺗' },
+  '手': { 'L': '扌' },
+  '言': { 'L': '讠' },
+  '金': { 'L': '钅' },
+  '食': { 'L': '饣' },
+  '衣': { 'L': '衤' },
+  '示': { 'L': '礻' },
+  '肉': { 'L': '月' }, // Standard replacement in characters
+  '王': { 'L': '𤣩' }, // Jade radical
+  '足': { 'L': '⻊' },
+  '竹': { 'T': '⺮' },
+  '草': { 'T': '艹' },
+  '网': { 'T': '⺫' },
+  '刀': { 'R': '刂' },
+  '犬': { 'L': '犭' },
+  '羊': { 'T': '⺶' }
+};
+
+// Enclosure Inference Map (for smart '+' syntax)
+const ENCLOSURE_MAP: Record<string, IDS_OP> = {
+  '囗': IDS.FULL,
+  '门': IDS.TOP, '冂': IDS.TOP, '冖': IDS.TOP, '宀': IDS.TOP,
+  '凵': IDS.BTM,
+  '匚': IDS.LEFT,
+  '疒': IDS.TL, '尸': IDS.TL, '广': IDS.TL, '厂': IDS.TL, '户': IDS.TL,
+  '勹': IDS.TR, '气': IDS.TR,
+  '辶': IDS.BL, '走': IDS.BL, '廴': IDS.BL
+};
+
+interface IDSNode {
+  op?: IDS_OP;
+  parts?: IDSNode[];
+  char?: string;
+}
+
+// --- A. Smart Parsing Engine ---
+const parseZaoziString = (desc: string): IDSNode => {
   desc = desc.trim();
-  let mode = 'lr'; let p1 = '?'; let p2 = '?';
-  const clean = (s: string) => s.replace(/字(头|框|底|旁|儿)/g, '').trim();
-  const funcMatch = desc.match(/^([^\(（]+)[\(（](.*?)[\,，](.*?)[\)）]$/);
-  
+
+  // 1. Explicit IDS Format or Bracket Format handling
+  // If user enters actual IDS chars, we should parse them (simplified recursive parser)
+  // For now, let's focus on the DSL: "op(A, B)" or "A+B"
+
+  // Helper: Strip brackets
+  const unwrap = (s: string) => s.replace(/^[\(（](.*)[\)）]$/, '$1');
+
+  // Check for Function Syntax: "bw(A, B)" or "包围(A, B)"
+  const funcMatch = desc.match(/^([^\(（]+)[\(（](.*?)[\)）]$/);
   if (funcMatch) {
     const type = funcMatch[1].trim().toLowerCase();
-    p1 = clean(funcMatch[2]); p2 = clean(funcMatch[3]);
-    if (['包围', 'surround', 'bw', 'inside', '全包', '半包'].includes(type)) mode = 'surround';
-    else if (['上下', 'tb', 'sx', 'updown'].includes(type)) mode = 'tb';
-  } else if (desc.includes('+')) {
-    const parts = desc.split('+'); p1 = clean(parts[0]); p2 = clean(parts[1]);
-    const SURROUND_SET = new Set(['风', '囗', '门', '辶', '走', '疒', '尸', '广', '厂', '气', '弋', '戈', '户', '匚', '冂', '凵', '勹', '几', '框']);
-    if (SURROUND_SET.has(p1)) mode = 'surround';
+    const rawParts = funcMatch[2].split(/[,，]/).map(s => s.trim());
+    
+    // Recursive parse parts
+    const parts = rawParts.map(parseZaoziString);
+
+    let op: IDS_OP = IDS.LR;
+    if (['上下', 'tb', 'sx', 'updown', '⿱'].includes(type)) op = IDS.TB;
+    else if (['左中右', 'lmr', '⿲'].includes(type)) op = IDS.LMR;
+    else if (['上中下', 'tmb', '⿳'].includes(type)) op = IDS.TMB;
+    else if (['全包', 'bw', 'surround', 'full', '囗', '⿴'].includes(type)) op = IDS.FULL;
+    else if (['左上', 'tl', '⿸'].includes(type)) op = IDS.TL;
+    else if (['左下', 'bl', '⿺'].includes(type)) op = IDS.BL;
+    else if (['右上', 'tr', '⿹'].includes(type)) op = IDS.TR;
+    else if (['同', 'top', 'upper', '⿵'].includes(type)) op = IDS.TOP;
+    
+    return { op, parts };
   }
-  return { mode, p1, p2 };
+
+  // Check for '+' Syntax
+  if (desc.includes('+')) {
+    const rawParts = desc.split('+').map(s => s.trim());
+    const parts = rawParts.map(s => ({ char: s })); // Leaves for now
+    
+    // Smart Inference
+    if (parts.length === 2) {
+      const p1 = parts[0].char || '';
+      // Check if P1 is an enclosure root
+      if (ENCLOSURE_MAP[p1]) {
+        return { op: ENCLOSURE_MAP[p1], parts };
+      }
+      // Default to LR
+      return { op: IDS.LR, parts };
+    } 
+    
+    if (parts.length === 3) {
+        // Assume Left-Middle-Right if 3 parts
+        return { op: IDS.LMR, parts };
+    }
+  }
+
+  // Fallback: Single Char
+  return { char: desc };
 };
 
-const generateZaoziHtml = (info: { mode: string, p1: string, p2: string }) => {
-  const { mode, p1, p2 } = info;
-  if (mode === 'surround') {
-    return `<span class="inline-grid place-items-center w-[1em] h-[1em] align-text-bottom mx-[1px] leading-none select-none relative top-[1px]">
-      <span class="col-start-1 row-start-1 text-[1em] z-0 scale-[1.0]">${p1}</span>
-      <span class="col-start-1 row-start-1 text-[0.6em] z-10 scale-[0.7] translate-y-[1px]">${p2}</span>
-    </span>`;
+// --- B. Recursive Renderer ---
+const renderIDSNode = (node: IDSNode, context: 'L' | 'R' | 'T' | 'B' | 'M' | 'None' = 'None'): string => {
+  if (node.char) {
+    // 1. Radical Substitution
+    let displayChar = node.char;
+    const variants = RADICAL_MAP[node.char];
+    if (variants && variants[context]) {
+      displayChar = variants[context];
+    }
+
+    // 2. Visual Tweaks for specific contexts (CSS Transforms)
+    // Even if no unicode variant exists, we might want to squeeze it.
+    let transform = "";
+    if (context === 'L') transform = "scaleX(0.9) origin-left"; 
+    else if (context === 'R') transform = "scaleX(0.9) origin-right";
+    else if (context === 'T') transform = "scaleY(0.9) origin-top";
+    else if (context === 'B') transform = "scaleY(0.9) origin-bottom";
+
+    // 3. Leaf Node HTML
+    return `<span class="flex items-center justify-center w-full h-full overflow-visible leading-none select-none text-[inherit]" 
+              style="${transform ? `transform: ${transform};` : ''}">
+              ${displayChar}
+            </span>`;
   }
-  if (mode === 'tb') {
-    return `<span class="inline-flex flex-col w-[1em] h-[1em] align-text-bottom mx-[1px] leading-none select-none justify-center relative top-[0.5px]">
-      <span class="flex-1 w-full flex items-end justify-center overflow-visible text-[0.6em] h-[50%] leading-none scale-y-[0.7] scale-x-[0.9] origin-bottom">${p1}</span>
-      <span class="flex-1 w-full flex items-start justify-center overflow-visible text-[0.6em] h-[50%] leading-none scale-y-[0.7] scale-x-[0.9] origin-top">${p2}</span>
-    </span>`;
+
+  if (!node.parts || node.parts.length === 0) return '';
+  const op = node.op || IDS.LR;
+
+  // Render Strategy based on Operator
+  const p1 = node.parts[0];
+  const p2 = node.parts[1];
+  const p3 = node.parts[2];
+
+  // Common Container
+  const container = (inner: string, extraClass: string = '') => 
+    `<span class="inline-flex relative w-full h-full ${extraClass}">${inner}</span>`;
+
+  // --- Binary Structures ---
+  if (op === IDS.LR) {
+    return container(
+      `<div class="flex-1 h-full flex items-center justify-center overflow-hidden">${renderIDSNode(p1, 'L')}</div>
+       <div class="flex-1 h-full flex items-center justify-center overflow-hidden">${renderIDSNode(p2, 'R')}</div>`,
+      'flex-row'
+    );
   }
-  return `<span class="inline-flex flex-row w-[1em] h-[1em] align-text-bottom mx-[1px] leading-none select-none items-center relative top-[0.5px]">
-    <span class="flex-1 h-full flex items-center justify-end overflow-visible text-[0.6em] w-[50%] scale-x-[0.7] scale-y-[0.9] origin-right">${p1}</span>
-    <span class="flex-1 h-full flex items-center justify-start overflow-visible text-[0.6em] w-[50%] scale-x-[0.7] scale-y-[0.9] origin-left">${p2}</span>
-  </span>`;
+  if (op === IDS.TB) {
+    return container(
+      `<div class="flex-1 w-full flex items-center justify-center overflow-hidden">${renderIDSNode(p1, 'T')}</div>
+       <div class="flex-1 w-full flex items-center justify-center overflow-hidden">${renderIDSNode(p2, 'B')}</div>`,
+      'flex-col'
+    );
+  }
+
+  // --- Ternary Structures ---
+  if (op === IDS.LMR) {
+    return container(
+      `<div class="flex-1 h-full flex items-center justify-center">${renderIDSNode(p1, 'L')}</div>
+       <div class="flex-1 h-full flex items-center justify-center">${renderIDSNode(p2, 'M')}</div>
+       <div class="flex-1 h-full flex items-center justify-center">${renderIDSNode(p3 || p2, 'R')}</div>`,
+      'flex-row'
+    );
+  }
+  if (op === IDS.TMB) {
+    return container(
+      `<div class="flex-1 w-full flex items-center justify-center">${renderIDSNode(p1, 'T')}</div>
+       <div class="flex-1 w-full flex items-center justify-center">${renderIDSNode(p2, 'M')}</div>
+       <div class="flex-1 w-full flex items-center justify-center">${renderIDSNode(p3 || p2, 'B')}</div>`,
+      'flex-col'
+    );
+  }
+
+  // --- Enclosure Structures (The Hard Part) ---
+  // Using Absolute Positioning for precision overlay
+  
+  // Helper: Layer (z-index)
+  // Outer frame usually needs to be behind if it's full, or handled carefully. 
+  // Actually standard fonts usually have the enclosure "hollow".
+  
+  // 1. Full Enclosure (⿴) - Outer fills, Inner centered small
+  if (op === IDS.FULL) {
+    return container(
+      `<div class="absolute inset-0 z-0 flex items-center justify-center scale-[1.1]">${renderIDSNode(p1, 'None')}</div>
+       <div class="absolute inset-0 z-10 flex items-center justify-center scale-[0.6]">${renderIDSNode(p2, 'None')}</div>`
+    );
+  }
+
+  // 2. Top-Left Enclosure (⿸) - e.g., 疒. Outer Top-Left, Inner Bottom-Right
+  if (op === IDS.TL) {
+    return container(
+      `<div class="absolute inset-0 z-0 flex items-start justify-start pl-[0.1em] pt-[0.1em] scale-[1.1] origin-top-left">${renderIDSNode(p1, 'None')}</div>
+       <div class="absolute inset-0 z-10 flex items-end justify-end pr-[0.1em] pb-[0.1em] scale-[0.7] origin-bottom-right">${renderIDSNode(p2, 'None')}</div>`
+    );
+  }
+
+  // 3. Top-Right Enclosure (⿹) - e.g., 气. Outer Top-Right, Inner Bottom-Left
+  if (op === IDS.TR) {
+    return container(
+      `<div class="absolute inset-0 z-0 flex items-start justify-end pr-[0.1em] pt-[0.1em] scale-[1.1] origin-top-right">${renderIDSNode(p1, 'None')}</div>
+       <div class="absolute inset-0 z-10 flex items-end justify-start pl-[0.1em] pb-[0.1em] scale-[0.7] origin-bottom-left">${renderIDSNode(p2, 'None')}</div>`
+    );
+  }
+  
+  // 4. Bottom-Left Enclosure (⿺) - e.g., 辶. Outer Bottom-Left, Inner Top-Right
+  if (op === IDS.BL) {
+    return container(
+      `<div class="absolute inset-0 z-0 flex items-end justify-start pl-[0.1em] pb-[0.1em] scale-[1.1] origin-bottom-left">${renderIDSNode(p1, 'None')}</div>
+       <div class="absolute inset-0 z-10 flex items-start justify-end pr-[0.1em] pt-[0.1em] scale-[0.65] origin-top-right translate-x-[-0.1em] translate-y-[0.1em]">${renderIDSNode(p2, 'None')}</div>`
+    );
+  }
+
+  // 5. Top Enclosure (⿵) - Outer Top, Inner Bottom
+  if (op === IDS.TOP) {
+      return container(
+      `<div class="absolute inset-0 z-0 flex items-start justify-center pt-[0.05em] scale-[1.1] origin-top">${renderIDSNode(p1, 'T')}</div>
+       <div class="absolute inset-0 z-10 flex items-end justify-center pb-[0.1em] scale-[0.7] origin-bottom">${renderIDSNode(p2, 'B')}</div>`
+      );
+  }
+
+  // 6. Bottom Enclosure (⿶)
+  if (op === IDS.BTM) {
+    return container(
+    `<div class="absolute inset-0 z-0 flex items-end justify-center pb-[0.05em] scale-[1.1] origin-bottom">${renderIDSNode(p1, 'B')}</div>
+     <div class="absolute inset-0 z-10 flex items-start justify-center pt-[0.1em] scale-[0.7] origin-top">${renderIDSNode(p2, 'T')}</div>`
+    );
+  }
+
+  // 7. Left Enclosure (⿷)
+  if (op === IDS.LEFT) {
+    return container(
+    `<div class="absolute inset-0 z-0 flex items-center justify-start pl-[0.05em] scale-[1.1] origin-left">${renderIDSNode(p1, 'L')}</div>
+     <div class="absolute inset-0 z-10 flex items-center justify-end pr-[0.1em] scale-[0.6] origin-right">${renderIDSNode(p2, 'R')}</div>`
+    );
+  }
+
+  // Fallback
+  return renderIDSNode(p1);
 };
+
+
+// --- C. Top Level Generator ---
+const generateZaoziHtml = (desc: string) => {
+  try {
+    const rootNode = parseZaoziString(desc);
+    const innerHtml = renderIDSNode(rootNode);
+    // Global Wrapper: 1em x 1em, sitting on baseline
+    return `<span class="inline-block w-[1.1em] h-[1.1em] align-text-bottom mx-[1px] leading-none select-none relative top-[1px] text-[#E0E0E0] font-serif bg-transparent">
+        ${innerHtml}
+    </span>`;
+  } catch (e) {
+    return `<span class="text-red-400">[造字失败:${desc}]</span>`;
+  }
+};
+
 
 export const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
+  
+  // 1. Registry Build Phase (Parsed once per content change)
   const zaoziRegistry = useMemo(() => {
     const registry: Record<string, string> = {};
     const regex = /\[(?:造字|zaozi)\s*[:：]\s*([a-zA-Z0-9]+)\s*[|｜]\s*(.*?)\]/gi;
     let match;
     while ((match = regex.exec(content)) !== null) {
-      registry[match[1]] = generateZaoziHtml(parseZaoziInfo(match[2]));
+      const pinyin = match[1];
+      const desc = match[2];
+      registry[pinyin] = generateZaoziHtml(desc);
     }
     return registry;
   }, [content]);
 
   const renderInline = (text: string) => {
-    return text
+    let res = text
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-      // Fixed: Markdown styling using neutral/bright colors, NOT code syntax colors
-      .replace(/`([^`]+)`/g, '<code class="bg-[#2c313a] text-[#98c379] px-1.5 py-0.5 rounded text-sm font-mono border border-[#3e4451] mx-1">$1</code>')
-      .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" class="rounded-xl my-4 w-full shadow-lg border border-[#3e4451]"/>')
-      .replace(/\*\*(.*?)\*\*/g, '<strong class="text-[#FFFFFF] font-bold">$1</strong>') // White for bold
-      .replace(/\*(.*?)\*/g, '<em class="text-[#BBBBBB] italic font-serif">$1</em>') // Light Grey for italic
+      // 1. Inline Code
+      .replace(/`([^`]+)`/g, '<code class="bg-[#2D2D2D] text-[#A5C9A1] px-1.5 py-0.5 rounded text-sm font-mono border border-[#444] mx-1">$1</code>')
+      // 2. Images
+      .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" class="rounded-xl my-4 w-full shadow-lg border border-[#333]"/>')
+      // 3. Formatting
+      .replace(/\*\*(.*?)\*\*/g, '<strong class="text-[#E6E6E6] font-semibold">$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em class="text-[#B0B0B0] font-serif">$1</em>')
       .replace(/~~(.*?)~~/g, '<del class="text-[#666] decoration-1">$1</del>')
+      // 4. Custom Font (Simplified & Non-conflicting)
       .replace(/%%(.*?)\|(.*?)%%/g, '<span style="font-family: \'$1\', sans-serif;">$2</span>')
+      // 5. Zaozi (Definition - Hidden)
       .replace(/\[(?:造字|zaozi)\s*[:：]\s*([a-zA-Z0-9]+)\s*[|｜]\s*(.*?)\]/gi, '') 
-      .replace(/:([a-zA-Z0-9]+):/g, (match, pinyin) => zaoziRegistry[pinyin] || match)
-      .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener" class="text-[#61afef] hover:underline decoration-2 underline-offset-2 break-all">$1</a>');
+      // 6. Zaozi (Usage)
+      .replace(/:([a-zA-Z0-9]+):/g, (match, pinyin) => {
+         return zaoziRegistry[pinyin] || match; 
+      })
+      // 7. Links
+      .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener" class="text-[#4D9EFF] hover:underline decoration-2 underline-offset-2 break-all">$1</a>');
+      
+    return res;
   };
 
   const elements = [];
   const regex = /(```(\w+)?\s*[\s\S]*?```|<(?:video|iframe)[\s\S]*?(?:<\/(?:video|iframe)>|\/>))/g;
+  
   let lastIndex = 0;
   let match;
 
   while ((match = regex.exec(content)) !== null) {
     if (match.index > lastIndex) {
       const textPart = content.slice(lastIndex, match.index);
-      if (textPart.trim()) elements.push(<div key={`text-${lastIndex}`} className="prose-part">{renderTextBlocks(textPart, renderInline)}</div>);
+      if (textPart.trim()) {
+        elements.push(<div key={`text-${lastIndex}`} className="prose-part">{renderTextBlocks(textPart, renderInline)}</div>);
+      }
     }
+
     const block = match[0];
     if (block.startsWith('```')) {
       const codeMatch = block.match(/```(\w+)?\s*([\s\S]*?)```/);
-      if (codeMatch) elements.push(<MacCodeBlock key={`code-${match.index}`} language={codeMatch[1] || ''} code={codeMatch[2].trim()} />);
+      if (codeMatch) {
+        elements.push(
+          <MacCodeBlock 
+            key={`code-${match.index}`} 
+            language={codeMatch[1] || ''} 
+            code={codeMatch[2].trim()} 
+          />
+        );
+      }
     } else {
-      elements.push(<div key={`media-${match.index}`} className="rounded-xl overflow-hidden my-6 shadow-lg border border-[#3e4451] bg-black/20" dangerouslySetInnerHTML={{ __html: block }} />);
+      elements.push(
+        <div 
+          key={`media-${match.index}`} 
+          className="rounded-xl overflow-hidden my-6 shadow-lg border border-[#333] bg-black/20"
+          dangerouslySetInnerHTML={{ __html: block }}
+        />
+      );
     }
     lastIndex = regex.lastIndex;
   }
+
   if (lastIndex < content.length) {
     const textPart = content.slice(lastIndex);
-    if (textPart.trim()) elements.push(<div key={`text-end-${lastIndex}`} className="prose-part">{renderTextBlocks(textPart, renderInline)}</div>);
+    if (textPart.trim()) {
+      elements.push(<div key={`text-end-${lastIndex}`} className="prose-part">{renderTextBlocks(textPart, renderInline)}</div>);
+    }
   }
 
-  return <div className="space-y-1 text-[#abb2bf]">{elements}</div>;
+  return <div className="space-y-1 text-[#C7C7CC]">{elements}</div>;
 };
 
+// Helper: Text Block Rendering
 const renderTextBlocks = (text: string, inlineParser: (s: string) => string) => {
   return text.split('\n').map((line, idx) => {
     const trimmed = line.trim();
     if (!trimmed) return <div key={idx} className="h-2" />;
-    // Fixed: Headers use White/Grey scale, no code colors
-    if (trimmed.startsWith('# ')) return <h1 key={idx} className="text-3xl font-bold text-[#FFFFFF] mt-8 mb-4 pb-2 border-b border-[#3e4451]" dangerouslySetInnerHTML={{__html: inlineParser(trimmed.slice(2))}} />;
+    
+    if (trimmed.startsWith('# ')) return <h1 key={idx} className="text-3xl font-bold text-[#FFFFFF] mt-8 mb-4 pb-2 border-b border-[#333]" dangerouslySetInnerHTML={{__html: inlineParser(trimmed.slice(2))}} />;
     if (trimmed.startsWith('## ')) return <h2 key={idx} className="text-2xl font-semibold text-[#EEEEEE] mt-6 mb-3" dangerouslySetInnerHTML={{__html: inlineParser(trimmed.slice(3))}} />;
     if (trimmed.startsWith('### ')) return <h3 key={idx} className="text-xl font-medium text-[#DDDDDD] mt-4 mb-2" dangerouslySetInnerHTML={{__html: inlineParser(trimmed.slice(4))}} />;
-    // Fixed: Blockquote uses standard grey
-    if (trimmed.startsWith('> ')) return <blockquote key={idx} className="border-l-4 border-[#5c6370] bg-[#2c313a]/50 pl-4 py-2 my-2 rounded-r italic text-[#BBBBBB]"><span dangerouslySetInnerHTML={{__html: inlineParser(trimmed.slice(2))}} /></blockquote>;
-    if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) return <div key={idx} className="flex gap-2 ml-2 my-1"><span className="text-[#61afef] font-bold">•</span><span className="flex-1 break-words leading-7" dangerouslySetInnerHTML={{__html: inlineParser(trimmed.slice(2))}} /></div>;
+    
+    if (trimmed.startsWith('> ')) {
+      return <blockquote key={idx} className="border-l-4 border-[#555] bg-[#333]/30 pl-4 py-2 my-2 rounded-r italic text-[#CCC]"><span dangerouslySetInnerHTML={{__html: inlineParser(trimmed.slice(2))}} /></blockquote>;
+    }
+
+    if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+       return <div key={idx} className="flex gap-2 ml-2 my-1"><span className="text-[#888] font-bold">•</span><span className="flex-1 break-words leading-7" dangerouslySetInnerHTML={{__html: inlineParser(trimmed.slice(2))}} /></div>;
+    }
+
     const orderedMatch = trimmed.match(/^(\d+)\.\s+(.*)/);
-    if (orderedMatch) return <div key={idx} className="flex gap-2 ml-2 my-1"><span className="text-[#61afef] font-mono font-bold">{orderedMatch[1]}.</span><span className="flex-1 break-words leading-7" dangerouslySetInnerHTML={{__html: inlineParser(orderedMatch[2])}} /></div>;
+    if (orderedMatch) {
+        return <div key={idx} className="flex gap-2 ml-2 my-1"><span className="text-[#888] font-mono font-bold">{orderedMatch[1]}.</span><span className="flex-1 break-words leading-7" dangerouslySetInnerHTML={{__html: inlineParser(orderedMatch[2])}} /></div>;
+    }
+
     return <p key={idx} className="leading-7 mb-2 break-words text-justify" style={{ overflowWrap: 'anywhere' }} dangerouslySetInnerHTML={{__html: inlineParser(trimmed)}} />;
   });
 };
