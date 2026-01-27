@@ -343,125 +343,140 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
 };
 
 // ==========================================
-// 3. 核心渲染器 (Refined with Smart IDS Detection)
+// 3. 核心渲染器 (Ultra Enhanced IDS Renderer)
 // ==========================================
 
 // --- A. IDS (Ideographic Description Characters) 定义 ---
-type IDSType = {
+type LayoutMode = 'lr' | 'tb' | 'lcr' | 'tcb' | 'surround' | 'overlay';
+
+interface IDSConfig {
   char: string;
   arity: 2 | 3;
-  layout: 'lr' | 'tb' | 'lcr' | 'tcb' | 'surround' | 'overlay';
-  css?: string;
-};
+  layout: LayoutMode;
+  cssClass?: string; // 用于特定结构的特殊类名
+}
 
-const IDS_MAP: Record<string, IDSType> = {
+const IDS_MAP: Record<string, IDSConfig> = {
   // 二元结构
-  '⿰': { char: '⿰', arity: 2, layout: 'lr' }, // 左右
-  '⿱': { char: '⿱', arity: 2, layout: 'tb' }, // 上下
-  '⿵': { char: '⿵', arity: 2, layout: 'surround', css: 'surround-top' }, // 上三包 (门, 冂)
-  '⿶': { char: '⿶', arity: 2, layout: 'surround', css: 'surround-bottom' }, // 下三包 (凵)
-  '⿷': { char: '⿷', arity: 2, layout: 'surround', css: 'surround-left' }, // 左三包 (匚)
-  '⿸': { char: '⿸', arity: 2, layout: 'surround', css: 'surround-ul' }, // 左上包 (广, 疒)
-  '⿹': { char: '⿹', arity: 2, layout: 'surround', css: 'surround-ur' }, // 右上包 (气, 弋)
-  '⿺': { char: '⿺', arity: 2, layout: 'surround', css: 'surround-ll' }, // 左下包 (辶, 走)
-  '⿻': { char: '⿻', arity: 2, layout: 'overlay' }, // 镶嵌
-  '⿴': { char: '⿴', arity: 2, layout: 'surround', css: 'surround-full' }, // 全包 (囗)
+  '⿰': { char: '⿰', arity: 2, layout: 'lr' },               // 左右
+  '⿱': { char: '⿱', arity: 2, layout: 'tb' },               // 上下
+  '⿵': { char: '⿵', arity: 2, layout: 'surround', cssClass: 's-top' },    // 上三包 (门, 冂)
+  '⿶': { char: '⿶', arity: 2, layout: 'surround', cssClass: 's-bottom' }, // 下三包 (凵)
+  '⿷': { char: '⿷', arity: 2, layout: 'surround', cssClass: 's-left' },   // 左三包 (匚)
+  '⿸': { char: '⿸', arity: 2, layout: 'surround', cssClass: 's-ul' },     // 左上包 (广, 疒)
+  '⿹': { char: '⿹', arity: 2, layout: 'surround', cssClass: 's-ur' },     // 右上包 (气, 弋)
+  '⿺': { char: '⿺', arity: 2, layout: 'surround', cssClass: 's-ll' },     // 左下包 (辶, 走)
+  '⿻': { char: '⿻', arity: 2, layout: 'overlay' },          // 镶嵌/重叠
+  '⿴': { char: '⿴', arity: 2, layout: 'surround', cssClass: 's-full' },   // 全包 (囗)
   // 三元结构
-  '⿲': { char: '⿲', arity: 3, layout: 'lcr' }, // 左中右
-  '⿳': { char: '⿳', arity: 3, layout: 'tcb' }, // 上中下
+  '⿲': { char: '⿲', arity: 3, layout: 'lcr' },              // 左中右
+  '⿳': { char: '⿳', arity: 3, layout: 'tcb' },              // 上中下
 };
 
-// --- B. 智能判断字典 (Smart Radical Map) ---
-const SMART_RADICALS = {
-  // 强结构部首 (Priority: High) - 这些字作为首字时极大概率决定结构
-  surround_ul: new Set(['广', '疒', '尸', '户', '麻', '⿸']), // 左上包
-  surround_ll: new Set(['辶', '走', '廴', '⿺']), // 左下包
-  surround_ur: new Set(['气', '弋', '戈', '⿹']), // 右上包
-  surround_top: new Set(['门', '冂', '同', '风', '⿵']), // 上包/门框
-  surround_bottom: new Set(['凵', '凶', '⿶']), // 下包
-  surround_left: new Set(['匚', '区', '⿷']), // 左包
-  surround_full: new Set(['囗', '⿴', '回']), // 全包
+// --- B. 智能判断字典 (Smart Radical Logic) ---
+// 将部首按其通常所在的“位置”分类
+const RADICAL_MAPPING: Record<string, string> = {
+  // 1. 强包围 (Surround)
+  '囗': '⿴', '回': '⿴', '围': '⿴',
+  '门': '⿵', '冂': '⿵', '同': '⿵', '风': '⿵', '几': '⿵',
+  '凵': '⿶', '凶': '⿶',
+  '匚': '⿷', '区': '⿷', '匹': '⿷',
+  '广': '⿸', '疒': '⿸', '尸': '⿸', '户': '⿸', '麻': '⿸', '厂': '⿸', '鹿': '⿸', '虎': '⿸',
+  '气': '⿹', '弋': '⿹', '戈': '⿹',
+  '辶': '⿺', '走': '⿺', '廴': '⿺', '是': '⿺', '克': '⿺',
   
-  // 普通结构 (Priority: Medium)
-  top: new Set(['艹', '宀', '冖', '穴', '雨', '竹', '爫', '罒', '耂', '⺈']), // 上下结构的上部
-  left: new Set(['亻', '讠', '扌', '氵', '忄', 'aa', '犭', '礻', '衤', '木', '禾', '火', '土', '金', '王', '月', '日', '口', '虫', '足', '⻊', '车', '舟']), // 左右结构的左部
+  // 2. 强上方 (Top) -> 触发上下结构
+  '艹': '⿱', '竹': '⿱', '宀': '⿱', '冖': '⿱', '穴': '⿱', '雨': '⿱', 
+  '爫': '⿱', '罒': '⿱', '耂': '⿱', '⺈': '⿱', '癶': '⿱', '人': '⿱', // '人'作头
   
-  // 后置结构判断 (如果首字不明显，检查第二个字)
-  right_markers: new Set(['刂', '阝', '卩', 'lz']), // 通常在右边 -> 左右
-  bottom_markers: new Set(['心', '灬', '皿', '儿']) // 通常在底部 -> 上下
+  // 3. 强左方 (Left) -> 触发左右结构
+  '亻': '⿰', '讠': '⿰', '扌': '⿰', '氵': '⿰', '忄': '⿰', '犭': '⿰', 
+  '礻': '⿰', '衤': '⿰', '木': '⿰', '禾': '⿰', '火': '⿰', '土': '⿰', 
+  '金': '⿰', '王': '⿰', '月': '⿰', '日': '⿰', '口': '⿰', '虫': '⿰', 
+  '足': '⿰', '⻊': '⿰', '车': '⿰', '舟': '⿰', '方': '⿰', '子': '⿰',
+  '女': '⿰', '弓': '⿰', '彳': '⿰', '耳': '⿰', '身': '⿰'
 };
+
+// 右侧/底部特征字（辅助判断）
+const RIGHT_MARKERS = new Set(['刂', '阝', '卩', 'lz', '欠', '页', '隹', '斤', '见']);
+const BOTTOM_MARKERS = new Set(['心', '灬', '皿', '儿', '贝']);
 
 // --- C. 解析与转换逻辑 ---
 
-const convertSimpleToIDS = (desc: string): string => {
-  desc = desc.trim();
+const convertSimpleToIDS = (input: string): string => {
+  const desc = input.trim();
   if (!desc) return '?';
 
-  // 1. 如果已经是 IDS 开头，直接返回（专业模式）
+  // [专业处理] 1. 已经是 IDS 开头，直接返回
   if (IDS_MAP[desc[0]]) return desc;
 
-  // 2. 清理输入 (移除 "字头", "旁" 等干扰词，除非原本就是单个字)
-  //    注意：保留 "辶" 等部首，不要误删
+  // [预处理] 清理常见干扰词，但保留语义
   let cleanDesc = desc;
-  if (desc.length > 2) {
+  // 只有当长度大于2且不含特殊操作符时才清理，防止误删
+  if (desc.length > 2 && !desc.match(/[+/(),]/)) {
       cleanDesc = desc.replace(/字(头|框|底|旁|儿)/g, '').trim();
   }
-  
-  // 3. 检测函数语法：包(A, B)
-  const funcMatch = cleanDesc.match(/^([^\(（]+)[\(（](.*?)[\,，](.*?)[\)）]$/);
+
+  // [专业处理] 2. 显式函数语法检测 func(A, B)
+  // 支持中文全角符号
+  const funcMatch = cleanDesc.match(/^([^\(（]+)[\(（](.*?)[\,，]?(.*?)[\)）]$/);
   if (funcMatch) {
-    const type = funcMatch[1].trim().toLowerCase();
+    const op = funcMatch[1].trim();
     const p1 = funcMatch[2].trim();
     const p2 = funcMatch[3].trim();
-
-    if (['全包', '围', '回', 'full', '囗'].includes(type) || type.includes('框')) return `⿴${p1}${p2}`;
-    if (['同', '风', '冂', '上三', '门'].includes(type)) return `⿵${p1}${p2}`;
-    if (['凶', '凵', '下三'].includes(type)) return `⿶${p1}${p2}`;
-    if (['区', '匚', '左三'].includes(type)) return `⿷${p1}${p2}`;
-    if (['压', '广', '厂', '疒', '尸', '左上'].includes(type)) return `⿸${p1}${p2}`;
-    if (['司', '气', '右上'].includes(type)) return `⿹${p1}${p2}`;
-    if (['建', '辶', '走', '左下'].includes(type)) return `⿺${p1}${p2}`;
-    if (['镶', '嵌', 'overlay'].includes(type)) return `⿻${p1}${p2}`;
-    if (type.includes('上下')) return `⿱${p1}${p2}`;
-    if (type.includes('左右')) return `⿰${p1}${p2}`;
-    return `⿵${p1}${p2}`; // 默认包围
+    
+    // 映射自然语言到 IDS
+    if (/^(左右|lr)$/i.test(op)) return `⿰${p1}${p2}`;
+    if (/^(上下|tb)$/i.test(op)) return `⿱${p1}${p2}`;
+    if (/^(左中右|lcr)$/i.test(op)) return `⿲${p1}${p2}${funcMatch[4]||''}`; // 需额外处理参数，此处简化
+    if (/^(上中下|tcb)$/i.test(op)) return `⿳${p1}${p2}${funcMatch[4]||''}`;
+    if (/^(全包|围|回|full)$/i.test(op) || op.includes('框')) return `⿴${p1}${p2}`;
+    if (/^(上三|门|同|top-surround)$/i.test(op)) return `⿵${p1}${p2}`;
+    if (/^(下三|凶|bottom-surround)$/i.test(op)) return `⿶${p1}${p2}`;
+    if (/^(左三|匚|left-surround)$/i.test(op)) return `⿷${p1}${p2}`;
+    if (/^(左上|广|病|ul-surround)$/i.test(op)) return `⿸${p1}${p2}`;
+    if (/^(右上|气|ur-surround)$/i.test(op)) return `⿹${p1}${p2}`;
+    if (/^(左下|辶|走|ll-surround)$/i.test(op)) return `⿺${p1}${p2}`;
+    if (/^(镶|嵌|overlay)$/i.test(op)) return `⿻${p1}${p2}`;
   }
 
-  // 4. 检测显式操作符 (+ 或 /)
-  if (cleanDesc.includes('+')) {
-    const parts = cleanDesc.split('+');
-    return `⿰${parts[0]}${parts[1]}`;
+  // [专业处理] 3. 显式操作符 (+, /, *)
+  if (cleanDesc.includes('+')) { // 左右 +
+    const [a, b] = cleanDesc.split('+');
+    return `⿰${a}${b}`;
   }
-  if (cleanDesc.includes('/')) {
-    const parts = cleanDesc.split('/');
-    return `⿱${parts[0]}${parts[1]}`;
+  if (cleanDesc.includes('/')) { // 上下 /
+    const [a, b] = cleanDesc.split('/');
+    return `⿱${a}${b}`;
+  }
+  if (cleanDesc.includes('*')) { // 镶嵌 *
+    const [a, b] = cleanDesc.split('*');
+    return `⿻${a}${b}`;
   }
 
-  // 5. 智能隐式判断 (Smart Mode)
-  // 只有当字符串长度为 2 (例如 "广あ") 时才尝试自动推断
+  // [普通处理] 4. 智能隐式推断 (Smart Auto-Detect)
+  // 仅当字符串长度为 2 时触发 (例如 "广黄")
   if (cleanDesc.length === 2) {
       const c1 = cleanDesc[0];
       const c2 = cleanDesc[1];
 
-      // 优先级 1: 包围结构 (Surround)
-      if (SMART_RADICALS.surround_ul.has(c1)) return `⿸${c1}${c2}`; // 广, 疒
-      if (SMART_RADICALS.surround_ll.has(c1)) return `⿺${c1}${c2}`; // 辶, 走
-      if (SMART_RADICALS.surround_full.has(c1)) return `⿴${c1}${c2}`; // 囗
-      if (SMART_RADICALS.surround_top.has(c1)) return `⿵${c1}${c2}`; // 门, 冂
-      if (SMART_RADICALS.surround_ur.has(c1)) return `⿹${c1}${c2}`; // 气
-      if (SMART_RADICALS.surround_bottom.has(c1)) return `⿶${c1}${c2}`; // 凵
-      if (SMART_RADICALS.surround_left.has(c1)) return `⿷${c1}${c2}`; // 匚
+      // 规则 A: 检查首字是否为强部首 (Strong Radical Start)
+      if (RADICAL_MAPPING[c1]) {
+        return `${RADICAL_MAPPING[c1]}${c1}${c2}`;
+      }
 
-      // 优先级 2: 上下结构 (Top-Bottom)
-      if (SMART_RADICALS.top.has(c1)) return `⿱${c1}${c2}`; // 宀, 艹
-      if (SMART_RADICALS.bottom_markers.has(c2)) return `⿱${c1}${c2}`; // x+心
+      // 规则 B: 检查尾字是否为特定方位部首 (Radical End)
+      if (RIGHT_MARKERS.has(c2)) return `⿰${c1}${c2}`; // 如 "利" (禾+刂) -> 左右
+      if (BOTTOM_MARKERS.has(c2)) return `⿱${c1}${c2}`; // 如 "意" (音+心) -> 上下
 
-      // 优先级 3: 左右结构 (Left-Right) - 默认
-      // 绝大多数汉字是左右结构，如果 C1 是常见左偏旁，或者没有任何特征，默认左右
+      // 规则 C: 默认策略 (Default)
+      // 绝大多数汉字为左右结构，其次是上下。
+      // 这里可以做一个简单假设：如果看起来像“头”的字在前面，就上下，否则左右。
+      // 由于已经在规则A中处理了大部分“头”，这里兜底默认为左右。
       return `⿰${c1}${c2}`;
   }
 
-  // Fallback: 如果无法解析，原样返回（可能用户输入了三个字但没给结构）
+  // 无法处理，返回原文本（可能是一个已经是合体字的输入，或者错误输入）
   return cleanDesc;
 };
 
@@ -469,7 +484,7 @@ const convertSimpleToIDS = (desc: string): string => {
 const renderIDSToHtml = (idsStr: string): string => {
   let cursor = 0;
 
-  const parse = (): string => {
+  const parse = (depth: number = 0): string => {
     if (cursor >= idsStr.length) return '';
     
     const char = idsStr[cursor];
@@ -477,68 +492,98 @@ const renderIDSToHtml = (idsStr: string): string => {
 
     const idsOp = IDS_MAP[char];
 
-    // Case 1: 普通字符 (递归基)
+    // --- Base Case: 普通字符 ---
     if (!idsOp) {
-      // 针对普通字符做微调，使其撑满容器
-      return `<span class="inline-flex items-center justify-center w-full h-full scale-[0.95]">${char}</span>`;
+      // 优化：字符稍微缩小一点点，避免紧贴边框，增加透气感
+      return `<span class="zaozi-unit flex items-center justify-center w-full h-full text-[90%] leading-none">${char}</span>`;
     }
 
-    // Case 2: IDS 结构 (递归调用)
-    const p1 = parse(); 
-    const p2 = parse(); 
-    const p3 = idsOp.arity === 3 ? parse() : '';
+    // --- Recursive Step: 结构处理 ---
+    const p1 = parse(depth + 1); 
+    const p2 = parse(depth + 1); 
+    const p3 = idsOp.arity === 3 ? parse(depth + 1) : '';
 
-    const baseClass = "inline-flex w-full h-full pointer-events-none relative";
+    // 通用样式：宽高占满，flex布局
+    const baseClass = "flex w-full h-full absolute inset-0";
     
+    // 根据深度调整线宽或间距（可选，暂不加复杂逻辑以保持性能）
+
     switch (idsOp.layout) {
-      case 'lr': // 左右 (⿰)
+      case 'lr': // 左右
         return `<span class="${baseClass} flex-row">
-          <span class="w-1/2 h-full flex items-center justify-center scale-x-[0.95] origin-right">${p1}</span>
-          <span class="w-1/2 h-full flex items-center justify-center scale-x-[0.95] origin-left">${p2}</span>
+          <span class="w-1/2 h-full relative overflow-hidden">${p1}</span>
+          <span class="w-1/2 h-full relative overflow-hidden">${p2}</span>
         </span>`;
       
-      case 'tb': // 上下 (⿱)
+      case 'tb': // 上下
         return `<span class="${baseClass} flex-col">
-          <span class="h-1/2 w-full flex items-end justify-center scale-y-[0.85] origin-bottom">${p1}</span>
-          <span class="h-1/2 w-full flex items-start justify-center scale-y-[0.85] origin-top">${p2}</span>
+          <span class="h-1/2 w-full relative overflow-hidden">${p1}</span>
+          <span class="h-1/2 w-full relative overflow-hidden">${p2}</span>
         </span>`;
 
-      case 'lcr': // 左中右 (⿲)
+      case 'lcr': // 左中右
         return `<span class="${baseClass} flex-row">
-          <span class="w-1/3 h-full flex items-center justify-center scale-x-[0.9]">${p1}</span>
-          <span class="w-1/3 h-full flex items-center justify-center scale-x-[0.9]">${p2}</span>
-          <span class="w-1/3 h-full flex items-center justify-center scale-x-[0.9]">${p3}</span>
+          <span class="flex-1 h-full relative overflow-hidden">${p1}</span>
+          <span class="flex-1 h-full relative overflow-hidden">${p2}</span>
+          <span class="flex-1 h-full relative overflow-hidden">${p3}</span>
         </span>`;
 
-      case 'tcb': // 上中下 (⿳)
+      case 'tcb': // 上中下
         return `<span class="${baseClass} flex-col">
-          <span class="h-1/3 w-full flex items-center justify-center scale-y-[0.8]">${p1}</span>
-          <span class="h-1/3 w-full flex items-center justify-center scale-y-[0.8]">${p2}</span>
-          <span class="h-1/3 w-full flex items-center justify-center scale-y-[0.8]">${p3}</span>
+          <span class="flex-1 w-full relative overflow-hidden">${p1}</span>
+          <span class="flex-1 w-full relative overflow-hidden">${p2}</span>
+          <span class="flex-1 w-full relative overflow-hidden">${p3}</span>
         </span>`;
 
-      case 'surround': // 包围结构渲染优化
+      case 'surround': // 包围结构 (核心优化点)
+        // 使用 CSS Grid 或 Absolute 配合百分比实现精准定位
+        // 外部是部首 (Radical)，内部是部件 (Part)
         let innerStyle = "";
-        const css = idsOp.css;
-        // 调整偏移量以适应不同字体的基线
-        if (css === 'surround-full') innerStyle = "inset-[20%] scale-[0.8]"; // 囗
-        else if (css === 'surround-top') innerStyle = "left-[20%] right-[20%] bottom-[5%] top-[45%] scale-[0.8]"; // 门
-        else if (css === 'surround-bottom') innerStyle = "left-[20%] right-[20%] top-[5%] bottom-[35%] scale-[0.8]"; // 凵
-        else if (css === 'surround-left') innerStyle = "top-[20%] bottom-[20%] right-[5%] left-[45%] scale-[0.8]"; // 匚
-        // 重点调整：左上包 (广) 和 左下包 (辶)
-        else if (css === 'surround-ul') innerStyle = "right-[5%] bottom-[5%] w-[60%] h-[60%] scale-[0.9]"; // 广: 内容在右下
-        else if (css === 'surround-ur') innerStyle = "left-[5%] bottom-[5%] w-[60%] h-[60%] scale-[0.9]"; // 气: 内容在左下
-        else if (css === 'surround-ll') innerStyle = "right-[5%] top-[5%] w-[60%] h-[60%] scale-[0.9]"; // 辶: 内容在右上
+        let outerStyle = "z-0 flex items-center justify-center text-[#abb2bf]"; // 部首样式
         
+        switch(idsOp.cssClass) {
+          case 's-full': // 囗 (全包)
+            outerStyle += " scale-[1.1]"; // 外框稍微放大
+            innerStyle = "inset-[18%] scale-[0.75]"; // 内部居中缩小
+            break;
+          case 's-top': // 门 (上包)
+            outerStyle += " items-start pt-[5%]"; 
+            innerStyle = "left-[20%] right-[20%] top-[40%] bottom-[5%]";
+            break;
+          case 's-bottom': // 凵 (下包)
+            outerStyle += " items-end pb-[5%]";
+            innerStyle = "left-[20%] right-[20%] top-[5%] bottom-[35%]";
+            break;
+          case 's-left': // 匚 (左包)
+            outerStyle += " justify-start pl-[5%]";
+            innerStyle = "left-[40%] right-[5%] top-[20%] bottom-[20%]";
+            break;
+          case 's-ul': // 广 (左上包) -> 重难点，优化重心
+            // 部首位于左上，内容位于右下
+            // 使用 transform-origin 确保部首贴合左上
+            outerStyle += " justify-start items-start scale-[1.1] origin-top-left translate-x-1 translate-y-1"; 
+            innerStyle = "right-[2%] bottom-[2%] w-[65%] h-[65%] scale-[0.9]";
+            break;
+          case 's-ur': // 气 (右上包)
+            outerStyle += " justify-end items-start scale-[1.1] origin-top-right -translate-x-1 translate-y-1";
+            innerStyle = "left-[2%] bottom-[2%] w-[65%] h-[65%] scale-[0.9]";
+            break;
+          case 's-ll': // 辶 (左下包)
+            // 辶 特殊处理：通常占据左和下，内容偏右上
+            outerStyle += " justify-start items-end scale-[1.1] origin-bottom-left translate-x-1 -translate-y-1";
+            innerStyle = "right-[2%] top-[2%] w-[65%] h-[65%] scale-[0.9]";
+            break;
+        }
+
         return `<span class="relative w-full h-full block">
-          <span class="absolute inset-0 flex items-center justify-center scale-[1.1] z-0 origin-center text-[#abb2bf]">${p1}</span>
+          <span class="absolute inset-0 ${outerStyle}">${p1}</span>
           <span class="absolute flex items-center justify-center z-10 ${innerStyle}">${p2}</span>
         </span>`;
       
       case 'overlay': // 镶嵌
          return `<span class="relative w-full h-full block">
-          <span class="absolute inset-0 flex items-center justify-center scale-[1.1]">${p1}</span>
-          <span class="absolute inset-0 flex items-center justify-center scale-[0.8] opacity-90">${p2}</span>
+          <span class="absolute inset-0 flex items-center justify-center scale-[1.0] z-0 opacity-80">${p1}</span>
+          <span class="absolute inset-0 flex items-center justify-center scale-[0.8] z-10 font-bold">${p2}</span>
         </span>`;
         
       default:
@@ -553,14 +598,21 @@ const createZaoziHTML = (rawDesc: string) => {
   try {
     const idsString = convertSimpleToIDS(rawDesc);
     const innerHTML = renderIDSToHtml(idsString);
-    // 容器样式：确保垂直居中对齐，背景微调
-    return `<span class="zaozi-char inline-block w-[1.2em] h-[1.2em] align-middle leading-none select-none relative mx-[2px] -mt-[2px] bg-[#3b4252]/40 border border-[#3b4252] rounded-[4px] shadow-sm overflow-hidden" title="造字：${rawDesc}">
-      ${innerHTML}
+    
+    // 容器样式重构：
+    // 1. inline-flex: 避免inline-block带来的幽灵空白节点
+    // 2. align-middle + 负margin: 完美对齐中英文混排基线
+    // 3. 固定 em 单位: 随字号自动缩放
+    return `<span class="zaozi-container inline-flex items-center justify-center w-[1.1em] h-[1.1em] align-middle relative mx-[2px] -mt-[0.15em] bg-[#2c313a] border border-[#3e4451] rounded-[4px] shadow-sm select-none overflow-hidden" title="造字：${rawDesc}" style="vertical-align: -0.2em;">
+      <span class="w-full h-full relative block text-[1.1em]">
+        ${innerHTML}
+      </span>
     </span>`;
   } catch (e) {
-    return `<span class="text-red-500 text-xs">[造字失败]</span>`;
+    return `<span class="text-red-400 text-xs border border-red-500 px-1 rounded">[造字:Error]</span>`;
   }
 };
+
 
 
 export const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
