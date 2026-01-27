@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import hljs from 'highlight.js';
 import 'highlight.js/styles/atom-one-dark.css';
@@ -346,34 +347,43 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
 // 3. 核心渲染器 (Ultra Enhanced IDS Renderer)
 // ==========================================
 
-// --- A. IDS (Ideographic Description Characters) 定义 ---
-type LayoutMode = 'lr' | 'tb' | 'lcr' | 'tcb' | 'surround' | 'overlay';
+// --- A. 布局配置与智能判读常量 ---
 
-interface IDSConfig {
-  char: string;
+// 1. 窄偏旁集合：当这些字出现在【左侧】时，宽度应自动收缩 (占比 ~35%)
+const NARROW_RADICALS = new Set([
+  '亻', '讠', '扌', '氵', '忄', '犭', '礻', '衤', '⻊', '钅', 
+  '弓', '孑', '纟', '彳', '贝', '月', '舟', '车', '方', '火',
+  '子', '女', '马', '身', '歹', '⺦', '爿', '片', '韦', '牙', '牛', '手', '气', '士', '王'
+]);
+
+// 2. 扁偏旁集合：当这些字出现在【上方】时，高度应自动收缩 (占比 ~35%)
+const FLAT_RADICALS = new Set([
+  '艹', '⺮', '宀', '冖', '穴', '雨', '罒', '爫', '⺌', '⺍', '人', '八', '⺈', '⺊', '耂'
+]);
+
+// 3. IDS 操作符配置
+interface IDSLayoutConfig {
   arity: 2 | 3;
-  layout: LayoutMode;
-  cssClass?: string;
 }
 
-const IDS_MAP: Record<string, IDSConfig> = {
-  // 二元结构
-  '⿰': { char: '⿰', arity: 2, layout: 'lr' },
-  '⿱': { char: '⿱', arity: 2, layout: 'tb' },
-  '⿵': { char: '⿵', arity: 2, layout: 'surround', cssClass: 's-top' },
-  '⿶': { char: '⿶', arity: 2, layout: 'surround', cssClass: 's-bottom' },
-  '⿷': { char: '⿷', arity: 2, layout: 'surround', cssClass: 's-left' },
-  '⿸': { char: '⿸', arity: 2, layout: 'surround', cssClass: 's-ul' },
-  '⿹': { char: '⿹', arity: 2, layout: 'surround', cssClass: 's-ur' },
-  '⿺': { char: '⿺', arity: 2, layout: 'surround', cssClass: 's-ll' },
-  '⿻': { char: '⿻', arity: 2, layout: 'overlay' },
-  '⿴': { char: '⿴', arity: 2, layout: 'surround', cssClass: 's-full' },
-  // 三元结构
-  '⿲': { char: '⿲', arity: 3, layout: 'lcr' },
-  '⿳': { char: '⿳', arity: 3, layout: 'tcb' },
+const IDS_CONFIG: Record<string, IDSLayoutConfig> = {
+  // 二元
+  '⿰': { arity: 2 }, // 左右
+  '⿱': { arity: 2 }, // 上下
+  '⿵': { arity: 2 }, // 上三包
+  '⿶': { arity: 2 }, // 下三包
+  '⿷': { arity: 2 }, // 左三包
+  '⿸': { arity: 2 }, // 左上包
+  '⿹': { arity: 2 }, // 右上包
+  '⿺': { arity: 2 }, // 左下包
+  '⿻': { arity: 2 }, // 镶嵌
+  '⿴': { arity: 2 }, // 全包
+  // 三元
+  '⿲': { arity: 3 }, // 左中右
+  '⿳': { arity: 3 }, // 上中下
 };
 
-// --- B. 智能判断字典 (Smart Radical Logic) ---
+// --- B. 智能字典 (Smart Radical Logic) ---
 const RADICAL_MAPPING: Record<string, string> = {
   // 1. 强包围
   '囗': '⿴', '回': '⿴', '围': '⿴',
@@ -395,12 +405,14 @@ const RADICAL_MAPPING: Record<string, string> = {
 const RIGHT_MARKERS = new Set(['刂', '阝', '卩', 'lz', '欠', '页', '隹', '斤', '见']);
 const BOTTOM_MARKERS = new Set(['心', '灬', '皿', '儿', '贝']);
 
-// --- C. 解析与转换逻辑 ---
+// --- C. AST 解析与转换逻辑 ---
+
+// 1. 输入字符串 -> 标准 IDS 前缀表达式
 const convertSimpleToIDS = (input: string): string => {
   const desc = input.trim();
   if (!desc) return '?';
 
-  if (IDS_MAP[desc[0]]) return desc; // 专业模式直接返回
+  if (IDS_CONFIG[desc[0]]) return desc; // 专业模式直接返回
 
   let cleanDesc = desc;
   if (desc.length > 2 && !desc.match(/[+/(),]/)) {
@@ -442,119 +454,166 @@ const convertSimpleToIDS = (input: string): string => {
   return cleanDesc;
 };
 
-// 渲染 HTML 树
-const renderIDSToHtml = (idsStr: string): string => {
+// 2. AST 节点定义
+interface IDSNode {
+  type: 'char' | 'op';
+  val: string;
+  children?: IDSNode[];
+}
+
+// 3. IDS 字符串 -> AST 树
+const parseIDSString = (str: string): IDSNode | null => {
   let cursor = 0;
-
-  const parse = (depth: number = 0): string => {
-    if (cursor >= idsStr.length) return '';
-    const char = idsStr[cursor];
-    cursor++;
-
-    const idsOp = IDS_MAP[char];
-
-    // Base Case: 普通字符 (去除 w-full 强制拉伸，改用 flex 居中，允许自然字宽)
-    if (!idsOp) {
-      return `<span class="zaozi-unit flex items-center justify-center w-full h-full text-[95%] leading-none font-normal" style="font-family: inherit;">${char}</span>`;
-    }
-
-    // Recursive Step
-    const p1 = parse(depth + 1); 
-    const p2 = parse(depth + 1); 
-    const p3 = idsOp.arity === 3 ? parse(depth + 1) : '';
-
-    // 关键修正：移除 overflow-hidden，防止笔画被切断
-    const baseClass = "flex w-full h-full absolute inset-0";
+  const parse = (): IDSNode | null => {
+    if (cursor >= str.length) return null;
+    const char = str[cursor++];
+    const config = IDS_CONFIG[char];
     
-    switch (idsOp.layout) {
-      case 'lr': // 左右
-        return `<span class="${baseClass} flex-row">
-          <span class="w-1/2 h-full relative">${p1}</span>
-          <span class="w-1/2 h-full relative">${p2}</span>
-        </span>`;
-      
-      case 'tb': // 上下
-        return `<span class="${baseClass} flex-col">
-          <span class="h-1/2 w-full relative">${p1}</span>
-          <span class="h-1/2 w-full relative">${p2}</span>
-        </span>`;
-
-      case 'lcr': // 左中右
-        return `<span class="${baseClass} flex-row">
-          <span class="flex-1 h-full relative">${p1}</span>
-          <span class="flex-1 h-full relative">${p2}</span>
-          <span class="flex-1 h-full relative">${p3}</span>
-        </span>`;
-
-      case 'tcb': // 上中下
-        return `<span class="${baseClass} flex-col">
-          <span class="flex-1 w-full relative">${p1}</span>
-          <span class="flex-1 w-full relative">${p2}</span>
-          <span class="flex-1 w-full relative">${p3}</span>
-        </span>`;
-
-      case 'surround': // 包围结构
-        let innerStyle = "";
-        // 部首样式：z-0，确保在底层
-        let outerStyle = "z-0 flex items-center justify-center text-inherit opacity-90"; 
-        
-        switch(idsOp.cssClass) {
-          case 's-full': // 囗
-            outerStyle += " scale-[1.15]"; 
-            innerStyle = "inset-[18%] scale-[0.75]"; 
-            break;
-          case 's-top': // 门
-            outerStyle += " items-start pt-[2%]"; 
-            innerStyle = "left-[20%] right-[20%] top-[40%] bottom-[5%]";
-            break;
-          case 's-bottom': // 凵
-            outerStyle += " items-end pb-[5%]";
-            innerStyle = "left-[20%] right-[20%] top-[5%] bottom-[35%]";
-            break;
-          case 's-left': // 匚
-            outerStyle += " justify-start pl-[5%]";
-            innerStyle = "left-[40%] right-[5%] top-[20%] bottom-[20%]";
-            break;
-          case 's-ul': // 广
-            outerStyle += " justify-start items-start scale-[1.1] origin-top-left translate-x-1 translate-y-1"; 
-            innerStyle = "right-[0%] bottom-[0%] w-[68%] h-[68%] scale-[0.9]";
-            break;
-          case 's-ur': // 气
-            outerStyle += " justify-end items-start scale-[1.1] origin-top-right -translate-x-1 translate-y-1";
-            innerStyle = "left-[0%] bottom-[0%] w-[68%] h-[68%] scale-[0.9]";
-            break;
-          case 's-ll': // 辶
-            outerStyle += " justify-start items-end scale-[1.1] origin-bottom-left translate-x-1 -translate-y-1";
-            innerStyle = "right-[2%] top-[2%] w-[65%] h-[65%] scale-[0.9]";
-            break;
-        }
-
-        return `<span class="relative w-full h-full block">
-          <span class="absolute inset-0 ${outerStyle}">${p1}</span>
-          <span class="absolute flex items-center justify-center z-10 ${innerStyle}">${p2}</span>
-        </span>`;
-      
-      case 'overlay': // 镶嵌
-         return `<span class="relative w-full h-full block">
-          <span class="absolute inset-0 flex items-center justify-center scale-[1.0] z-0 opacity-80">${p1}</span>
-          <span class="absolute inset-0 flex items-center justify-center scale-[0.8] z-10 font-bold">${p2}</span>
-        </span>`;
-        
-      default:
-        return `${p1}${p2}`;
+    if (config) {
+      const node: IDSNode = { type: 'op', val: char, children: [] };
+      for (let i = 0; i < config.arity; i++) {
+        const child = parse();
+        if (child) node.children!.push(child);
+        else node.children!.push({ type: 'char', val: '?' }); // 容错
+      }
+      return node;
+    } else {
+      return { type: 'char', val: char };
     }
   };
-
   return parse();
 };
 
+// --- D. 核心渲染 (Render AST to HTML) ---
+const renderIDSNode = (node: IDSNode): string => {
+  // Base Case: 字符
+  if (node.type === 'char') {
+    // 使用 flex 居中，leading-none 防止撑大，text-[95%] 微调大小
+    return `<span class="flex items-center justify-center w-full h-full text-[95%] leading-none cursor-default font-normal" style="font-family: inherit;">${node.val}</span>`;
+  }
+
+  const { val, children } = node;
+  const c = children || [];
+  // 递归渲染子节点
+  const p1 = c[0] ? renderIDSNode(c[0]) : '';
+  const p2 = c[1] ? renderIDSNode(c[1]) : '';
+  const p3 = c[2] ? renderIDSNode(c[2]) : '';
+
+  // 基础绝对定位容器
+  const baseAbs = "absolute inset-0 flex";
+
+  // --- 1. 左右结构 (Smart Width) ---
+  if (val === '⿰') {
+    // 启发式布局：检查左侧是否为窄偏旁
+    const isNarrow = c[0] && c[0].type === 'char' && NARROW_RADICALS.has(c[0].val);
+    const leftClass = isNarrow ? "w-[35%]" : "w-1/2";
+    const rightClass = isNarrow ? "w-[65%]" : "w-1/2";
+    return `<span class="${baseAbs} flex-row">
+      <span class="${leftClass} h-full relative">${p1}</span>
+      <span class="${rightClass} h-full relative">${p2}</span>
+    </span>`;
+  }
+
+  // --- 2. 上下结构 (Smart Height) ---
+  if (val === '⿱') {
+    // 启发式布局：检查上方是否为扁偏旁
+    const isFlat = c[0] && c[0].type === 'char' && FLAT_RADICALS.has(c[0].val);
+    const topClass = isFlat ? "h-[35%]" : "h-1/2";
+    const bottomClass = isFlat ? "h-[65%]" : "h-1/2";
+    return `<span class="${baseAbs} flex-col">
+      <span class="${topClass} w-full relative">${p1}</span>
+      <span class="${bottomClass} w-full relative">${p2}</span>
+    </span>`;
+  }
+
+  // --- 3. 三分结构 ---
+  if (val === '⿲') return `<span class="${baseAbs} flex-row"><span class="flex-1 h-full relative">${p1}</span><span class="flex-1 h-full relative">${p2}</span><span class="flex-1 h-full relative">${p3}</span></span>`;
+  if (val === '⿳') return `<span class="${baseAbs} flex-col"><span class="flex-1 w-full relative">${p1}</span><span class="flex-1 w-full relative">${p2}</span><span class="flex-1 w-full relative">${p3}</span></span>`;
+
+  // --- 4. 包围结构 (Refined Layouts) ---
+  // p1 是外框/偏旁，p2 是内部内容
+  
+  // ⿴ 全包 (国, 回)
+  if (val === '⿴') { 
+    return `<span class="relative w-full h-full block">
+      <span class="absolute inset-0 flex items-center justify-center scale-[1.15]">${p1}</span>
+      <span class="absolute inset-[18%] flex items-center justify-center scale-[0.75]">${p2}</span>
+    </span>`;
+  }
+  
+  // ⿵ 上三包 (门, 同) - 内容靠下
+  if (val === '⿵') { 
+    return `<span class="relative w-full h-full block">
+      <span class="absolute inset-0 flex items-start justify-center pt-[2%] scale-[1.1]">${p1}</span>
+      <span class="absolute left-[20%] right-[20%] top-[35%] bottom-[5%] flex items-center justify-center scale-[0.9]">${p2}</span>
+    </span>`;
+  }
+  
+  // ⿶ 下三包 (凶, 函) - 内容靠上
+  if (val === '⿶') { 
+    return `<span class="relative w-full h-full block">
+      <span class="absolute inset-0 flex items-end justify-center pb-[5%] scale-[1.1]">${p1}</span>
+      <span class="absolute left-[20%] right-[20%] top-[5%] bottom-[35%] flex items-center justify-center scale-[0.9]">${p2}</span>
+    </span>`;
+  }
+  
+  // ⿷ 左三包 (区, 医) - 内容靠右
+  if (val === '⿷') { 
+    return `<span class="relative w-full h-full block">
+      <span class="absolute inset-0 flex items-center justify-start pl-[5%] scale-[1.1]">${p1}</span>
+      <span class="absolute left-[35%] right-[10%] top-[20%] bottom-[20%] flex items-center justify-center scale-[0.9]">${p2}</span>
+    </span>`;
+  }
+  
+  // ⿸ 左上包 (广, 病) - 内容靠右下
+  if (val === '⿸') { 
+    return `<span class="relative w-full h-full block">
+      <span class="absolute inset-0 flex items-start justify-start scale-[1.1] origin-top-left translate-x-1 translate-y-1">${p1}</span>
+      <span class="absolute right-0 bottom-0 w-[70%] h-[70%] flex items-center justify-center scale-[0.9]">${p2}</span>
+    </span>`;
+  }
+  
+  // ⿹ 右上包 (气, 氧) - 内容靠左下
+  if (val === '⿹') { 
+    return `<span class="relative w-full h-full block">
+      <span class="absolute inset-0 flex items-start justify-end scale-[1.1] origin-top-right -translate-x-1 translate-y-1">${p1}</span>
+      <span class="absolute left-0 bottom-0 w-[70%] h-[70%] flex items-center justify-center scale-[0.9]">${p2}</span>
+    </span>`;
+  }
+  
+  // ⿺ 左下包 (走, 进) - 内容靠右上
+  if (val === '⿺') { 
+    return `<span class="relative w-full h-full block">
+      <span class="absolute inset-0 flex items-end justify-start scale-[1.1] origin-bottom-left translate-x-1 -translate-y-1">${p1}</span>
+      <span class="absolute right-[5%] top-[5%] w-[65%] h-[65%] flex items-center justify-center scale-[0.9]">${p2}</span>
+    </span>`;
+  }
+  
+  // ⿻ 镶嵌 (爽) - 居中叠加
+  if (val === '⿻') { 
+    return `<span class="relative w-full h-full block">
+      <span class="absolute inset-0 flex items-center justify-center opacity-80 z-0">${p1}</span>
+      <span class="absolute inset-0 flex items-center justify-center scale-[0.8] z-10 font-bold">${p2}</span>
+    </span>`;
+  }
+
+  // Fallback
+  return `${p1}${p2}`;
+};
+
+// 5. 主入口
 const createZaoziHTML = (rawDesc: string) => {
   try {
     const idsString = convertSimpleToIDS(rawDesc);
-    const innerHTML = renderIDSToHtml(idsString);
+    const ast = parseIDSString(idsString);
+    if (!ast) return rawDesc;
     
-    // 修正：彻底移除 bg-, border-, shadow-, overflow-hidden
-    // 只保留布局属性 (inline-flex, w/h) 和对齐属性
+    const innerHTML = renderIDSNode(ast);
+    
+    // 容器样式：
+    // 1. inline-flex: 像文字一样排列
+    // 2. w-[1.1em] h-[1.1em]: 稍微比普通文字大一点，显示细节
+    // 3. align-middle: 对齐基线
     return `<span class="zaozi-container inline-flex items-center justify-center w-[1.1em] h-[1.1em] align-middle relative mx-[1px] select-none text-inherit" title="造字：${rawDesc}" style="vertical-align: -0.2em;">
       <span class="w-full h-full relative block text-[1.1em]">
         ${innerHTML}
@@ -564,8 +623,6 @@ const createZaoziHTML = (rawDesc: string) => {
     return `<span class="text-red-400 text-xs">[Error]</span>`;
   }
 };
-
-
 
 
 export const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
