@@ -627,40 +627,41 @@ const createZaoziHTML = (rawDesc: string) => {
   }
 };
 
-export const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
-  const zaoziRegistry = useMemo(() => {
-    const registry: Record<string, string> = {};
-    // 支持 [造字:key|value] 或 [zaozi:key|value]
-    const regex = /\[(?:造字|zaozi)\s*[:：]\s*([a-zA-Z0-9_\u4e00-\u9fa5]+)\s*[|｜]\s*(.*?)\]/gi;
-    let match;
-    while ((match = regex.exec(content)) !== null) {
-      registry[match[1]] = createZaoziHTML(match[2]);
-    }
-    return registry;
-  }, [content]);
+const parseZaoziDefinitions = (content: string) => {
+  const registry: Record<string, string> = {};
+  const regex = /\[(?:造字|zaozi)\s*[:：]\s*([a-zA-Z0-9_\u4e00-\u9fa5]+)\s*[|｜]\s*(.*?)\]/gi;
+  let match;
+  while ((match = regex.exec(content)) !== null) {
+    registry[match[1]] = createZaoziHTML(match[2]);
+  }
+  return registry;
+};
 
-  const renderInline = (text: string) => {
-    return text
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-      // Code spans (allowed color)
-      .replace(/`([^`]+)`/g, '<code class="bg-[#2c313a] text-[#98c379] px-1.5 py-0.5 rounded text-sm font-mono border border-[#3e4451] mx-1">$1</code>')
-      // Images
-      .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" class="rounded-xl my-4 w-full shadow-lg border border-[#3e4451]"/>')
-      // Strong (No Color, just bold)
-      .replace(/\*\*(.*?)\*\*/g, '<strong class="text-[#e6e6e6] font-bold">$1</strong>')
-      // Em (No Color, just italic)
-      .replace(/\*(.*?)\*/g, '<em class="text-[#c8c8c8] italic font-serif">$1</em>')
-      // Del
-      .replace(/~~(.*?)~~/g, '<del class="text-[#7f848e] decoration-1">$1</del>')
-      // Fonts
-      .replace(/%%(.*?)\|(.*?)%%/g, '<span style="font-family: \'$1\', sans-serif;">$2</span>')
-      // Remove Zaozi definitions
-      .replace(/\[(?:造字|zaozi)\s*[:：]\s*([a-zA-Z0-9_\u4e00-\u9fa5]+)\s*[|｜]\s*(.*?)\]/gi, '') 
-      // Replace Zaozi placeholders
-      .replace(/:([a-zA-Z0-9_\u4e00-\u9fa5]+):/g, (match, key) => zaoziRegistry[key] || match)
-      // Links
-      .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener" class="text-[#61afef] hover:underline decoration-2 underline-offset-2 break-all">$1</a>');
-  };
+const renderInlineMarkdown = (text: string, zaoziRegistry: Record<string, string>) => {
+  return text
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/`([^`]+)`/g, '<code class="bg-[#2c313a] text-[#98c379] px-1.5 py-0.5 rounded text-sm font-mono border border-[#3e4451] mx-1">$1</code>')
+    .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" class="rounded-xl my-4 w-full shadow-lg border border-[#3e4451]"/>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong class="text-[#e6e6e6] font-bold">$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em class="text-[#c8c8c8] italic font-serif">$1</em>')
+    .replace(/~~(.*?)~~/g, '<del class="text-[#7f848e] decoration-1">$1</del>')
+    .replace(/%%(.*?)\|(.*?)%%/g, '<span style="font-family: \'$1\', sans-serif;">$2</span>')
+    .replace(/\[(?:造字|zaozi)\s*[:：]\s*([a-zA-Z0-9_\u4e00-\u9fa5]+)\s*[|｜]\s*(.*?)\]/gi, '') 
+    .replace(/:([a-zA-Z0-9_\u4e00-\u9fa5]+):/g, (match, key) => zaoziRegistry[key] || match)
+    .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener" class="text-[#61afef] hover:underline decoration-2 underline-offset-2 break-all">$1</a>');
+};
+
+// [新增] 导出轻量级行内 Markdown 组件
+export const InlineMarkdown: React.FC<{ content: string, className?: string }> = ({ content, className }) => {
+  const zaoziRegistry = useMemo(() => parseZaoziDefinitions(content), [content]);
+  const html = useMemo(() => renderInlineMarkdown(content, zaoziRegistry), [content, zaoziRegistry]);
+  return <span className={className} dangerouslySetInnerHTML={{ __html: html }} />;
+};
+
+export const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
+  const zaoziRegistry = useMemo(() => parseZaoziDefinitions(content), [content]);
+
+  const renderInline = (text: string) => renderInlineMarkdown(text, zaoziRegistry);
 
   const elements = [];
   const regex = /(```(\w+)?\s*[\s\S]*?```|<(?:video|iframe)[\s\S]*?(?:<\/(?:video|iframe)>|\/>))/g;
