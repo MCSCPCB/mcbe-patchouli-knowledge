@@ -524,13 +524,14 @@ const renderIDSNode = (node: IDSNode): string => {
 
   // --- B. 线性结构系列 (Linear Series) ---
 
-  // 1. ⿰ 左右结构 - 优化：增加水平方向挤压 (scale-x-0.85)，防止松散
+    // 1. ⿰ 左右结构 - 修复：改为底对齐 (items-end)
   if (val === '⿰') {
     return `<span class="relative w-full h-full block">
-      <span class="absolute left-0 top-0 w-[50%] h-full flex items-center justify-start scale-x-[0.5] scale-y-[0.6] origin-left translate-x-[1px]">${p1}</span>
-      <span class="absolute right-0 top-0 w-[50%] h-full flex items-end justify-end scale-x-[0.7] scale-y-[0.9] origin-right translate-x-[-2px]">${p2}</span>
+      <span class="absolute left-0 top-0 w-[50%] h-full flex items-end justify-start scale-x-[0.5] scale-y-[0.6] origin-bottom-left translate-x-[1px] translate-y-[-1px]">${p1}</span>
+      <span class="absolute right-0 top-0 w-[50%] h-full flex items-end justify-end scale-x-[0.7] scale-y-[0.9] origin-bottom-right translate-x-[-2px] translate-y-[-1px]">${p2}</span>
     </span>`;
   }
+
 
   // 2. ⿱ 上下结构 - 优化：增加垂直方向压扁 (scale-y-0.85)，防止过长
   if (val === '⿱') {
@@ -542,21 +543,23 @@ const renderIDSNode = (node: IDSNode): string => {
 
   // --- C. 其他特殊包围 (Special Enclosures) ---
   
-  // ⿴ 全包 (国) - 优化：内部由 0.6 -> 0.5
+    // ⿴ 全包 (国) - 修复：改为底对齐，确保不跳动
   if (val === '⿴') { 
     return `<span class="relative w-full h-full block">
-      <span class="absolute inset-0 flex items-end justify-end scale-[0.9]">${p1}</span>
-      <span class="absolute inset-0 flex items-center justify-center scale-[0.5]">${p2}</span>
+      <span class="absolute inset-0 flex items-end justify-center scale-[0.9] origin-bottom translate-y-[-2px]">${p1}</span>
+      <span class="absolute inset-0 flex items-center justify-center scale-[0.5] translate-y-[-2px]">${p2}</span>
     </span>`;
   }
+
   
-  // ⿵ 上三包 (门, 同) - 优化：内部由 0.6 -> 0.5
+    // ⿵ 上三包 (门, 同) - 修复：完全参考"病"的锚点逻辑，但方向改为向下锚定
   if (val === '⿵') { 
     return `<span class="relative w-full h-full block">
-      <span class="absolute inset-0 flex items-end justify-end scale-[0.9] origin-top translate-y-[2px]">${p1}</span>
-      <span class="absolute inset-0 flex items-end justify-center scale-[0.5] origin-bottom pb-[50%]">${p2}</span>
+      <span class="absolute inset-0 flex items-end justify-center scale-[0.9] origin-bottom translate-y-[-2px]">${p1}</span>
+      <span class="absolute inset-0 flex items-end justify-center scale-[0.5] origin-bottom pb-[15%] translate-y-[-2px]">${p2}</span>
     </span>`;
   }
+
   
   // ⿶ 下三包 (凶) - 优化：内部由 0.6 -> 0.5
   if (val === '⿶') { 
@@ -566,13 +569,14 @@ const renderIDSNode = (node: IDSNode): string => {
     </span>`;
   }
   
-  // ⿷ 左三包 (区) - 优化：内部由 0.6 -> 0.5
+    // ⿷ 左三包 (区) - 修复：改为底对齐
   if (val === '⿷') { 
     return `<span class="relative w-full h-full block">
-      <span class="absolute inset-0 flex items-end justify-end scale-[0.9] origin-left translate-x-[2px]">${p1}</span>
-      <span class="absolute inset-0 flex items-center justify-center scale-[0.5] translate-x-[15%]">${p2}</span>
+      <span class="absolute inset-0 flex items-end justify-start scale-[0.9] origin-bottom-left translate-x-[2px] translate-y-[-2px]">${p1}</span>
+      <span class="absolute inset-0 flex items-end justify-center scale-[0.5] translate-x-[15%] translate-y-[-20%]">${p2}</span>
     </span>`;
   }
+
   
   // --- 4. 其他结构 (Remaining) ---
 
