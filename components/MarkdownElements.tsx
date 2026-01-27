@@ -6,67 +6,110 @@ import 'highlight.js/styles/atom-one-dark.css';
 // 1. Minecraft 深度语法支持 (Enhanced Highlighting)
 // ==========================================
 
-// --- A. Minecraft Commands (McFunction) ---
+// --- A. Minecraft Commands (McFunction) - Ultimate ---
 hljs.registerLanguage('mcfunction', (hljs) => ({
   name: 'Minecraft Commands',
-  aliases: ['mc', 'minecraft', 'function', 'cmd'],
+  aliases: ['mc', 'minecraft', 'function', 'cmd', 'mcfunction'],
   case_insensitive: true,
   contains: [
-    { className: 'keyword', begin: /^\s*\/?(execute|scoreboard|data|give|summon|kill|tp|teleport|say|tellraw|title|advancement|recipe|function|schedule|tag|team|bossbar|effect|enchant|experience|fill|fillbiome|gamemode|gamerule|help|item|kick|list|locate|loot|msg|particle|place|playsound|publish|reload|ride|save-all|save-off|save-on|seed|setblock|setidletimeout|setworldspawn|spawnpoint|spectate|spreadplayers|stop|stopsound|teammsg|time|tm|trigger|w|weather|worldborder|xp|damage|inputpermission|jfr|perf|camera|dialogue|event|fog|mobevent|music|playanimation|structure|tickingarea|volumearea)\b/ },
-    { className: 'literal', begin: /\b(run|as|at|align|anchored|if|unless|store|result|success|matches|facing|rotated|positioned|in|dimension|type|name|tags|scores|level|distance|x|y|z|dx|dy|dz|limit|sort|gamemode|nbt|true|false)\b/ },
-    { className: 'variable', begin: /@[aeprs](\[[^\]]*\])?/ }, // Selectors
-    { className: 'symbol', begin: /\b(minecraft:[a-z0-9_]+)\b/ }, // Namespaces
-    { className: 'number', begin: /[~^]-?(\d+(\.\d+)?)?|\b\d+(\.\d+)?[bdfilsw]?\b/ }, // Coordinates & Numbers
-    { className: 'string', begin: /"[^"]*"/ },
-    { className: 'comment', begin: /#.*/ }
+    { className: 'comment', begin: /#.*/ },
+    // Commands (Updated for 1.20+)
+    { 
+      className: 'keyword', 
+      begin: /^\s*\/?\b(execute|scoreboard|data|give|summon|kill|tp|teleport|say|tellraw|title|advancement|recipe|function|schedule|tag|team|bossbar|effect|enchant|experience|fill|fillbiome|gamemode|gamerule|help|item|kick|list|locate|loot|msg|particle|place|playsound|publish|reload|ride|save-all|save-off|save-on|seed|setblock|setidletimeout|setworldspawn|spawnpoint|spectate|spreadplayers|stop|stopsound|teammsg|time|tm|trigger|w|weather|worldborder|xp|damage|inputpermission|jfr|perf|camera|dialogue|event|fog|mobevent|music|playanimation|structure|tickingarea|volumearea|return|transfer|random)\b/ 
+    },
+    // Control Flow Sub-commands
+    { 
+      className: 'literal', 
+      begin: /\b(run|as|at|align|anchored|if|unless|store|result|success|matches|facing|rotated|positioned|in|dimension|type|name|tags|scores|level|distance|x|y|z|dx|dy|dz|limit|sort|gamemode|nbt|true|false|on|origin)\b/ 
+    },
+    // Selectors with Arguments @a[x=1]
+    { 
+      className: 'variable', 
+      begin: /@[aeprs](?:\[([^\]]*)\])?/ 
+    }, 
+    // Namespaces (minecraft:stone)
+    { 
+      className: 'symbol', 
+      begin: /\b([a-z0-9_.-]+:[a-z0-9_./-]+)\b/ 
+    }, 
+    // Coordinates (~ ~ ~ or ^ ^ ^) & Numbers
+    { 
+      className: 'number', 
+      begin: /[~^](-?\d+(\.\d+)?)?|\b-?\d+(\.\d+)?[bdfilsw]?\b/ 
+    }, 
+    { className: 'string', begin: /"[^"]*"/ }
   ]
 }));
 
-// --- B. Minecraft Molang (Ultimate Edition) ---
+// --- B. Minecraft Molang (C-Style Syntax) ---
 hljs.registerLanguage('molang', (hljs) => ({
   name: 'Molang',
   aliases: ['mo', 'molang', 'bedrock-script'],
   case_insensitive: true,
+  keywords: {
+    keyword: 'return loop for_each break continue this',
+    built_in: 'math query variable texture temp geometry material array context c q v t'
+  },
   contains: [
-    // 1. Keywords
-    { className: 'keyword', begin: /\b(return|loop|for_each|break|continue|this)\b/ },
-    // 2. Main Scopes (query, math, etc.) - rendered as types/built-ins
-    { 
-      className: 'built_in', 
-      begin: /\b(query|math|variable|texture|temp|geometry|material|array|context|c|q|v|t)\b(?=\.)/ 
+    // Standard C Numbers
+    hljs.C_NUMBER_MODE,
+    // Strings
+    { className: 'string', begin: /'/, end: /'/ },
+    // Operators
+    { className: 'operator', begin: /[\+\-\*\/=<>&|!?:]+/ },
+    // Scoped Access (query.life_time) - Highlight the scope
+    {
+      className: 'built_in',
+      begin: /\b(query|math|variable|texture|temp|geometry|material|array|context|c|q|v|t)(?=\.)/
     },
-    // 3. Properties/Functions after dot
+    // Properties after dot
     {
       className: 'property',
       begin: /(?<=\.)[a-zA-Z0-9_]+/,
     },
-    // 4. Numbers
-    { className: 'number', begin: /\b\d+(\.\d+)?\b/ },
-    // 5. Operators
-    { className: 'operator', begin: /[\+\-\*\/=<>&|!?:]+/ },
-    // 6. Strings
-    { className: 'string', begin: /'[^']*'/ },
-    // 7. Comments
-    { className: 'comment', begin: /\/\/.*/ } 
+    // Comments
+    hljs.C_LINE_COMMENT_MODE,
+    hljs.C_BLOCK_COMMENT_MODE
   ]
 }));
 
-// --- C. Bedrock JSON & JSON UI (Auto-detect & Molang Injection) ---
+// --- C. Minecraft Lang Files (Key=Value) ---
+hljs.registerLanguage('lang', (hljs) => ({
+  name: 'Minecraft Lang',
+  aliases: ['lang', 'language', 'properties'],
+  case_insensitive: true,
+  contains: [
+    hljs.COMMENT(/#/, /$/),
+    hljs.COMMENT(/\/\//, /$/),
+    {
+      className: 'variable', // The Key
+      begin: /^[a-zA-Z0-9_.-]+(?==)/
+    },
+    {
+      className: 'string', // The Value
+      begin: /=/, end: /$/,
+      excludeBegin: true
+    }
+  ]
+}));
+
+// --- D. Bedrock JSON & JSON UI (Auto-detect & Molang Injection) ---
 hljs.registerLanguage('json-molang', (hljs) => ({
   name: 'Bedrock JSON',
   aliases: ['json', 'bedrock', 'jsonui', 'ui'],
   contains: [
-    // Keys (Standard JSON keys)
+    // Keys
     {
       className: 'attr',
       begin: /"(\\[\\"\"]|[^\\\"\n])*"(?=\s*:)/,
     },
-    // Keys (JSON UI Special Keys - highlighted differently if theme supports)
+    // UI Special Keywords
     {
         className: 'keyword',
         begin: /"(type|controls|bindings|visible|texture|offset|size|layer|alpha|anchor_from|anchor_to|text|font_type|font_scale|color|ignored|variables|modifications)"(?=\s*:)/
     },
-    // Values
+    // Values with Molang Injection
     {
       className: 'string',
       begin: /"/, end: /"/,
@@ -82,7 +125,8 @@ hljs.registerLanguage('json-molang', (hljs) => ({
       ]
     },
     hljs.C_NUMBER_MODE,
-    hljs.C_BLOCK_COMMENT_MODE,
+    hljs.C_BLOCK_COMMENT_MODE, // Bedrock JSON supports comments
+    hljs.C_LINE_COMMENT_MODE,
     { className: 'literal', begin: /\b(true|false|null)\b/ },
     { className: 'punctuation', begin: /[\{\[\}\],:]/ }
   ]
@@ -109,10 +153,13 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
     const map: Record<string, string> = {
         'js': 'javascript',
         'ts': 'typescript',
-        'json': 'json-molang', // Force custom JSON handler
+        'jsx': 'javascript',
+        'tsx': 'typescript',
+        'json': 'json-molang', 
         'jsonui': 'json-molang',
         'mc': 'mcfunction',
-        'mo': 'molang'
+        'mo': 'molang',
+        'lang': 'lang'
     };
     return map[lower] || lower || 'plaintext';
   };
@@ -125,6 +172,7 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
       'json-molang': 'JSON',
       'javascript': 'JavaScript',
       'typescript': 'TypeScript',
+      'lang': 'Language File',
       'cpp': 'C++',
       'plaintext': 'Text',
       'html': 'HTML',
@@ -134,32 +182,52 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
     return map[lang] || lang.toUpperCase();
   };
 
+  // Advanced Heuristic Detection
+  const detectLanguage = (codeSnippet: string) => {
+    const c = codeSnippet.trim();
+    
+    // 1. JSON (Starts with { or [)
+    if (c.startsWith('{') || c.startsWith('[')) return 'json-molang';
+    
+    // 2. McFunction (Starts with slash or typical commands)
+    if (/^\s*\/?(execute|scoreboard|data|give|summon|tag|function)\b/m.test(c)) return 'mcfunction';
+    
+    // 3. Molang (Contains query. / math. / variable.)
+    if (/\b(query|math|variable|temp|t|q|v)\.[a-zA-Z0-9_]+/.test(c)) return 'molang';
+    
+    // 4. Lang File (Key=Value pattern, no semicolons, often has comments)
+    if (/^[\w\.]+=[^\n]+$/m.test(c) && !c.includes(';') && !c.includes('{')) return 'lang';
+
+    return null;
+  };
+
   useEffect(() => {
     let finalLang = normalizeLang(language);
     let codeToRender = code;
 
-    // 1. Auto Format (IDE Standard)
-    // Only auto-format JSON/JSON-Molang for now as it's the safest to do on client-side
-    // without heavy parsers.
+    // 1. Auto Format JSON
     if (finalLang === 'json-molang') {
         try {
-            // Check if it looks like a minified object or array
             if ((code.startsWith('{') || code.startsWith('[')) && !code.includes('\n')) {
                 const parsed = JSON.parse(code);
                 codeToRender = JSON.stringify(parsed, null, 2);
             }
-        } catch (e) {
-            // If parse fails (e.g. comments in JSON), render as is
-        }
+        } catch (e) { /* ignore */ }
     }
 
-    // 2. Intelligent Auto-detection fallback
+    // 2. Intelligent Auto-detection
     if (finalLang === 'plaintext') {
-        const auto = hljs.highlightAuto(codeToRender);
-        if (auto.language) {
-            // Prefer our custom definitions
-            if (auto.language === 'json') finalLang = 'json-molang';
-            else finalLang = auto.language;
+        // Try specific heuristic first
+        const heuristicLang = detectLanguage(codeToRender);
+        if (heuristicLang) {
+            finalLang = heuristicLang;
+        } else {
+            // Fallback to library auto-detect
+            const auto = hljs.highlightAuto(codeToRender);
+            if (auto.language) {
+                if (auto.language === 'json') finalLang = 'json-molang';
+                else finalLang = auto.language;
+            }
         }
     }
 
@@ -186,19 +254,19 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
   };
 
   return (
-    <div className="relative group my-5 rounded-xl overflow-hidden bg-[#1e2024] border border-[#333] shadow-xl">
+    <div className="relative group my-5 rounded-xl overflow-hidden bg-[#1e2024] border border-[#333] shadow-2xl font-sans">
       {/* Mac Window Header */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-[#252526] border-b border-[#333]">
-        {/* Left: Mac Dots */}
+      <div className="flex items-center justify-between px-4 py-3 bg-[#252526] border-b border-[#333]">
+        {/* Left: Mac Dots (Perfect Mac Style) */}
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-[#FF5F56]" /> 
-          <div className="w-3 h-3 rounded-full bg-[#FFBD2E]" /> 
-          <div className="w-3 h-3 rounded-full bg-[#27C93F]" /> 
+          <div className="w-3 h-3 rounded-full bg-[#FF5F56] border border-[#E0443E]" /> 
+          <div className="w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#DEA123]" /> 
+          <div className="w-3 h-3 rounded-full bg-[#27C93F] border border-[#1AAB29]" /> 
         </div>
         
         {/* Right: Language & Copy */}
         <div className="flex items-center gap-3">
-          <span className="text-[11px] font-mono font-medium text-[#666] group-hover:text-[#999] transition-colors select-none">
+          <span className="text-[12px] font-mono text-[#666] group-hover:text-[#999] transition-colors select-none">
             {getDisplayLabel(detectedLang)}
           </span>
           <div className="w-[1px] h-3 bg-[#444]"></div>
@@ -214,11 +282,12 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
         </div>
       </div>
       
-      {/* Code Area */}
+      {/* Code Area (Menlo Font Stack) */}
       <div className="relative overflow-x-auto scrollbar-thin scrollbar-thumb-[#444] scrollbar-track-transparent">
         <pre className="p-4 m-0">
           <code 
-            className={`font-mono text-[13px] leading-relaxed whitespace-pre language-${detectedLang}`}
+            className={`text-[13px] leading-relaxed whitespace-pre language-${detectedLang}`}
+            style={{ fontFamily: 'Menlo, Monaco, "Courier New", monospace' }}
             dangerouslySetInnerHTML={{ __html: highlightedHtml }}
           />
         </pre>
@@ -263,33 +332,35 @@ const parseZaoziInfo = (desc: string) => {
   return { mode, p1, p2 };
 };
 
-// --- Helper: Generate Zaozi HTML (Optimized CSS) ---
+// --- Helper: Generate Zaozi HTML (Optimized Natural Look) ---
 const generateZaoziHtml = (info: { mode: string, p1: string, p2: string }) => {
   const { mode, p1, p2 } = info;
   
-  // CSS Design Philosophy:
-  // 1. Fixed size 1em x 1em to match surrounding text.
-  // 2. inline-flex + align-text-bottom ensures it sits on the baseline properly.
-  // 3. Inner scaling ensures components don't overflow.
+  // Natural Zaozi Logic:
+  // Instead of simple 0.95 scaling, we use stronger compression (0.6-0.7) 
+  // to mimic real CJK composition structure.
 
   if (mode === 'surround') {
-    return `<span class="inline-grid place-items-center w-[1.1em] h-[1.1em] align-text-bottom mx-[1px] leading-none select-none relative top-[1px]">
-      <span class="col-start-1 row-start-1 text-[1em] z-0 scale-[1.1]">${p1}</span>
-      <span class="col-start-1 row-start-1 text-[0.6em] z-10 pt-[0.2em] scale-[0.9]">${p2}</span>
+    // 全包围：外框正常大小，内部大幅缩小并绝对居中
+    return `<span class="inline-grid place-items-center w-[1em] h-[1em] align-text-bottom mx-[1px] leading-none select-none relative top-[1px]">
+      <span class="col-start-1 row-start-1 text-[1em] z-0 scale-[1.0]">${p1}</span>
+      <span class="col-start-1 row-start-1 text-[0.6em] z-10 scale-[0.7] translate-y-[1px]">${p2}</span>
     </span>`;
   }
   
-  if (mode === 'tb') { // Top-Bottom
+  if (mode === 'tb') { // Top-Bottom (上下)
+    // 上下结构：大幅压缩高度 (scale-y 0.65)，宽度微缩 (scale-x 0.9)
     return `<span class="inline-flex flex-col w-[1em] h-[1em] align-text-bottom mx-[1px] leading-none select-none justify-center relative top-[0.5px]">
-      <span class="flex-1 w-full flex items-end justify-center overflow-visible text-[0.65em] h-[50%] leading-none scale-y-[0.95] origin-bottom">${p1}</span>
-      <span class="flex-1 w-full flex items-start justify-center overflow-visible text-[0.65em] h-[50%] leading-none scale-y-[0.95] origin-top">${p2}</span>
+      <span class="flex-1 w-full flex items-end justify-center overflow-visible text-[0.6em] h-[50%] leading-none scale-y-[0.7] scale-x-[0.9] origin-bottom">${p1}</span>
+      <span class="flex-1 w-full flex items-start justify-center overflow-visible text-[0.6em] h-[50%] leading-none scale-y-[0.7] scale-x-[0.9] origin-top">${p2}</span>
     </span>`;
   }
   
-  // Left-Right (Default)
+  // Left-Right (左右) - Default
+  // 左右结构：大幅压缩宽度 (scale-x 0.65)，高度微缩 (scale-y 0.9)
   return `<span class="inline-flex flex-row w-[1em] h-[1em] align-text-bottom mx-[1px] leading-none select-none items-center relative top-[0.5px]">
-    <span class="flex-1 h-full flex items-center justify-end overflow-visible text-[0.65em] w-[50%] scale-x-[0.95] origin-right">${p1}</span>
-    <span class="flex-1 h-full flex items-center justify-start overflow-visible text-[0.65em] w-[50%] scale-x-[0.95] origin-left">${p2}</span>
+    <span class="flex-1 h-full flex items-center justify-end overflow-visible text-[0.6em] w-[50%] scale-x-[0.7] scale-y-[0.9] origin-right">${p1}</span>
+    <span class="flex-1 h-full flex items-center justify-start overflow-visible text-[0.6em] w-[50%] scale-x-[0.7] scale-y-[0.9] origin-left">${p2}</span>
   </span>`;
 };
 
