@@ -559,14 +559,257 @@ const createZaoziHTML = (rawDesc: string) => {
     </span>`;
   } catch (e) {
     return `<span class="text-red-500 text-xs">[造字失败]</span>`;
+    
+// ==========================================
+// 3. 核心渲染器 (Ultimate Zaozi Engine)
+// ==========================================
+
+// --- A. 常量定义与类型 ---
+
+// 标准 IDS 运算符定义
+type IDSLayout = 'lr' | 'tb' | 'lcr' | 'tcb' | 'surround' | 'overlay';
+type IDSMeta = { char: string; arity: 2 | 3; layout: IDSLayout };
+
+const IDS_DICT: Record<string, IDSMeta> = {
+  '⿰': { char: '⿰', arity: 2, layout: 'lr' },       // 左右 (Left-Right)
+  '⿱': { char: '⿱', arity: 2, layout: 'tb' },       // 上下 (Top-Bottom)
+  '⿲': { char: '⿲', arity: 3, layout: 'lcr' },      // 左中右
+  '⿳': { char: '⿳', arity: 3, layout: 'tcb' },      // 上中下
+  '⿴': { char: '⿴', arity: 2, layout: 'surround' }, // 全包 (Full)
+  '⿵': { char: '⿵', arity: 2, layout: 'surround' }, // 上三包 (Top surround)
+  '⿶': { char: '⿶', arity: 2, layout: 'surround' }, // 下三包 (Bottom surround)
+  '⿷': { char: '⿷', arity: 2, layout: 'surround' }, // 左三包 (Left surround)
+  '⿸': { char: '⿸', arity: 2, layout: 'surround' }, // 左上包 (Top-Left)
+  '⿹': { char: '⿹', arity: 2, layout: 'surround' }, // 右上包 (Top-Right)
+  '⿺': { char: '⿺', arity: 2, layout: 'surround' }, // 左下包 (Bottom-Left)
+  '⿻': { char: '⿻', arity: 2, layout: 'overlay' },  // 镶嵌 (Overlay)
+};
+
+// 智能部首拓扑字典 (Smart Topology Map)
+// 用于普通模式下自动判断两个字的组合关系
+const RADICAL_TOPOLOGY = {
+  // 1. 强包围结构 (优先级最高)
+  surround_ul: new Set(['广', '疒', '尸', '户', '麻', '⿸']), // 左上 -> 右下填空
+  surround_ll: new Set(['辶', '走', '廴', '⿺']),           // 左下 -> 右上填空
+  surround_ur: new Set(['气', '弋', '戈', '⿹']),           // 右上 -> 左下填空
+  surround_top: new Set(['门', '冂', '同', '风', '⿵', '几']),// 上包 -> 下方填空
+  surround_bottom: new Set(['凵', '凶', '⿶']),             // 下包 -> 上方填空
+  surround_left: new Set(['匚', '区', '⿷']),               // 左包 -> 右侧填空
+  surround_full: new Set(['囗', '⿴', '回']),               // 全包 -> 中心填空
+
+  // 2. 上下结构标志 (Top-Bottom)
+  // 作为“字头”出现的字
+  top: new Set(['艹', '宀', '冖', '穴', '雨', '竹', '爫', '罒', '耂', '⺈', 'abcd']), 
+  // 作为“字底”出现的字
+  bottom: new Set(['心', '灬', '皿', '儿']),
+
+  // 3. 左右结构标志 (Left-Right)
+  left: new Set(['亻', '讠', '扌', '氵', '忄', '犭', '礻', '衤', '木', '禾', '火', '土', '金', '王', '月', '日', '口', '虫', '足', '⻊', '车', '舟'])
+};
+
+// --- B. 智能解析逻辑 (Logic) ---
+
+/**
+ * 核心转换函数：将用户输入转换为标准 IDS 序列
+ * Case 1 (Pro): 输入 "⿰AB" -> 返回 "⿰AB"
+ * Case 2 (Smart): 输入 "广A" -> 自动识别为 "⿸广A"
+ * Case 3 (Fallback): 输入 "AB" (无特征) -> 默认为 "⿰AB"
+ */
+const normalizeToIDS = (input: string): string => {
+  const str = input.trim();
+  if (!str) return '?';
+
+  // 1. 专业模式：如果以 IDS 字符开头，直接信任用户
+  if (IDS_DICT[str[0]]) return str;
+
+  // 2. 预处理：如果是 "字+字" 或 "字/字" 这种旧格式，先标准化
+  // 仅当包含符号时才处理，避免误伤普通字
+  if (str.includes('+')) {
+    const [a, b] = str.split('+');
+    return `⿰${a}${b}`;
+  }
+  if (str.includes('/')) {
+    const [a, b] = str.split('/');
+    return `⿱${a}${b}`;
+  }
+
+  // 3. 智能模式 (Smart Mode)：仅处理 2 个字符的情况
+  // 剔除可能的干扰字符 (如 "字头")，但保留 "辶"
+  let cleanStr = str;
+  if (cleanStr.length > 2) cleanStr = cleanStr.replace(/字(头|框|底|旁|儿)/g, '');
+
+  if (cleanStr.length === 2) {
+    const c1 = cleanStr[0];
+    const c2 = cleanStr[1];
+
+    // 拓扑判断优先级：包围 > 上下 > 左右
+    
+    // Check Surround (包围)
+    if (RADICAL_TOPOLOGY.surround_ul.has(c1)) return `⿸${c1}${c2}`; // 广
+    if (RADICAL_TOPOLOGY.surround_ll.has(c1)) return `⿺${c1}${c2}`; // 辶
+    if (RADICAL_TOPOLOGY.surround_full.has(c1)) return `⿴${c1}${c2}`; // 囗
+    if (RADICAL_TOPOLOGY.surround_top.has(c1)) return `⿵${c1}${c2}`; // 门
+    if (RADICAL_TOPOLOGY.surround_ur.has(c1)) return `⿹${c1}${c2}`; // 气
+    if (RADICAL_TOPOLOGY.surround_bottom.has(c1)) return `⿶${c1}${c2}`; // 凵
+    if (RADICAL_TOPOLOGY.surround_left.has(c1)) return `⿷${c1}${c2}`; // 匚
+
+    // Check TB (上下)
+    if (RADICAL_TOPOLOGY.top.has(c1)) return `⿱${c1}${c2}`; // 宀+X
+    if (RADICAL_TOPOLOGY.bottom.has(c2)) return `⿱${c1}${c2}`; // X+心
+
+    // Check LR (左右) - 以及默认情况
+    // 绝大多数汉字统计上是左右结构，所以作为 Default
+    return `⿰${c1}${c2}`;
+  }
+
+  // 4. 无法识别或长度不对，默认直接返回（渲染层处理乱码）
+  return str;
+};
+
+// --- C. 渲染引擎 (Rendering Engine) ---
+
+/**
+ * 递归生成 HTML 结构
+ * 修复重点：使用 absolute 定位处理包围结构，彻底解决对齐和大小问题
+ */
+const renderIDSNode = (input: string): string => {
+  let cursor = 0;
+
+  const parse = (): string => {
+    if (cursor >= input.length) return '';
+    const char = input[cursor];
+    cursor++;
+
+    const meta = IDS_DICT[char];
+
+    // --- 1. 叶子节点 (普通汉字) ---
+    if (!meta) {
+      // 稍微缩小一点以避免拥挤
+      return `<span class="flex items-center justify-center w-full h-full text-[1em] leading-none">${char}</span>`;
+    }
+
+    // --- 2. 递归解析子节点 ---
+    const p1 = parse(); // Part 1
+    const p2 = parse(); // Part 2
+    const p3 = meta.arity === 3 ? parse() : ''; // Part 3
+
+    // --- 3. 布局渲染 (修复版) ---
+    
+    // 公共容器样式
+    const box = "absolute inset-0 flex items-center justify-center";
+    const relativeContainer = "relative w-full h-full block overflow-hidden";
+
+    switch (meta.char) {
+      // === 线性结构 (Linear) ===
+      case '⿰': // 左右
+        return `<span class="${relativeContainer} flex flex-row">
+            <span class="w-1/2 h-full flex items-center justify-center scale-x-[0.9] origin-right">${p1}</span>
+            <span class="w-1/2 h-full flex items-center justify-center scale-x-[0.9] origin-left">${p2}</span>
+          </span>`;
+
+      case '⿱': // 上下
+        return `<span class="${relativeContainer} flex flex-col">
+            <span class="h-1/2 w-full flex items-end justify-center scale-y-[0.85] origin-bottom">${p1}</span>
+            <span class="h-1/2 w-full flex items-start justify-center scale-y-[0.85] origin-top">${p2}</span>
+          </span>`;
+
+      case '⿲': // 左中右
+        return `<span class="${relativeContainer} flex flex-row">
+            <span class="w-1/3 h-full flex items-center justify-center scale-x-[0.8]">${p1}</span>
+            <span class="w-1/3 h-full flex items-center justify-center scale-x-[0.8]">${p2}</span>
+            <span class="w-1/3 h-full flex items-center justify-center scale-x-[0.8]">${p3}</span>
+          </span>`;
+
+      case '⿳': // 上中下
+        return `<span class="${relativeContainer} flex flex-col">
+            <span class="h-1/3 w-full flex items-center justify-center scale-y-[0.7]">${p1}</span>
+            <span class="h-1/3 w-full flex items-center justify-center scale-y-[0.7]">${p2}</span>
+            <span class="h-1/3 w-full flex items-center justify-center scale-y-[0.7]">${p3}</span>
+          </span>`;
+
+      // === 包围结构 (Surround) - 这里的 CSS 是修复渲染 bug 的关键 ===
+      
+      case '⿸': // 左上包 (广) -> 内部字在右下
+        return `<span class="${relativeContainer}">
+            <span class="${box} scale-[1.1] origin-top-left z-0 pr-[10%] pb-[10%]">${p1}</span>
+            <span class="absolute right-[5%] bottom-[5%] w-[65%] h-[65%] flex items-center justify-center scale-[0.85] z-10">${p2}</span>
+          </span>`;
+
+      case '⿺': // 左下包 (辶) -> 内部字在右上
+        return `<span class="${relativeContainer}">
+            <span class="${box} scale-[1.1] origin-bottom-left z-0 pr-[10%] pt-[10%]">${p1}</span>
+            <span class="absolute right-[5%] top-[5%] w-[65%] h-[65%] flex items-center justify-center scale-[0.85] z-10">${p2}</span>
+          </span>`;
+
+      case '⿹': // 右上包 (气) -> 内部字在左下
+        return `<span class="${relativeContainer}">
+            <span class="${box} scale-[1.1] origin-top-right z-0 pl-[10%] pb-[10%]">${p1}</span>
+            <span class="absolute left-[5%] bottom-[5%] w-[65%] h-[65%] flex items-center justify-center scale-[0.85] z-10">${p2}</span>
+          </span>`;
+
+      case '⿵': // 上三包 (门) -> 内部字在下方中间
+        return `<span class="${relativeContainer}">
+            <span class="${box} scale-[1.1] origin-top z-0 pb-[15%]">${p1}</span>
+            <span class="absolute left-0 right-0 bottom-[10%] h-[60%] flex items-center justify-center scale-[0.7] z-10">${p2}</span>
+          </span>`;
+      
+      case '⿶': // 下三包 (凵) -> 内部字在上方中间
+        return `<span class="${relativeContainer}">
+            <span class="${box} scale-[1.1] origin-bottom z-0 pt-[15%]">${p1}</span>
+            <span class="absolute left-0 right-0 top-[10%] h-[60%] flex items-center justify-center scale-[0.7] z-10">${p2}</span>
+          </span>`;
+
+      case '⿷': // 左三包 (匚) -> 内部字在右侧
+        return `<span class="${relativeContainer}">
+            <span class="${box} scale-[1.1] origin-left z-0 pr-[15%]">${p1}</span>
+            <span class="absolute right-[10%] top-0 bottom-0 w-[60%] flex items-center justify-center scale-[0.7] z-10">${p2}</span>
+          </span>`;
+
+      case '⿴': // 全包 (囗) -> 内部字完全居中且缩小
+        return `<span class="${relativeContainer}">
+            <span class="${box} scale-[1.05] z-0">${p1}</span>
+            <span class="absolute inset-0 m-auto w-[65%] h-[65%] flex items-center justify-center scale-[0.75] z-10">${p2}</span>
+          </span>`;
+      
+      case '⿻': // 镶嵌
+        return `<span class="${relativeContainer}">
+            <span class="${box} z-0 scale-[1.05]">${p1}</span>
+            <span class="${box} z-10 opacity-80 scale-[0.85]">${p2}</span>
+          </span>`;
+
+      default:
+        return `<span class="text-red-500">?</span>`;
+    }
+  };
+
+  return parse();
+};
+
+const createZaoziHTML = (rawDesc: string) => {
+  try {
+    // 1. 标准化 (Smart Mode -> IDS String)
+    const idsString = normalizeToIDS(rawDesc);
+    // 2. 渲染 (IDS String -> HTML)
+    const innerHTML = renderIDSNode(idsString);
+    
+    // 容器设计：
+    // - inline-block 且对齐方式为 align-bottom，保证与文字基线对齐
+    // - 宽高设为 1.2em，比普通字略大，更有“生僻字”的视觉感
+    // - 背景色微调，边框圆角
+    return `<span class="zaozi-wrapper inline-block w-[1.25em] h-[1.25em] mx-[2px] align-text-bottom relative bg-[#2c313a]/50 border border-[#3e4451] rounded-[3px] shadow-sm select-none" title="造字：${rawDesc}">
+      ${innerHTML}
+    </span>`;
+  } catch (e) {
+    return `<span class="text-xs text-red-400 border border-red-500 rounded px-1">[造字ERR]</span>`;
   }
 };
 
 
 export const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
+  // 1. 提取所有造字定义
   const zaoziRegistry = useMemo(() => {
     const registry: Record<string, string> = {};
-    // 支持 [造字:key|value] 或 [zaozi:key|value]
+    // 语法: [造字:key|value]
     const regex = /\[(?:造字|zaozi)\s*[:：]\s*([a-zA-Z0-9_\u4e00-\u9fa5]+)\s*[|｜]\s*(.*?)\]/gi;
     let match;
     while ((match = regex.exec(content)) !== null) {
@@ -575,23 +818,29 @@ export const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => 
     return registry;
   }, [content]);
 
+  // 2. 内联解析器
   const renderInline = (text: string) => {
     return text
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      // Code
       .replace(/`([^`]+)`/g, '<code class="bg-[#2c313a] text-[#98c379] px-1.5 py-0.5 rounded text-sm font-mono border border-[#3e4451] mx-1">$1</code>')
+      // Images
       .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" class="rounded-xl my-4 w-full shadow-lg border border-[#3e4451]"/>')
+      // Format
       .replace(/\*\*(.*?)\*\*/g, '<strong class="text-[#FFFFFF] font-bold">$1</strong>')
       .replace(/\*(.*?)\*/g, '<em class="text-[#BBBBBB] italic font-serif">$1</em>')
       .replace(/~~(.*?)~~/g, '<del class="text-[#666] decoration-1">$1</del>')
+      // Custom Font
       .replace(/%%(.*?)\|(.*?)%%/g, '<span style="font-family: \'$1\', sans-serif;">$2</span>')
-      // 清除造字定义，防止显示在正文中
+      // 清除定义块
       .replace(/\[(?:造字|zaozi)\s*[:：]\s*([a-zA-Z0-9_\u4e00-\u9fa5]+)\s*[|｜]\s*(.*?)\]/gi, '') 
-      // 替换占位符 :key:
+      // 渲染引用 :key:
       .replace(/:([a-zA-Z0-9_\u4e00-\u9fa5]+):/g, (match, key) => zaoziRegistry[key] || match)
+      // Links
       .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener" class="text-[#61afef] hover:underline decoration-2 underline-offset-2 break-all">$1</a>');
   };
 
-  // ... (剩余的 renderTextBlocks 和 elements 生成逻辑保持不变，或参考上一份代码)
+  // 3. 块解析 (保持原有逻辑)
   const elements = [];
   const regex = /(```(\w+)?\s*[\s\S]*?```|<(?:video|iframe)[\s\S]*?(?:<\/(?:video|iframe)>|\/>))/g;
   let lastIndex = 0;
@@ -619,7 +868,7 @@ export const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => 
   return <div className="space-y-1 text-[#abb2bf]">{elements}</div>;
 };
 
-// ... (renderTextBlocks 函数保持不变)
+// ... renderTextBlocks 辅助函数与之前相同，这里省略以节省篇幅，实际文件中需保留 ...
 const renderTextBlocks = (text: string, inlineParser: (s: string) => string) => {
   return text.split('\n').map((line, idx) => {
     const trimmed = line.trim();
