@@ -119,15 +119,17 @@ hljs.registerLanguage('json-bedrock', (hljs) => ({
     },
     
     // 3. Standard Keys (Red/Orange - via 'attr')
+    // IMPROVED: Handles escaped characters correctly
     {
       className: 'attr', 
-      begin: /"(\\[\\"\"]|[^\\\"\n])*"(?=\s*:)/,
+      begin: /"(?:[^\\"\n]|\\.)*"(?=\s*:)/,
     },
     
-    // 4. Resource Location Values (Cyan - via 'symbol') - e.g. "minecraft:apple"
+    // 4. Resource Location Values (Cyan - via 'symbol') - e.g. "minecraft:apple" or "addon:item"
+    // IMPROVED: Supports any namespaced identifier
     {
         className: 'symbol',
-        begin: /"minecraft:[a-z0-9_.-]+"/
+        begin: /"[a-z0-9_.-]+:[a-z0-9_./-]+"/
     },
     
     // 5. Values with Molang Injection
@@ -218,7 +220,8 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
     
     // 1. JSON (Block OR Snippet like "key": value)
     if (c.startsWith('{') || c.startsWith('[')) return 'json-bedrock';
-    if (/^"[\w\d_]+" *:/.test(c)) return 'json-bedrock';
+    // IMPROVED: Matches any quoted key followed by colon (supports namespaces like "minecraft:shooter")
+    if (/^"(?:[^"\\]|\\.)*"\s*:/.test(c)) return 'json-bedrock';
     
     // 2. JS/TS (Keywords)
     if (/\b(const|let|var|function|import|export|return|class|interface|=>)\b/.test(c)) {
@@ -226,8 +229,8 @@ const MacCodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
         return 'javascript';
     }
 
-    // 3. McFunction (Expanded Commands)
-    if (/^\s*\/?(execute|scoreboard|data|give|summon|tag|function|fill|setblock|say|title|gamemode|gamerule|effect|enchant|particle)\b/m.test(c)) return 'mcfunction';
+    // 3. McFunction (Expanded Commands to Ultimate List)
+    if (/^\s*\/?(execute|scoreboard|data|give|summon|kill|tp|teleport|say|tellraw|title|advancement|recipe|function|schedule|tag|team|bossbar|effect|enchant|experience|fill|fillbiome|gamemode|gamerule|help|item|kick|list|locate|loot|msg|particle|place|playsound|publish|reload|ride|save-all|save-off|save-on|seed|setblock|setidletimeout|setworldspawn|spawnpoint|spectate|spreadplayers|stop|stopsound|teammsg|time|tm|trigger|w|weather|worldborder|xp|damage|inputpermission|jfr|perf|camera|dialogue|event|fog|mobevent|music|playanimation|structure|tickingarea|volumearea|return|transfer|random)\b/m.test(c)) return 'mcfunction';
     
     // 4. Molang (STRICT)
     if (/\b(query|math|variable|geometry|texture)\.[a-zA-Z0-9_]+/.test(c)) return 'molang';
