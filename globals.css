@@ -1,35 +1,46 @@
+/*
 @font-face {
-  font-family: 'hand_writing_default'; /* 自定义字体名称 */
-  src: url('/fonts/QiushuiShotai.woff2'); /* 字体文件路径 */
+  font-family: 'hand_writing_default'; 
+  src: url('/fonts/QiushuiShotai.woff2'); 
 }
 
 @font-face {
-  font-family: 'hand_writing_yuri'; /* 自定义字体名称 */
-  src: url('/fonts/yuri.woff2'); /* 字体文件路径 */
+  font-family: 'hand_writing_yuri'; 
+  src: url('/fonts/yuri.woff2'); 
 }
 
 @font-face {
-  font-family: 'hand_writing_sayori'; /* 自定义字体名称 */
-  src: url('/fonts/sayori.woff2'); /* 字体文件路径 */
+  font-family: 'hand_writing_sayori'; 
+  src: url('/fonts/sayori.woff2'); 
 }
 
 @font-face {
-  font-family: 'ut_title'; /* 自定义字体名称 */
-  src: url('/fonts/undertale.woff2'); /* 字体文件路径 */
+  font-family: 'hand_writing_natsuki'; 
+  src: url('/fonts/natsuki.woff2'); 
 }
 
 @font-face {
-  font-family: 'ut_icon'; /* 自定义字体名称 */
-  src: url('/fonts/undertalebet.woff2'); /* 字体文件路径 */
+  font-family: 'hand_writing_monika'; 
+  src: url('/fonts/monika.woff2');
 }
 
 @font-face {
-  font-family: 'ut_damage'; /* 自定义字体名称 */
-  src: url('/fonts/999.woff2'); /* 字体文件路径 */
+  font-family: 'ut_title'; 
+  src: url('/fonts/undertale.woff2'); 
 }
 
 @font-face {
-  font-family: 'ut_gaster'; /* 自定义字体名称 */
-  src: url('/fonts/wingdings.woff2'); /* 字体文件路径 */
+  font-family: 'ut_icon'; 
+  src: url('/fonts/undertalebet.woff2'); 
 }
 
+@font-face {
+  font-family: 'ut_damage'; 
+  src: url('/fonts/999.woff2'); 
+}
+
+@font-face {
+  font-family: 'ut_gaster'; 
+  src: url('/fonts/wingdings.woff2'); 
+}
+*/
