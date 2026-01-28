@@ -4,43 +4,4 @@
   src: url('/fonts/QiushuiShotai.woff2'); 
 }
 
-@font-face {
-  font-family: 'hand_writing_yuri'; 
-  src: url('/fonts/yuri.woff2'); 
-}
-
-@font-face {
-  font-family: 'hand_writing_sayori'; 
-  src: url('/fonts/sayori.woff2'); 
-}
-
-@font-face {
-  font-family: 'hand_writing_natsuki'; 
-  src: url('/fonts/natsuki.woff2'); 
-}
-
-@font-face {
-  font-family: 'hand_writing_monika'; 
-  src: url('/fonts/monika.woff2');
-}
-
-@font-face {
-  font-family: 'ut_title'; 
-  src: url('/fonts/undertale.woff2'); 
-}
-
-@font-face {
-  font-family: 'ut_icon'; 
-  src: url('/fonts/undertalebet.woff2'); 
-}
-
-@font-face {
-  font-family: 'ut_damage'; 
-  src: url('/fonts/999.woff2'); 
-}
-
-@font-face {
-  font-family: 'ut_gaster'; 
-  src: url('/fonts/wingdings.woff2'); 
-}
 */
