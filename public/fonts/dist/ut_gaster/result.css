@@ -3,16 +3,16 @@ CreateTime: Wed, 28 Jan 2026 00:53:23 GMT;
 Origin File Name Table:
 256: AwsJfVhgXg==
 copyright: Copyright Sigmath Bits 2015
-fontFamily: Pixelated Wingdings
+fontFamily: ut_gaster
 fontSubfamily: Regular
-uniqueID: Pixelated Wingdings
-fullName: Pixelated Wingdings Regular
+uniqueID: ut_gaster
+fullName: ut_gaster Regular
 version: Version 1.0
 postScriptName: PixelatedWingdings
 trademark: FontStruct is a trademark of FontStruct.com
 manufacturer: https://fontstruct.com
 designer: Sigmath Bits
-description: “Pixelated Wingdings” was built with FontStruct
+description: “ut_gaster” was built with FontStruct
 Designer description: <p>Pixelated or 8-bit version of the Wingdings font. Created mainly as a font for Wing Ding Gaster from Undertale. This character set varies slightly from the one used in Undertale to fit my own visual preference. Only alphanumeric and regular punctuation characters are included.</p>
 
 manufacturerURL: https://fontstruct.com/fontstructions/show/1218140/pixelated-wingdings
@@ -21,4 +21,4 @@ license: FontStruct Non-Commercial License
 sampleText: Five big quacking zephyrs jolt my wax bed
  */
 
-@font-face {font-family: "Pixelated Wingdings";src:local("Pixelated Wingdings"),url("./1e35565a267f8e0808da97a2e06025cc.woff2") format("woff2");font-style: normal;font-weight: 400;font-display: swap;unicode-range:U+20-7e;}
+@font-face {font-family: "ut_gaster";src:url("/fonts/dist/ut_gaster/1e35565a267f8e0808da97a2e06025cc.woff2") format("woff2");font-style: normal;font-weight: 100 900;font-display: swap;unicode-range:U+20-7e;}
