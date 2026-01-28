@@ -3,24 +3,24 @@ CreateTime: Wed, 28 Jan 2026 00:53:20 GMT;
 Origin File Name Table:
 256: AwsIfVlgXw==
 copyright: Copyright Jesse Burgheimer 2015
-fontFamily: Undertale
+fontFamily: ut_title
 fontSubfamily: Regular
-uniqueID: Undertale
-fullName: Undertale Regular
+uniqueID: ut_title
+fullName: ut_title Regular
 version: Version 1.0
-postScriptName: Undertale
+postScriptName: ut_title
 trademark: FontStruct is a trademark of FontStruct.com
 manufacturer: https://fontstruct.com
 designer: Jesse Burgheimer
-description: “Undertale” was built with FontStruct
-Designer description: <p>An interpretation of the logo type from the indie video game Undertale. Undertale is © Toby Fox www.undertale.com.</p>
+description: “ut_title” was built with FontStruct
+Designer description: <p>An interpretation of the logo type from the indie video game ut_title. ut_title is © Toby Fox www.ut_title.com.</p>
 
-manufacturerURL: https://fontstruct.com/fontstructions/show/1208041/undertale_2
+manufacturerURL: https://fontstruct.com/fontstructions/show/1208041/ut_title_2
 designerURL: https://fontstruct.com/fontstructors/show/7464/down10
 license: Creative Commons Attribution Non-commercial
 licenseURL: http://creativecommons.org/licenses/by-nc/3.0/
 sampleText: Five big quacking zephyrs jolt my wax bed
  */
 
-@font-face {font-family: "Undertale";src:local("Undertale"),url("./0ae5b13fd893bd0237ace895865459f9.woff2") format("woff2");font-style: normal;font-weight: 400;font-display: swap;unicode-range:U+16e-16f,U+178;}
-@font-face {font-family: "Undertale";src:local("Undertale"),url("./71598af902f2aaf17f90a18be914ea15.woff2") format("woff2");font-style: normal;font-weight: 400;font-display: swap;unicode-range:U+20-7e,U+a2-a3,U+a5,U+a8-aa,U+ae,U+b0,U+b4-b5,U+b7-b8,U+ba,U+c0-d6,U+d8-e5,U+e7-f6,U+f8-ff,U+2018-2019,U+201c-201d,U+2022,U+20ac,U+2122;}
+@font-face {font-family: "ut_title";src:url("/fonts/dist/ut_title/0ae5b13fd893bd0237ace895865459f9.woff2") format("woff2");font-style: normal;font-weight: 100 900;font-display: swap;unicode-range:U+16e-16f,U+178;}
+@font-face {font-family: "ut_title";src:url("/fonts/dist/ut_title/71598af902f2aaf17f90a18be914ea15.woff2") format("woff2");font-style: normal;font-weight: 100 900;font-display: swap;unicode-range:U+20-7e,U+a2-a3,U+a5,U+a8-aa,U+ae,U+b0,U+b4-b5,U+b7-b8,U+ba,U+c0-d6,U+d8-e5,U+e7-f6,U+f8-ff,U+2018-2019,U+201c-201d,U+2022,U+20ac,U+2122;}
