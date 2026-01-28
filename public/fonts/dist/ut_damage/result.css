@@ -39,6 +39,6 @@ license: FontStruct Non-Commercial License
 sampleText: Five big quacking zephyrs jolt my wax bed
  */
 
-@font-face {font-family: "ut_damage";src:local("HACHICRO Eng_Rus"),url("./b58a3ea340f75d5788ceb6548d962a50.woff2") format("woff2");font-style: normal;font-weight: 400;font-display: swap;unicode-range:U+400-401,U+410-44f,U+451;}
-@font-face {font-family: "ut_damage";src:local("HACHICRO Eng_Rus"),url("./045f1aca4630932047214013e38b4397.woff2") format("woff2");font-style: normal;font-weight: 400;font-display: swap;unicode-range:U+16e-16f,U+178;}
-@font-face {font-family: "ut_damage";src:local("HACHICRO Eng_Rus"),url("./83e8c3cf0d547bff93015fc814826e10.woff2") format("woff2");font-style: normal;font-weight: 400;font-display: swap;unicode-range:U+20-7e,U+c0-c5,U+c7-cf,U+d1-d6,U+d8-dc,U+e0-e5,U+e7-ef,U+f1-f6,U+f8-fc,U+ff,U+2018-2019,U+201c-201d;}
+@font-face {font-family: "ut_damage";src:url("./b58a3ea340f75d5788ceb6548d962a50.woff2") format("woff2");font-style: normal;font-weight: 400;font-display: swap;unicode-range:U+400-401,U+410-44f,U+451;}
+@font-face {font-family: "ut_damage";src:url("./045f1aca4630932047214013e38b4397.woff2") format("woff2");font-style: normal;font-weight: 400;font-display: swap;unicode-range:U+16e-16f,U+178;}
+@font-face {font-family: "ut_damage";src:url("./83e8c3cf0d547bff93015fc814826e10.woff2") format("woff2");font-style: normal;font-weight: 400;font-display: swap;unicode-range:U+20-7e,U+c0-c5,U+c7-cf,U+d1-d6,U+d8-dc,U+e0-e5,U+e7-ef,U+f1-f6,U+f8-fc,U+ff,U+2018-2019,U+201c-201d;}
