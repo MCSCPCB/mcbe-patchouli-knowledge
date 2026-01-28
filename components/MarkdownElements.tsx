@@ -518,7 +518,7 @@ const renderIDSNode = (node: IDSNode): string => {
      // 左下包通常是大长腿（走、辶），这里沿用标准逻辑，若有大头需求可在此添加
     return `<span class="relative w-full h-full block">
       <span class="absolute inset-0 flex items-end justify-start scale-[0.9] origin-bottom-left translate-x-[2px] translate-y-[0px]">${p1}</span>
-      <span class="absolute right-0 top-0 w-full h-full flex items-end justify-end scale-[0.6] origin-top-right pr-[5%] pt-[5%] translate-y-[2px]">${p2}</span>
+      <span class="absolute right-0 top-0 w-full h-full flex items-end justify-end scale-[0.6] origin-top-right pr-[5%] pt-[5%] translate-y-[3px]">${p2}</span>
     </span>`;
   }
 
