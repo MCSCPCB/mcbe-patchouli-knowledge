@@ -2,7 +2,7 @@ import React, { useContext, useState, useEffect } from 'react';
 import { AppContext } from '../App';
 import { Page, PREDEFINED_TAGS } from '../types';
 import { FAB, Chip, Card, Avatar } from '../components/M3Components';
-// 移除了未使用的 Select
+import { MarkdownRenderer, InlineMarkdown } from '../components/MarkdownElements';
 import { searchKnowledge } from '../services/knowledgeService';
 
 const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ onNavigate }) => {
@@ -144,8 +144,7 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
               className="group"
             >
               <div className="flex justify-between items-start mb-3">
-                <h3 className="text-xl font-normal text-[#E6E6E6] group-hover:text-[#7DA3A1] transition-colors line-clamp-1">{item.title}</h3>
-                
+                <h3 className="text-xl font-normal text-[#E6E6E6] group-hover:text-[#7DA3A1] transition-colors line-clamp-1"><InlineMarkdown content={item.title} /></h3>
                 {/* 状态标签：Pending 和 Rejected */}
                 <div className="flex gap-2">
                   {item.status === 'pending' && (
