@@ -3,16 +3,16 @@ CreateTime: Wed, 28 Jan 2026 05:18:24 GMT;
 Origin File Name Table:
 256: AAkId1xtVw==
 copyright: Copyright Logan2020 2021
-fontFamily: FS Mojang Studios 2
+fontFamily: mc_mojang
 fontSubfamily: Regular
-uniqueID: FS Mojang Studios 2
-fullName: FS Mojang Studios 2 Regular
+uniqueID: mc_mojang
+fullName: mc_mojang Regular
 version: Version 1.0
 postScriptName: FSMojangStudios2
 trademark: FontStruct is a trademark of FontStruct.com
 manufacturer: https://fontstruct.com
 designer: Logan2020
-description: “FS Mojang Studios 2” was built with FontStruct
+description: “mc_mojang” was built with FontStruct
 Designer description: <p>and yes i took inspiration from that one reddit user</p>
 
 <p><strong><em>10/2/2021: Block As Asterisk</em></strong></p>
@@ -47,8 +47,8 @@ license: FontStruct Non-Commercial License
 sampleText: Five big quacking zephyrs jolt my wax bed
  */
 
-@font-face {font-family: "FS Mojang Studios 2";src:local("FS Mojang Studios 2"),url("./6923a83fe7a33935d5009f9631e6c188.woff2") format("woff2");font-style: normal;font-weight: 400;font-display: swap;unicode-range:U+16e-16f,U+178,U+180,U+1bf,U+1f7,U+1e9e,U+a7d2-a7d5;}
-@font-face {font-family: "FS Mojang Studios 2";src:local("FS Mojang Studios 2"),url("./2782076894c33594a2d6575c8ed32a2a.woff2") format("woff2");font-style: normal;font-weight: 400;font-display: swap;unicode-range:U+401,U+404-407,U+410-44f,U+451,U+454-457;}
-@font-face {font-family: "FS Mojang Studios 2";src:local("FS Mojang Studios 2"),url("./069c10c61ec181b00180ec0804b2da2a.woff2") format("woff2");font-style: normal;font-weight: 400;font-display: swap;unicode-range:U+20-7b,U+7d-7e,U+a9-aa,U+ae,U+b2-b3,U+b9,U+c0-cf,U+d1-d6,U+d8-ef,U+f1-f6,U+f8-ff,U+152-153,U+2074,U+2122;}
-@font-face {font-family: "FS Mojang Studios 2";src:local("FS Mojang Studios 2"),url("./b4fef7c2f608b9d5eb53b9c0a05adada.woff2") format("woff2");font-style: normal;font-weight: 400;font-display: swap;unicode-range:U+460-475,U+478-479,U+480-481,U+502-503,U+52c-52d,U+a648-a64b,U+a64e-a651,U+a656-a65f,U+a68e-a68f,U+a696-a697;}
-@font-face {font-family: "FS Mojang Studios 2";src:local("FS Mojang Studios 2"),url("./9b59a2ada0c4b8cd082eb1056927f7e8.woff2") format("woff2");font-style: normal;font-weight: 400;font-display: swap;unicode-range:U+d72-d73,U+d75,U+d79-d7f,U+fb00-fb04,U+10f03c-10f03d;}
+@font-face {font-family: "mc_mojang";src:url("/fonts/dist/mc_mojang/6923a83fe7a33935d5009f9631e6c188.woff2") format("woff2");font-style: normal;font-weight: 100 900;font-display: swap;unicode-range:U+16e-16f,U+178,U+180,U+1bf,U+1f7,U+1e9e,U+a7d2-a7d5;}
+@font-face {font-family: "mc_mojang";src:url("/fonts/dist/mc_mojang/2782076894c33594a2d6575c8ed32a2a.woff2") format("woff2");font-style: normal;font-weight: 100 900;font-display: swap;unicode-range:U+401,U+404-407,U+410-44f,U+451,U+454-457;}
+@font-face {font-family: "mc_mojang";src:url("/fonts/dist/mc_mojang/069c10c61ec181b00180ec0804b2da2a.woff2") format("woff2");font-style: normal;font-weight: 100 900;font-display: swap;unicode-range:U+20-7b,U+7d-7e,U+a9-aa,U+ae,U+b2-b3,U+b9,U+c0-cf,U+d1-d6,U+d8-ef,U+f1-f6,U+f8-ff,U+152-153,U+2074,U+2122;}
+@font-face {font-family: "mc_mojang";src:url("/fonts/dist/mc_mojang/b4fef7c2f608b9d5eb53b9c0a05adada.woff2") format("woff2");font-style: normal;font-weight: 100 900;font-display: swap;unicode-range:U+460-475,U+478-479,U+480-481,U+502-503,U+52c-52d,U+a648-a64b,U+a64e-a651,U+a656-a65f,U+a68e-a68f,U+a696-a697;}
+@font-face {font-family: "mc_mojang";src:url("/fonts/dist/mc_mojang/9b59a2ada0c4b8cd082eb1056927f7e8.woff2") format("woff2");font-style: normal;font-weight: 100 900;font-display: swap;unicode-range:U+d72-d73,U+d75,U+d79-d7f,U+fb00-fb04,U+10f03c-10f03d;}
