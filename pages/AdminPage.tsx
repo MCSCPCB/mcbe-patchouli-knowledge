@@ -1,11 +1,14 @@
 import React, { useContext, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom'; // 1. 引入路由
 import { AppContext } from '../App';
-import { Page, KnowledgeItem } from '../types';
-import { IconButton, Switch, Avatar, Chip, Button } from '../components/M3Components';
+import { KnowledgeItem } from '../types'; // 移除 Page
+import { IconButton, Switch, Avatar, Button } from '../components/M3Components';
 import { getPendingPosts, approvePost, rejectPost, toggleUserBan, getAllUsers } from '../services/knowledgeService';
 
-const AdminPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) => {
-  const { items, setItems, users, setUsers, refreshData } = useContext(AppContext);
+// 2. 移除 Props
+const AdminPage: React.FC = () => {
+  const navigate = useNavigate(); // 3. 初始化
+  const { users, setUsers, refreshData } = useContext(AppContext);
   const [activeTab, setActiveTab] = useState<'audit' | 'users'>('audit');
   const [pendingItems, setPendingItems] = useState<KnowledgeItem[]>([]); 
 
@@ -52,16 +55,15 @@ const AdminPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) 
       {/* Navigation Rail (Desktop) / Header (Mobile) */}
       <div className="md:w-72 md:h-screen sticky top-0 bg-[#1E1E1E] md:border-r border-[#2C2C2C] z-20 flex flex-col p-4 md:p-6 shadow-xl md:shadow-none">
          <div className="flex items-center gap-3 mb-6 md:mb-10">
-            <IconButton icon="arrow_back" onClick={() => onNavigate(Page.HOME)} className="md:hidden" />
+            {/* 4. 修改返回逻辑 */}
+            <IconButton icon="arrow_back" onClick={() => navigate('/')} className="md:hidden" />
             <div className="flex flex-col">
                 <h2 className="text-2xl font-normal text-[#E6E6E6]">管理员</h2>
                 <span className="text-xs text-[#8C918C] uppercase tracking-widest">控制面板</span>
             </div>
          </div>
          
-         {/* Mobile Segmented Button */}
          <div className="flex md:hidden bg-[#2C2C2C] rounded-full p-1 mb-4 relative overflow-hidden">
-             {/* Slider logic could be added here, but simple conditional classes work for M3 */}
             <button 
                 onClick={() => setActiveTab('audit')} 
                 className={`flex-1 py-2 rounded-full text-sm font-medium transition-all ${activeTab === 'audit' ? 'bg-[#7DA3A1] text-[#0F1D13] shadow-sm' : 'text-[#C7C7CC]'}`}
@@ -76,7 +78,6 @@ const AdminPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) 
             </button>
          </div>
 
-         {/* Desktop Navigation Items */}
          <div className="hidden md:flex flex-col gap-2">
             <button 
                 onClick={() => setActiveTab('audit')}
@@ -109,14 +110,14 @@ const AdminPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) 
                 variant="text" 
                 label="Return Home" 
                 icon="arrow_back" 
-                onClick={() => onNavigate(Page.HOME)} 
+                // 5. 修改返回主页逻辑
+                onClick={() => navigate('/')} 
                 fullWidth 
                 className="!justify-start !pl-4 text-[#8C918C]"
             />
          </div>
       </div>
 
-      {/* Main Content Area */}
       <div className="flex-1 p-4 md:p-10 max-w-5xl overflow-y-auto">
         {activeTab === 'audit' && (
           <div className="space-y-6 animate-[slideUp_0.3s_ease-out]">
