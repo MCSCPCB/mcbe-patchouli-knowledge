@@ -627,49 +627,28 @@ const createZaoziHTML = (rawDesc: string) => {
   }
 };
 
-// [修改] 修改解析逻辑以适配 §def(名称|结构) 格式
 const parseZaoziDefinitions = (content: string) => {
   const registry: Record<string, string> = {};
-  // 匹配 §def(名称|结构)
-  const regex = /§def\(([^|)]+)\|([^)]+)\)/gi;
+  const regex = /\[(?:造字|zaozi)\s*[:：]\s*([a-zA-Z0-9_\u4e00-\u9fa5]+)\s*[|｜]\s*(.*?)\]/gi;
   let match;
   while ((match = regex.exec(content)) !== null) {
-    // match[1] 是名称，match[2] 是结构字符串 (如 "1+2" 或 "⿰12")
     registry[match[1]] = createZaoziHTML(match[2]);
   }
   return registry;
 };
 
 const renderInlineMarkdown = (text: string, zaoziRegistry: Record<string, string>) => {
-  let html = text
-    [span_2](start_span).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") // 基础转义[span_2](end_span)
-    .replace(/`([^`]+)`/g, '<code class="bg-[#2c313a] text-[#98c379] px-1.5 py-0.5 rounded text-sm font-mono border border-[#3e4451] mx-1">$1</code>');
-
-  [span_3](start_span)// 1. 首先提取并移除定义 (不参与显示)[span_3](end_span)
-  html = html.replace(/§def\(([^|)]+)\|([^)]+)\)/gi, '');
-
-  [span_4](start_span)// 2. 处理基础 Markdown 样式 (这样样式可以被包裹在颜色/字体内部)[span_4](end_span)
-  html = html
+  return text
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/`([^`]+)`/g, '<code class="bg-[#2c313a] text-[#98c379] px-1.5 py-0.5 rounded text-sm font-mono border border-[#3e4451] mx-1">$1</code>')
+    .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" class="rounded-xl my-4 w-full shadow-lg border border-[#3e4451]"/>')
     .replace(/\*\*(.*?)\*\*/g, '<strong class="text-[#e6e6e6] font-bold">$1</strong>')
     .replace(/\*(.*?)\*/g, '<em class="text-[#c8c8c8] italic font-serif">$1</em>')
-    .replace(/~~(.*?)~~/g, '<del class="text-[#7f848e] decoration-1">$1</del>');
-
-  // 3. 处理颜色和字体 (核心嵌套层)
-  // 使用 [^)]+ 确保匹配到最接近的一个右括号，这支持了样式套样式
-  html = html
-    .replace(/§color\((#[a-fA-F0-9]{3,6})\|(.*?)\)/gi, '<span style="color: $1">$2</span>')
-    .replace(/§font\(([^|)]+)\|([^)]+)\)/gi, '<span style="font-family: \'$1\', sans-serif;">$2</span>');
-
-  [span_5](start_span)// 4. 处理造字调用 (最后处理，确保造字可以出现在任何样式内)[span_5](end_span)
-  // 此时 $1 可能已经是被 strong/span 包裹过的内容，或者是纯名称
-  html = html.replace(/§\(([^)]+)\)/g, (match, key) => zaoziRegistry[key] || match);
-
-  [span_6](start_span)// 5. 最后处理链接和图片[span_6](end_span)
-  html = html
-    .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" class="rounded-xl my-4 w-full shadow-lg border border-[#3e4451]"/>')
-    .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener" class="text-[#61afef] hover:underline">$1</a>');
-
-  return html;
+    .replace(/~~(.*?)~~/g, '<del class="text-[#7f848e] decoration-1">$1</del>')
+    .replace(/%%(.*?)\|(.*?)%%/g, '<span style="font-family: \'$1\', sans-serif;">$2</span>')
+    .replace(/\[(?:造字|zaozi)\s*[:：]\s*([a-zA-Z0-9_\u4e00-\u9fa5]+)\s*[|｜]\s*(.*?)\]/gi, '') 
+    .replace(/:([a-zA-Z0-9_\u4e00-\u9fa5]+):/g, (match, key) => zaoziRegistry[key] || match)
+    .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener" class="text-[#61afef] hover:underline decoration-2 underline-offset-2 break-all">$1</a>');
 };
 
 // [新增] 导出轻量级行内 Markdown 组件
