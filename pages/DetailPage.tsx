@@ -1,15 +1,19 @@
 import React, { useContext, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom'; // 引入 Hooks
 import { AppContext } from '../App';
-import { Page } from '../types';
 import { IconButton, Dialog, Button, Avatar } from '../components/M3Components';
 import { deletePost, getRecentPosts } from '../services/knowledgeService';
-import { MarkdownRenderer,InlineMarkdown } from '../components/MarkdownElements'; // 引入新组件
+import { MarkdownRenderer, InlineMarkdown } from '../components/MarkdownElements';
 
-const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | null }> = ({ onNavigate, itemId }) => {
+// 移除 Props 定义
+const DetailPage: React.FC = () => {
+  const { id } = useParams<{ id: string }>(); // 获取 URL 参数
+  const navigate = useNavigate();
+  
   const { items, setItems, currentUser, refreshData } = useContext(AppContext);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-  const item = items.find(i => i.id === itemId);
+  const item = items.find(i => i.id === id);
   if (!item) return <div className="p-8 text-center text-[#888]">Item not found</div>;
 
   const handleDelete = async () => {
@@ -19,7 +23,7 @@ const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | nul
         setItems(posts);
         await refreshData();
         setDeleteDialogOpen(false);
-        onNavigate(Page.HOME);
+        navigate('/'); // 使用路由跳转
     } catch (e) {
         alert("Delete failed");
     }
@@ -33,11 +37,11 @@ const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | nul
        {/* Actions Header */}
        <div className="mb-6 flex items-center justify-between sticky top-20 z-10 pointer-events-none">
          <div className="pointer-events-auto bg-[#121212]/50 backdrop-blur-md rounded-full p-1">
-            <IconButton icon="arrow_back" onClick={() => onNavigate(Page.HOME)} />
+            <IconButton icon="arrow_back" onClick={() => navigate(-1)} /> {/* 返回上一页 */}
          </div>
          {canEdit && (
            <div className="flex gap-2 pointer-events-auto bg-[#121212]/50 backdrop-blur-md rounded-full p-1">
-             <IconButton icon="edit" title="Edit" onClick={() => onNavigate(Page.CREATE, item.id)} />
+             <IconButton icon="edit" title="Edit" onClick={() => navigate(`/edit/${item.id}`)} />
              <IconButton icon="delete" title="Delete" onClick={() => setDeleteDialogOpen(true)} className="!text-[#CF6679] hover:!bg-[#CF6679]/10" />
            </div>
          )}
@@ -64,13 +68,11 @@ const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | nul
             </div>
           </div>
 
-          {/* Main Content - 使用新的渲染器 */}
           <div className="min-h-[200px] text-[#C7C7CC]">
              <MarkdownRenderer content={item.content} />
           </div>
        </article>
        
-       {/* Attachments Section */}
        {item.attachments && item.attachments.length > 0 && (
            <div className="mt-12 pt-6 border-t border-[#2C2C2C]">
                <h3 className="text-sm font-bold text-[#8C918C] uppercase tracking-wider mb-4 flex items-center gap-2">
@@ -100,14 +102,12 @@ const DetailPage: React.FC<{ onNavigate: (p: Page) => void; itemId: string | nul
            </div>
        )}
 
-       {/* AI Insight Card */}
        {item.aiClues && (
          <div className="mt-12 bg-[#D0BCFF]/5 border border-[#D0BCFF]/20 rounded-2xl p-6 relative overflow-hidden">
            <div className="absolute top-0 right-0 p-4 opacity-10">
                <span className="material-symbols-rounded text-6xl text-[#D0BCFF]">auto_awesome</span>
            </div>
            <span className="text-[#D0BCFF] text-xs font-bold uppercase tracking-widest mb-2 block">检索线索</span>
-           {/* 线索部分也添加了 break-words 和 whitespace 处理 */}
            <p className="text-[#E6E1E5] text-sm italic leading-relaxed relative z-10 whitespace-pre-wrap font-sans break-words">
              {item.aiClues}
            </p>
