@@ -629,13 +629,15 @@ const createZaoziHTML = (rawDesc: string) => {
 
 const parseZaoziDefinitions = (content: string) => {
   const registry: Record<string, string> = {};
-  const regex = /\[(?:造字|zaozi)\s*[:：]\s*([a-zA-Z0-9_\u4e00-\u9fa5]+)\s*[|｜]\s*(.*?)\]/gi;
+  // 更新正则表达式，仅匹配 §def(名称|描述) 格式
+  const regex = /§def\(([^|)]+)\|([^)]+)\)/g;
   let match;
   while ((match = regex.exec(content)) !== null) {
     registry[match[1]] = createZaoziHTML(match[2]);
   }
   return registry;
 };
+
 
 const renderInlineMarkdown = (text: string, zaoziRegistry: Record<string, string>) => {
   return text
@@ -645,11 +647,26 @@ const renderInlineMarkdown = (text: string, zaoziRegistry: Record<string, string
     .replace(/\*\*(.*?)\*\*/g, '<strong class="text-[#e6e6e6] font-bold">$1</strong>')
     .replace(/\*(.*?)\*/g, '<em class="text-[#c8c8c8] italic font-serif">$1</em>')
     .replace(/~~(.*?)~~/g, '<del class="text-[#7f848e] decoration-1">$1</del>')
-    .replace(/%%(.*?)\|(.*?)%%/g, '<span style="font-family: \'$1\', sans-serif;">$2</span>')
-    .replace(/\[(?:造字|zaozi)\s*[:：]\s*([a-zA-Z0-9_\u4e00-\u9fa5]+)\s*[|｜]\s*(.*?)\]/gi, '') 
-    .replace(/:([a-zA-Z0-9_\u4e00-\u9fa5]+):/g, (match, key) => zaoziRegistry[key] || match)
+
+    // =================  修改开始  =================
+
+    // 1. [替换] 移除所有造字定义，防止被渲染
+    .replace(/§def\(([^|)]+)\|([^)]+)\)/g, '')
+
+    // 2. [新增] 颜色功能: §color(#RRGGBB|文本)
+    .replace(/§color\(#([0-9a-fA-F]{6})\|([^)]+)\)/g, (match, color, text) => `<span style="color: #${color}">${text}</span>`)
+    
+    // 3. [替换] 自定义字体: §font(字体名|文本)
+    .replace(/§font\(([^|)]+)\|([^)]+)\)/g, (match, font, text) => `<span style="font-family: '${font}', sans-serif;">${text}</span>`)
+
+    // 4. [替换] 造字使用: §(名称)，此规则寻找不包含'|'的格式，因此不会与其他规则冲突
+    .replace(/§\(([^|)]+)\)/g, (match, key) => zaoziRegistry[key] || match)
+    
+    // =================  修改结束  =================
+    
     .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener" class="text-[#61afef] hover:underline decoration-2 underline-offset-2 break-all">$1</a>');
 };
+
 
 // [新增] 导出轻量级行内 Markdown 组件
 export const InlineMarkdown: React.FC<{ content: string, className?: string }> = ({ content, className }) => {
