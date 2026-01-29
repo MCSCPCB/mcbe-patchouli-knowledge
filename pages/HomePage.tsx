@@ -1,16 +1,18 @@
 import React, { useContext, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom'; // 1. 引入路由钩子
 import { AppContext } from '../App';
-import { Page, PREDEFINED_TAGS } from '../types';
+import { PREDEFINED_TAGS } from '../types'; // 移除 Page 引用
 import { FAB, Chip, Card, Avatar } from '../components/M3Components';
 import { MarkdownRenderer, InlineMarkdown } from '../components/MarkdownElements';
 import { searchKnowledge } from '../services/knowledgeService';
 
-const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ onNavigate }) => {
+// 2. 移除 Props 定义
+const HomePage: React.FC = () => {
+  const navigate = useNavigate(); // 3. 初始化钩子
   const { items, setItems, refreshData } = useContext(AppContext);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchMode, setSearchMode] = useState<'keyword' | 'ai'>('keyword');
   
-  // 修改：将单选状态改为数组，默认包含 "All"
   const [selectedTags, setSelectedTags] = useState<string[]>(['All']);
   const [isSearching, setIsSearching] = useState(false);
 
@@ -36,7 +38,6 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
     return () => clearTimeout(timeoutId);
   }, [searchTerm, searchMode, setItems]);
 
-  // 新增：标签切换处理函数
   const toggleTag = (tag: string) => {
     if (tag === 'All') {
       setSelectedTags(['All']);
@@ -44,32 +45,20 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
     }
 
     setSelectedTags(prev => {
-      // 如果当前是“All”状态，点击新标签则清除“All”，只选新标签
       if (prev.includes('All')) {
         return [tag];
       }
-
-      // 如果已经选中，则移除
       if (prev.includes(tag)) {
         const newTags = prev.filter(t => t !== tag);
-        // 如果移除后为空，自动回退到“All”
         return newTags.length === 0 ? ['All'] : newTags;
       } else {
-        // 否则添加到选中列表
         return [...prev, tag];
       }
     });
   };
 
-  // 修改：根据多标签筛选逻辑
   const filteredItems = items.filter(item => {
-    // if (item.status === 'rejected') return false; // 已移除，由后端权限控制
-    
-    // 如果选中了“All”，则不过滤标签
     if (selectedTags.includes('All')) return true;
-
-    // 检查文章的标签是否包含在选中的标签列表中（只要有一个匹配就显示）
-    // 假设 item.tags 是 string[]
     return item.tags.some(tag => selectedTags.includes(tag));
   });
 
@@ -108,14 +97,12 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
            />
            <div className="w-[1px] h-6 bg-[#333] mx-1"></div>
            
-           {/* 修改：渲染“All”标签 */}
            <Chip 
              label="All" 
              selected={selectedTags.includes('All')} 
              onClick={() => toggleTag('All')} 
            />
            
-           {/* 修改：渲染预定义标签，支持多选状态判定 */}
            {PREDEFINED_TAGS.map(tag => (
                <Chip 
                  key={tag} 
@@ -140,12 +127,12 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
           filteredItems.map(item => (
             <Card 
               key={item.id} 
-              onClick={() => onNavigate(Page.DETAIL, item.id)}
+              // 4. 修改跳转逻辑
+              onClick={() => navigate(`/detail/${item.id}`)}
               className="group"
             >
               <div className="flex justify-between items-start mb-3">
                 <h3 className="text-xl font-normal text-[#E6E6E6] group-hover:text-[#7DA3A1] transition-colors line-clamp-1"><InlineMarkdown content={item.title} /></h3>
-                {/* 状态标签：Pending 和 Rejected */}
                 <div className="flex gap-2">
                   {item.status === 'pending' && (
                     <span className="bg-[#FFD8E4] text-[#31111D] text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wide">
@@ -160,11 +147,9 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
                 </div>
               </div>
 
-              {/* 修改点：线索摘要改为2行限制，且优化图标排版 */}
               <p className={`text-sm line-clamp-2 mb-4 leading-relaxed font-sans ${item.aiClues ? 'text-[#D0BCFF] italic' : 'text-[#C7C7CC]'}`}>
                 {item.aiClues ? (
                    <>
-                     {/* 将图标改为 inline-block 以完美适配文字流 */}
                      <span className="material-symbols-rounded text-[14px] mr-1 translate-y-[2px] inline-block select-none">auto_awesome</span>
                      {item.aiClues}
                    </>
@@ -193,7 +178,8 @@ const HomePage: React.FC<{ onNavigate: (p: Page, id?: string) => void }> = ({ on
 
       <FAB 
         icon="edit" 
-        onClick={() => onNavigate(Page.CREATE)} 
+        // 5. 修改新建跳转
+        onClick={() => navigate('/create')} 
         label="撰写知识"
         extended={true}
       />
