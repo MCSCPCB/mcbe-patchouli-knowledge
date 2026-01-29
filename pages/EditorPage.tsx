@@ -1,11 +1,15 @@
 import React, { useState, useContext, useRef, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom'; // 引入 Hooks
 import { AppContext } from '../App';
-import { Page, PREDEFINED_TAGS, Attachment } from '../types';
+import { PREDEFINED_TAGS, Attachment } from '../types';
 import { Button, IconButton, TextField, Select, Chip, RichMarkdownEditor, Dialog } from '../components/M3Components';
 import { generateSearchClues, createPost, updatePost, getRecentPosts, uploadFile, uploadImage } from '../services/knowledgeService';
 
-const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate }) => {
-  const { items, setItems, currentUser, selectedItemId, refreshData } = useContext(AppContext);
+const EditorPage: React.FC = () => {
+  const { id } = useParams<{ id: string }>(); // 如果 url 是 /edit/123，则 id 为 123；如果是 /create，则 undefined
+  const navigate = useNavigate();
+
+  const { items, setItems, currentUser, refreshData } = useContext(AppContext);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [tags, setTags] = useState<string[]>([]);
@@ -14,45 +18,39 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   
-  // === 修改点 1: 引入 Ref 管理编辑器焦点和位置 ===
   const editorRef = useRef<HTMLDivElement>(null);
   const savedCursorPosRef = useRef<number>(content.length);
 
-  // === 修改点 3: 统一弹窗状态管理 ===
   const [videoDialogOpen, setVideoDialogOpen] = useState(false);
   const [videoUrlInput, setVideoUrlInput] = useState('');
   const [errorDialog, setErrorDialog] = useState<{ open: boolean, message: string }>({ open: false, message: '' });
 
   const initializedIdRef = useRef<string | null>(null);
 
+  // 初始化数据：根据 URL 参数 id 加载文章
   useEffect(() => {
-    if (selectedItemId && items.length > 0 && initializedIdRef.current !== selectedItemId) {
-      const existingItem = items.find(i => i.id === selectedItemId);
+    if (id && items.length > 0 && initializedIdRef.current !== id) {
+      const existingItem = items.find(i => i.id === id);
       if (existingItem) {
         setTitle(existingItem.title);
         setContent(existingItem.content);
         setTags(existingItem.tags);
         setAiClues(existingItem.aiClues || '');
         setAttachments(existingItem.attachments || []);
-        initializedIdRef.current = selectedItemId;
+        initializedIdRef.current = id;
       }
     }
-  }, [selectedItemId, items]);
+  }, [id, items]);
 
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // === 辅助函数：在记录的位置插入文本并恢复焦点 (解决手机跳顶问题) ===
   const insertTextAtSavedPosition = (textToInsert: string) => {
     const pos = savedCursorPosRef.current;
     const newContent = content.substring(0, pos) + textToInsert + content.substring(pos);
     setContent(newContent);
-    
-    // 更新记录位置到新内容之后
     const newPos = pos + textToInsert.length;
     savedCursorPosRef.current = newPos;
-
-    // 关键：在 DOM 更新后重新聚焦并定位，防止页面滚动
     setTimeout(() => {
         const textarea = editorRef.current?.querySelector('textarea');
         if (textarea) {
@@ -62,7 +60,6 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
     }, 0);
   };
 
-  // === 辅助函数：保存当前光标位置 ===
   const captureCursorPosition = () => {
     const textarea = editorRef.current?.querySelector('textarea');
     if (textarea) {
@@ -95,14 +92,12 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
     }
   };
 
-  // 点击插入视频按钮，打开弹窗
   const handleTriggerVideo = () => {
-      captureCursorPosition(); // 记录位置
+      captureCursorPosition();
       setVideoUrlInput('');
       setVideoDialogOpen(true);
   };
 
-  // 确认插入视频
   const handleConfirmVideoInsert = () => {
       const url = videoUrlInput.trim();
       if (!url) {
@@ -134,13 +129,13 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
       }
 
       if (insertCode) {
-        insertTextAtSavedPosition(insertCode); // 修复：在光标处插入
+        insertTextAtSavedPosition(insertCode);
       }
       setVideoDialogOpen(false);
   };
 
   const handleTriggerUpload = (type: 'image' | 'video' | 'file') => {
-      captureCursorPosition(); // 记录位置
+      captureCursorPosition();
       if (type === 'video') {
         handleTriggerVideo();
         return;
@@ -163,13 +158,11 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
         if (type === 'image') {
             if (!title.trim()) {
                 handleError("先给知识起一个标题吧 ੭ ˙ᗜ˙ ੭");
-                // 清空 input 允许再次选择
                 if (imageInputRef.current) imageInputRef.current.value = '';
                 return;
             }
             const url = await uploadImage(file,title);
             const optimizedUrl = `https://wsrv.nl/?url=${encodeURIComponent(url)}&q=80`;
-            // 修复：在光标处插入图片链接
             insertTextAtSavedPosition(`\n![${file.name}](${optimizedUrl})\n`);
         } else {
             const url = await uploadFile(file);
@@ -190,8 +183,8 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
     setIsSaving(true);
     try {
         const payload = { title, content, tags, aiClues, attachments };
-        if (selectedItemId) {
-            await updatePost(selectedItemId, payload);
+        if (id) {
+            await updatePost(id, payload);
         } else {
             await createPost(payload);
         }
@@ -199,7 +192,7 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
         const posts = await getRecentPosts();
         setItems(posts);
         await refreshData();
-        onNavigate(Page.HOME);
+        navigate('/'); // 保存成功后返回首页
     } catch (e: any) {
         handleError("Failed to save: " + e.message || e);
     } finally {
@@ -210,9 +203,9 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 pb-24 animate-[fadeIn_0.3s_ease-out]">
       <div className="flex items-center justify-between mb-8 sticky top-20 z-10 bg-[#121212]/80 backdrop-blur-xl rounded-full px-4 py-2 border border-[#2C2C2C] shadow-xl">
-        <IconButton icon="arrow_back" onClick={() => onNavigate(Page.HOME)} className="!w-10 !h-10" />
+        <IconButton icon="arrow_back" onClick={() => navigate(-1)} className="!w-10 !h-10" />
         <span className="text-sm font-medium text-[#C7C7CC] uppercase tracking-wider">
-            {selectedItemId ? '修改知识' : '创建新知识'}
+            {id ? '修改知识' : '创建新知识'}
         </span>
         <Button 
             label={isSaving ? "正在保存..." : "保存"} 
@@ -252,7 +245,6 @@ const EditorPage: React.FC<{ onNavigate: (p: Page) => void }> = ({ onNavigate })
            </div>
         </div>
 
-        {/* 修复点 2: 绑定 Ref */}
         <div ref={editorRef}>
             <RichMarkdownEditor 
               label="内容" 
