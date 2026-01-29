@@ -629,7 +629,7 @@ const createZaoziHTML = (rawDesc: string) => {
 
 const parseZaoziDefinitions = (content: string) => {
   const registry: Record<string, string> = {};
-  // 更新正则表达式，仅匹配 §def(名称|描述) 格式
+  // 匹配 §def(名称|描述)
   const regex = /§def\(([^|)]+)\|([^)]+)\)/g;
   let match;
   while ((match = regex.exec(content)) !== null) {
@@ -639,36 +639,45 @@ const parseZaoziDefinitions = (content: string) => {
 };
 
 
+
 const renderInlineMarkdown = (text: string, zaoziRegistry: Record<string, string>) => {
-  // 1. 首先进行基础的、无嵌套问题的替换，并移除定义
-  let processedText = text
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/§def\(([^|)]+)\|([^)]+)\)/g, '') // 彻底移除定义，不参与渲染
+  // 1. 基础 HTML 转义
+  let res = text
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  // 2. 【核心修改】循环处理所有 § 格式 (由内向外)
+  // 正则解释: 匹配 § 后跟可选的标签名，然后是括号及其内部所有“非括号”字符
+  const innerRegex = /§([a-zA-Z0-9_]*)\(([^()]*)\)/g;
+  
+  while (true) {
+    const prev = res;
+    res = res.replace(innerRegex, (match, tag, content) => {
+      // 拆分参数，例如 "Minecraft|Hello" -> ["Minecraft", "Hello"]
+      const parts = content.split('|'); 
+      const p1 = parts[0];
+      const p2 = parts.slice(1).join('|'); // 处理文本中可能存在的其他 |
+
+      if (tag === 'def') return ''; // 定义语句在渲染时移除
+      if (tag === 'color') return `<span style="color: #${p1}">${p2}</span>`;
+      if (tag === 'font') return `<span style="font-family: '${p1}', sans-serif;">${p2}</span>`;
+      if (tag === '') return zaoziRegistry[p1] || match; // §(名称) -> 造字
+      
+      return match; // 未知标签保持原样
+    });
+
+    // 如果一轮替换后字符串没有变化，说明所有嵌套都解开了，跳出循环
+    if (res === prev) break;
+  }
+
+  // 3. 处理标准 Markdown (代码块、图片、加粗等)
+  // 注意：将标准 Markdown 放在最后处理，可以避免它们干扰 § 的括号解析
+  return res
     .replace(/`([^`]+)`/g, '<code class="bg-[#2c313a] text-[#98c379] px-1.5 py-0.5 rounded text-sm font-mono border border-[#3e4451] mx-1">$1</code>')
     .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" class="rounded-xl my-4 w-full shadow-lg border border-[#3e4451]"/>')
     .replace(/\*\*(.*?)\*\*/g, '<strong class="text-[#e6e6e6] font-bold">$1</strong>')
     .replace(/\*(.*?)\*/g, '<em class="text-[#c8c8c8] italic font-serif">$1</em>')
-    .replace(/~~(.*?)~~/g, '<del class="text-[#7f848e] decoration-1">$1</del>');
-
-  // 2. 循环处理所有§格式，直到没有更多的§格式可以被替换为止
-  let previousText;
-  do {
-    previousText = processedText;
-
-    processedText = processedText
-      // 颜色: §color(#RRGGBB|内容)
-      .replace(/§color\(#([0-9a-fA-F]{6})\|([^)]+)\)/g, (match, color, content) => `<span style="color: #${color}">${content}</span>`)
-      // 字体: §font(字体名|内容)
-      .replace(/§font\(([^|)]+)\|([^)]+)\)/g, (match, font, content) => `<span style="font-family: '${font}', sans-serif;">${content}</span>`)
-      // 造字: §(名称)
-      .replace(/§\(([^|)]+)\)/g, (match, key) => zaoziRegistry[key] || match);
-
-  } while (processedText !== previousText); // 如果字符串不再变化，说明所有嵌套都已处理完毕，循环结束
-
-  // 3. 最后处理链接，确保链接内的文本也已完成所有§格式转换
-  processedText = processedText.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener" class="text-[#61afef] hover:underline decoration-2 underline-offset-2 break-all">$1</a>');
-  
-  return processedText;
+    .replace(/~~(.*?)~~/g, '<del class="text-[#7f848e] decoration-1">$1</del>')
+    .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener" class="text-[#61afef] hover:underline decoration-2 underline-offset-2 break-all">$1</a>');
 };
 
 
