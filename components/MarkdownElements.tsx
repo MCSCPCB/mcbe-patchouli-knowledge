@@ -627,111 +627,50 @@ const createZaoziHTML = (rawDesc: string) => {
   }
 };
 
+// [修改] 修改解析逻辑以适配 §def(名称|结构) 格式
 const parseZaoziDefinitions = (content: string) => {
   const registry: Record<string, string> = {};
-  // 新格式: §def(名称|结构)
-  const regex = /§def\(([^|]+?)\|([^)]+)\)/g;
+  // 匹配 §def(名称|结构)
+  const regex = /§def\(([^|)]+)\|([^)]+)\)/gi;
   let match;
   while ((match = regex.exec(content)) !== null) {
-    // match[1] = 名称, match[2] = 结构
-    registry[match[1].trim()] = createZaoziHTML(match[2].trim());
+    // match[1] 是名称，match[2] 是结构字符串 (如 "1+2" 或 "⿰12")
+    registry[match[1]] = createZaoziHTML(match[2]);
   }
   return registry;
 };
 
-/**
- * [核心] 递归地渲染包含自定义§标签的文本。
- * 它能够正确处理嵌套的 §font, §color, 和 §(造字) 标签。
- * @param {string} text - 需要渲染的文本。
- * @param {Record<string, string>} zaoziRegistry - 造字注册表。
- * @returns {string} - 渲染后的HTML字符串。
- */
-const renderRecursive = (text, zaoziRegistry) => {
-  const tagStart = text.indexOf('§');
+const renderInlineMarkdown = (text: string, zaoziRegistry: Record<string, string>) => {
+  let html = text
+    [span_2](start_span).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") // 基础转义[span_2](end_span)
+    .replace(/`([^`]+)`/g, '<code class="bg-[#2c313a] text-[#98c379] px-1.5 py-0.5 rounded text-sm font-mono border border-[#3e4451] mx-1">$1</code>');
 
-  // 基本情况：如果没有更多的§标签，直接返回文本。
-  if (tagStart === -1) {
-    return text;
-  }
+  [span_3](start_span)// 1. 首先提取并移除定义 (不参与显示)[span_3](end_span)
+  html = html.replace(/§def\(([^|)]+)\|([^)]+)\)/gi, '');
 
-  const prefix = text.substring(0, tagStart);
-  const rest = text.substring(tagStart);
+  [span_4](start_span)// 2. 处理基础 Markdown 样式 (这样样式可以被包裹在颜色/字体内部)[span_4](end_span)
+  html = html
+    .replace(/\*\*(.*?)\*\*/g, '<strong class="text-[#e6e6e6] font-bold">$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em class="text-[#c8c8c8] italic font-serif">$1</em>')
+    .replace(/~~(.*?)~~/g, '<del class="text-[#7f848e] decoration-1">$1</del>');
 
-  // 尝试匹配 §font(...) 或 §color(...)
-  const funcMatch = rest.match(/^§(font|color)\\(([^|\]]+?)\\|/);
-  if (funcMatch) {
-    const command = funcMatch[1]; // "font" or "color"
-    const arg1 = funcMatch[2];    // 字体名或颜色值
-    const contentStartIndex = funcMatch[0].length;
+  // 3. 处理颜色和字体 (核心嵌套层)
+  // 使用 [^)]+ 确保匹配到最接近的一个右括号，这支持了样式套样式
+  html = html
+    .replace(/§color\((#[a-fA-F0-9]{3,6})\|(.*?)\)/gi, '<span style="color: $1">$2</span>')
+    .replace(/§font\(([^|)]+)\|([^)]+)\)/gi, '<span style="font-family: \'$1\', sans-serif;">$2</span>');
 
-    let balance = 1;
-    let contentEndIndex = -1;
+  [span_5](start_span)// 4. 处理造字调用 (最后处理，确保造字可以出现在任何样式内)[span_5](end_span)
+  // 此时 $1 可能已经是被 strong/span 包裹过的内容，或者是纯名称
+  html = html.replace(/§\(([^)]+)\)/g, (match, key) => zaoziRegistry[key] || match);
 
-    // 通过计算括号平衡来查找匹配的结束括号
-    for (let i = contentStartIndex; i < rest.length; i++) {
-      if (rest[i] === '(') balance++;
-      if (rest[i] === ')') balance--;
-      if (balance === 0) {
-        contentEndIndex = i;
-        break;
-      }
-    }
+  [span_6](start_span)// 5. 最后处理链接和图片[span_6](end_span)
+  html = html
+    .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" class="rounded-xl my-4 w-full shadow-lg border border-[#3e4451]"/>')
+    .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener" class="text-[#61afef] hover:underline">$1</a>');
 
-    if (contentEndIndex !== -1) {
-      const content = rest.substring(contentStartIndex, contentEndIndex);
-      const suffix = rest.substring(contentEndIndex + 1);
-
-      // [关键] 递归渲染内容和后缀
-      const renderedContent = renderRecursive(content, zaoziRegistry);
-      const renderedSuffix = renderRecursive(suffix, zaoziRegistry);
-
-      let renderedTag;
-      if (command === 'font') {
-        renderedTag = `<span style="font-family: '${arg1}', sans-serif;">${renderedContent}</span>`;
-      } else { // color
-        renderedTag = `<span style="color: ${arg1}">${renderedContent}</span>`;
-      }
-      return prefix + renderedTag + renderedSuffix;
-    }
-  }
-
-  // 尝试匹配 §(造字)
-  const zaoziMatch = rest.match(/^§\\(([^)]+?)\\)/);
-  if (zaoziMatch) {
-    const key = zaoziMatch[1].trim();
-    const suffix = rest.substring(zaoziMatch[0].length);
-    // 替换造字并递归渲染后缀
-    return prefix + (zaoziRegistry[key] || `§(${key})`) + renderRecursive(suffix, zaoziRegistry);
-  }
-
-  // 如果§后面不是已知模式，则将其视为普通字符
-  return prefix + '§' + renderRecursive(rest.substring(1), zaoziRegistry);
+  return html;
 };
-
-/**
- * [主函数] 渲染包含自定义语法的Markdown文本为HTML。
- * @param {string} text - 原始输入文本。
- * @param {Record<string, string>} zaoziRegistry - 造字注册表。
- * @returns {string} - 最终的HTML输出。
- */
-const renderInlineMarkdown = (text, zaoziRegistry) => {
-  // 1. [新] 首先，递归渲染所有自定义的§标签
-  let processedText = renderRecursive(text, zaoziRegistry);
-  
-  // 2. [旧] 移除造字定义
-  processedText = processedText.replace(/§def\\(([^|\]]+?)\\|([^)]+?)\\)/g, '');
-
-  // 3. [旧] 最后，应用标准的Markdown格式
-  return processedText
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") // 基础HTML转义
-    .replace(/\`([^\`]+)\`/g, '<code class="bg-[#2c313a] text-[#98c379] px-1.5 py-0.5 rounded text-sm font-mono border border-[#3e4451] mx-1">$1</code>')
-    .replace(/!\\\[(.*?)\\\]\\((.*?)\\)/g, '<img src="$2" alt="$1" class="rounded-xl my-4 w-full shadow-lg border border-[#3e4451]"/>')
-    .replace(/\\\*\\\*(.*?)\\\*\\\*/g, '<strong class="text-[#e6e6e6] font-bold">$1</strong>')
-    .replace(/\\\*(.*?)\\\*/g, '<em class="text-[#c8c8c8] italic font-serif">$1</em>')
-    .replace(/~~(.*?)~~/g, '<del class="text-[#7f848e] decoration-1">$1</del>')
-    .replace(/\\\[(.*?)\\\]\\((.*?)\\)/g, '<a href="$2" target="\_blank" rel="noopener" class="text-[#61afef] hover:underline decoration-2 underline-offset-2 break-all">$1</a>');
-};
-
 
 // [新增] 导出轻量级行内 Markdown 组件
 export const InlineMarkdown: React.FC<{ content: string, className?: string }> = ({ content, className }) => {
