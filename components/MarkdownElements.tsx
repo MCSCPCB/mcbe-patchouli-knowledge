@@ -640,32 +640,37 @@ const parseZaoziDefinitions = (content: string) => {
 
 
 const renderInlineMarkdown = (text: string, zaoziRegistry: Record<string, string>) => {
-  return text
+  // 1. 首先进行基础的、无嵌套问题的替换，并移除定义
+  let processedText = text
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/§def\(([^|)]+)\|([^)]+)\)/g, '') // 彻底移除定义，不参与渲染
     .replace(/`([^`]+)`/g, '<code class="bg-[#2c313a] text-[#98c379] px-1.5 py-0.5 rounded text-sm font-mono border border-[#3e4451] mx-1">$1</code>')
     .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" class="rounded-xl my-4 w-full shadow-lg border border-[#3e4451]"/>')
     .replace(/\*\*(.*?)\*\*/g, '<strong class="text-[#e6e6e6] font-bold">$1</strong>')
     .replace(/\*(.*?)\*/g, '<em class="text-[#c8c8c8] italic font-serif">$1</em>')
-    .replace(/~~(.*?)~~/g, '<del class="text-[#7f848e] decoration-1">$1</del>')
+    .replace(/~~(.*?)~~/g, '<del class="text-[#7f848e] decoration-1">$1</del>');
 
-    // =================  修改开始  =================
+  // 2. 循环处理所有§格式，直到没有更多的§格式可以被替换为止
+  let previousText;
+  do {
+    previousText = processedText;
 
-    // 1. [替换] 移除所有造字定义，防止被渲染
-    .replace(/§def\(([^|)]+)\|([^)]+)\)/g, '')
+    processedText = processedText
+      // 颜色: §color(#RRGGBB|内容)
+      .replace(/§color\(#([0-9a-fA-F]{6})\|([^)]+)\)/g, (match, color, content) => `<span style="color: #${color}">${content}</span>`)
+      // 字体: §font(字体名|内容)
+      .replace(/§font\(([^|)]+)\|([^)]+)\)/g, (match, font, content) => `<span style="font-family: '${font}', sans-serif;">${content}</span>`)
+      // 造字: §(名称)
+      .replace(/§\(([^|)]+)\)/g, (match, key) => zaoziRegistry[key] || match);
 
-    // 2. [新增] 颜色功能: §color(#RRGGBB|文本)
-    .replace(/§color\(#([0-9a-fA-F]{6})\|([^)]+)\)/g, (match, color, text) => `<span style="color: #${color}">${text}</span>`)
-    
-    // 3. [替换] 自定义字体: §font(字体名|文本)
-    .replace(/§font\(([^|)]+)\|([^)]+)\)/g, (match, font, text) => `<span style="font-family: '${font}', sans-serif;">${text}</span>`)
+  } while (processedText !== previousText); // 如果字符串不再变化，说明所有嵌套都已处理完毕，循环结束
 
-    // 4. [替换] 造字使用: §(名称)，此规则寻找不包含'|'的格式，因此不会与其他规则冲突
-    .replace(/§\(([^|)]+)\)/g, (match, key) => zaoziRegistry[key] || match)
-    
-    // =================  修改结束  =================
-    
-    .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener" class="text-[#61afef] hover:underline decoration-2 underline-offset-2 break-all">$1</a>');
+  // 3. 最后处理链接，确保链接内的文本也已完成所有§格式转换
+  processedText = processedText.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener" class="text-[#61afef] hover:underline decoration-2 underline-offset-2 break-all">$1</a>');
+  
+  return processedText;
 };
+
 
 
 // [新增] 导出轻量级行内 Markdown 组件
