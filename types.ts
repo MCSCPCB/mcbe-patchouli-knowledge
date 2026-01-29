@@ -14,7 +14,7 @@ export interface KnowledgeItem {
   status: 'published' | 'pending' | 'rejected';
   author: User;
   createdAt: string;
-  aiClues?: string; // AI generated search keywords
+  aiClues?: string;
   attachments?: Attachment[];
 }
 
@@ -25,20 +25,13 @@ export interface Attachment {
   url: string;
 }
 
-export enum Page {
-  LOGIN = 'LOGIN',
-  HOME = 'HOME',
-  CREATE = 'CREATE',
-  DETAIL = 'DETAIL',
-  ADMIN = 'ADMIN',
-}
+// === 修改点：移除了 Page 枚举，它已经被路由 URL 取代 ===
 
 const envTags = import.meta.env.VITE_ALLOWED_TAGS;
 
 export const PREDEFINED_TAGS = envTags 
-  ? envTags.split(',').map(t => t.trim()) 
+  ? envTags.split(',').map((t: string) => t.trim()) 
   : [];
 
-// Design System Types
 export type Variant = 'filled' | 'outlined' | 'text' | 'tonal' | 'elevated';
 export type Color = 'primary' | 'secondary' | 'error' | 'surface';
