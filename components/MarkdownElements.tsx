@@ -629,49 +629,34 @@ const createZaoziHTML = (rawDesc: string) => {
 
 const parseZaoziDefinitions = (content: string) => {
   const registry: Record<string, string> = {};
-  // 匹配 §def(名称|描述)
-  const regex = /§def\(([^|)]+)\|([^)]+)\)/g;
+  // 新格式: §def(名称|结构)
+  const regex = /§def\(([^|]+?)\|([^)]+)\)/g;
   let match;
   while ((match = regex.exec(content)) !== null) {
-    registry[match[1]] = createZaoziHTML(match[2]);
+    // match[1] = 名称, match[2] = 结构
+    registry[match[1].trim()] = createZaoziHTML(match[2].trim());
   }
   return registry;
 };
 
-
-
 const renderInlineMarkdown = (text: string, zaoziRegistry: Record<string, string>) => {
-  // 1. 基础 HTML 转义
-  let res = text
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return text
+    // 1. 基础HTML转义
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    
+    // 2. 移除造字定义, 避免在正文中渲染
+    .replace(/§def\(([^|]+?)\|([^)]+)\)/g, '')
 
-  // 2. 【核心修改】循环处理所有 § 格式 (由内向外)
-  // 正则解释: 匹配 § 后跟可选的标签名，然后是括号及其内部所有“非括号”字符
-  const innerRegex = /§([a-zA-Z0-9_]*)\(([^()]*)\)/g;
-  
-  while (true) {
-    const prev = res;
-    res = res.replace(innerRegex, (match, tag, content) => {
-      // 拆分参数，例如 "Minecraft|Hello" -> ["Minecraft", "Hello"]
-      const parts = content.split('|'); 
-      const p1 = parts[0];
-      const p2 = parts.slice(1).join('|'); // 处理文本中可能存在的其他 |
+    // 3. 新增: 颜色字 §color(#XXXXXX|文本)
+    .replace(/§color\((#[0-9a-fA-F]{6})\|([^)]*)\)/g, '<span style="color: $1">$2</span>')
+    
+    // 4. 新增: 自定义字体 §font(字体|文本)
+    .replace(/§font\(([^|]+?)\|([^)]*)\)/g, '<span style="font-family: \'$1\', sans-serif;">$2</span>')
 
-      if (tag === 'def') return ''; // 定义语句在渲染时移除
-      if (tag === 'color') return `<span style="color: #${p1}">${p2}</span>`;
-      if (tag === 'font') return `<span style="font-family: '${p1}', sans-serif;">${p2}</span>`;
-      if (tag === '') return zaoziRegistry[p1] || match; // §(名称) -> 造字
-      
-      return match; // 未知标签保持原样
-    });
-
-    // 如果一轮替换后字符串没有变化，说明所有嵌套都解开了，跳出循环
-    if (res === prev) break;
-  }
-
-  // 3. 处理标准 Markdown (代码块、图片、加粗等)
-  // 注意：将标准 Markdown 放在最后处理，可以避免它们干扰 § 的括号解析
-  return res
+    // 5. 新增: 造字调用 §(名称)
+    .replace(/§\(([^)]+?)\)/g, (match, key) => zaoziRegistry[key.trim()] || match)
+    
+    // 6. 保留并沿用标准Markdown格式
     .replace(/`([^`]+)`/g, '<code class="bg-[#2c313a] text-[#98c379] px-1.5 py-0.5 rounded text-sm font-mono border border-[#3e4451] mx-1">$1</code>')
     .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" class="rounded-xl my-4 w-full shadow-lg border border-[#3e4451]"/>')
     .replace(/\*\*(.*?)\*\*/g, '<strong class="text-[#e6e6e6] font-bold">$1</strong>')
@@ -679,6 +664,7 @@ const renderInlineMarkdown = (text: string, zaoziRegistry: Record<string, string
     .replace(/~~(.*?)~~/g, '<del class="text-[#7f848e] decoration-1">$1</del>')
     .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener" class="text-[#61afef] hover:underline decoration-2 underline-offset-2 break-all">$1</a>');
 };
+
 
 
 
