@@ -99,7 +99,6 @@ export const searchKnowledge = async (query: string, mode: 'keyword' | 'ai' = 'k
   const { data: postsData, error: postsError } = await supabase
     .from('knowledge_posts')
     .select(`*, profiles ( github_id, avatar_url )`)
-    .eq('status', 'published')
     .or(`title.ilike.%${searchTerms}%,content.ilike.%${searchTerms}%,search_clues.ilike.%${searchTerms}%`);
   
   if (postsError) throw postsError;
@@ -108,7 +107,6 @@ export const searchKnowledge = async (query: string, mode: 'keyword' | 'ai' = 'k
   const { data: usersData, error: usersError } = await supabase
     .from('knowledge_posts')
     .select(`*, profiles!inner ( github_id, avatar_url )`)
-    .eq('status', 'published')
     .ilike('profiles.github_id', `%${searchTerms}%`);
 
   if (usersError) throw usersError;
